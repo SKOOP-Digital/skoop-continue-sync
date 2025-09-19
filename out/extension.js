@@ -30,7 +30,7 @@ const path = __importStar(require("path"));
 const YAML = __importStar(require("yaml"));
 function activate(context) {
     console.log('Skoop Continue Sync extension is now active!');
-    let disposable = vscode.commands.registerCommand('skoop-continue-sync.applyTeamSettings', async () => {
+    const disposable = vscode.commands.registerCommand('skoop-continue-sync.applyTeamSettings', async () => {
         try {
             await applyTeamSettings();
             vscode.window.showInformationMessage('Team Continue settings applied successfully!');

@@ -6,7 +6,7 @@ import * as YAML from 'yaml';
 export function activate(context: vscode.ExtensionContext) {
     console.log('Skoop Continue Sync extension is now active!');
 
-    let disposable = vscode.commands.registerCommand('skoop-continue-sync.applyTeamSettings', async () => {
+    const disposable = vscode.commands.registerCommand('skoop-continue-sync.applyTeamSettings', async () => {
         try {
             await applyTeamSettings();
             vscode.window.showInformationMessage('Team Continue settings applied successfully!');
@@ -19,13 +19,55 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(disposable);
 }
 
+interface ModelConfig {
+    provider?: string;
+    model: string;
+    apiBase?: string;
+    apiKey?: string;
+    title?: string;
+    roles?: string[];
+    isDefault?: boolean;
+    [key: string]: any;
+}
+
+interface AgentConfig {
+    name: string;
+    description?: string;
+    model: string;
+    tools?: string[];
+    prompt?: string;
+    [key: string]: any;
+}
+
+interface RuleConfig {
+    name: string;
+    description?: string;
+    rule: string;
+    [key: string]: any;
+}
+
+interface PromptConfig {
+    name: string;
+    description?: string;
+    prompt: string;
+    [key: string]: any;
+}
+
+interface ContinueConfig {
+    models?: ModelConfig[];
+    agents?: AgentConfig[];
+    rules?: RuleConfig[];
+    prompts?: PromptConfig[];
+    [key: string]: any;
+}
+
 async function applyTeamSettings() {
     const configPath = await findContinueConfigPath();
     if (!configPath) {
         throw new Error('Could not find Continue.dev config file. Please make sure Continue is installed and configured.');
     }
 
-    let config: any = {};
+    let config: ContinueConfig = {};
 
     // Read existing config if it exists
     if (fs.existsSync(configPath)) {
@@ -76,7 +118,7 @@ async function findContinueConfigPath(): Promise<string | null> {
     return null;
 }
 
-function applyLiteLLMSettings(config: any): any {
+function applyLiteLLMSettings(config: ContinueConfig): ContinueConfig {
     const litellmUrl = vscode.workspace.getConfiguration('skoop-continue-sync').get('litellmUrl', 'https://litellm.skoop.digital/');
     const litellmApiKey = vscode.workspace.getConfiguration('skoop-continue-sync').get('litellmApiKey', 'sk-Phkcy9C76yAAc2rNAAsnlg');
 
@@ -86,7 +128,7 @@ function applyLiteLLMSettings(config: any): any {
     }
 
     // Add LiteLLM provider if not already present
-    const existingProviderIndex = config.models.findIndex((m: any) =>
+    const existingProviderIndex = config.models.findIndex((m: ModelConfig) =>
         m.provider === 'openai' && m.apiBase?.includes('litellm.skoop.digital')
     );
 
@@ -134,7 +176,7 @@ function applyLiteLLMSettings(config: any): any {
 
     // Add team models if they don't exist
     for (const teamModel of teamModels) {
-        const existingModelIndex = config.models.findIndex((m: any) =>
+        const existingModelIndex = config.models.findIndex((m: ModelConfig) =>
             m.model === teamModel.model && m.apiBase === teamModel.apiBase
         );
 
@@ -146,12 +188,12 @@ function applyLiteLLMSettings(config: any): any {
     return config;
 }
 
-function applyModelSettings(config: any): any {
+function applyModelSettings(config: ContinueConfig): ContinueConfig {
     // Set default models for different roles
     config.models = config.models || [];
 
     // Set primary chat model
-    const chatModelIndex = config.models.findIndex((m: any) =>
+    const chatModelIndex = config.models.findIndex((m: ModelConfig) =>
         m.model === 'openai/gpt-5-mini' && m.roles?.includes('chat')
     );
     if (chatModelIndex !== -1) {
@@ -161,7 +203,7 @@ function applyModelSettings(config: any): any {
     return config;
 }
 
-function applyAgentSettings(config: any): any {
+function applyAgentSettings(config: ContinueConfig): ContinueConfig {
     // Define team agents
     config.agents = config.agents || [];
 
@@ -191,7 +233,7 @@ function applyAgentSettings(config: any): any {
 
     // Add agents if they don't exist
     for (const agent of teamAgents) {
-        const existingAgentIndex = config.agents.findIndex((a: any) => a.name === agent.name);
+        const existingAgentIndex = config.agents.findIndex((a: AgentConfig) => a.name === agent.name);
         if (existingAgentIndex === -1) {
             config.agents.push(agent);
         } else {
@@ -202,7 +244,7 @@ function applyAgentSettings(config: any): any {
     return config;
 }
 
-function applyRulesAndPrompts(config: any): any {
+function applyRulesAndPrompts(config: ContinueConfig): ContinueConfig {
     // Apply global rules
     config.rules = config.rules || [];
 
@@ -226,7 +268,7 @@ function applyRulesAndPrompts(config: any): any {
 
     // Add rules if they don't exist
     for (const rule of teamRules) {
-        const existingRuleIndex = config.rules.findIndex((r: any) => r.name === rule.name);
+        const existingRuleIndex = config.rules.findIndex((r: RuleConfig) => r.name === rule.name);
         if (existingRuleIndex === -1) {
             config.rules.push(rule);
         } else {
@@ -252,7 +294,7 @@ function applyRulesAndPrompts(config: any): any {
 
     // Add prompts if they don't exist
     for (const prompt of teamPrompts) {
-        const existingPromptIndex = config.prompts.findIndex((p: any) => p.name === prompt.name);
+        const existingPromptIndex = config.prompts.findIndex((p: PromptConfig) => p.name === prompt.name);
         if (existingPromptIndex === -1) {
             config.prompts.push(prompt);
         } else {
