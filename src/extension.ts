@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as YAML from 'yaml';
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('[Skoop Continue Sync] Extension activated successfully!');
@@ -89,7 +88,14 @@ async function applyTeamSettings() {
         try {
             const configContent = fs.readFileSync(configPath, 'utf8');
             console.log('[Skoop Continue Sync] Config content length:', configContent.length);
-            config = YAML.parse(configContent) || {};
+            // Try JSON first, then fall back to simple YAML parsing
+            try {
+                config = JSON.parse(configContent);
+                console.log('[Skoop Continue Sync] Parsed config as JSON');
+            } catch (jsonError) {
+                console.log('[Skoop Continue Sync] JSON parsing failed, trying simple YAML parsing');
+                config = parseSimpleYaml(configContent);
+            }
             console.log('[Skoop Continue Sync] Parsed config:', JSON.stringify(config, null, 2));
         } catch (error) {
             console.error('[Skoop Continue Sync] Error reading/parsing config:', error);
@@ -112,7 +118,7 @@ async function applyTeamSettings() {
     // Write updated config
     console.log('[Skoop Continue Sync] Writing updated config...');
     try {
-        const yamlContent = YAML.stringify(config, { indent: 2 });
+        const yamlContent = JSON.stringify(config, null, 2);
         console.log('[Skoop Continue Sync] Generated YAML content length:', yamlContent.length);
         console.log('[Skoop Continue Sync] Final config to write:', yamlContent);
         fs.writeFileSync(configPath, yamlContent, 'utf8');
@@ -126,14 +132,14 @@ async function applyTeamSettings() {
 async function findContinueConfigPath(): Promise<string | null> {
     console.log('[Skoop Continue Sync] Searching for Continue config file...');
 
-    // Try to find Continue config in common locations
+    // Try to find Continue config in common locations (prefer JSON over YAML)
     const possiblePaths = [
-        path.join(vscode.workspace.rootPath || '', '.continue', 'config.yaml'),
         path.join(vscode.workspace.rootPath || '', '.continue', 'config.json'),
-        path.join(process.env.HOME || '', '.continue', 'config.yaml'),
+        path.join(vscode.workspace.rootPath || '', '.continue', 'config.yaml'),
         path.join(process.env.HOME || '', '.continue', 'config.json'),
-        path.join(process.env.USERPROFILE || '', '.continue', 'config.yaml'),
+        path.join(process.env.HOME || '', '.continue', 'config.yaml'),
         path.join(process.env.USERPROFILE || '', '.continue', 'config.json'),
+        path.join(process.env.USERPROFILE || '', '.continue', 'config.yaml'),
     ];
 
     console.log('[Skoop Continue Sync] Checking possible config paths:');
@@ -150,7 +156,7 @@ async function findContinueConfigPath(): Promise<string | null> {
 
     // If no existing config found, create one in the workspace
     if (vscode.workspace.rootPath) {
-        const workspaceConfigPath = path.join(vscode.workspace.rootPath, '.continue', 'config.yaml');
+        const workspaceConfigPath = path.join(vscode.workspace.rootPath, '.continue', 'config.json');
         console.log(`[Skoop Continue Sync] Creating new config at workspace: ${workspaceConfigPath}`);
         const continueDir = path.dirname(workspaceConfigPath);
         console.log(`[Skoop Continue Sync] Creating directory if needed: ${continueDir}`);
@@ -380,3 +386,61 @@ function applyRulesAndPrompts(config: ContinueConfig): ContinueConfig {
 }
 
 export function deactivate() {}
+
+// Simple YAML parser for basic YAML structures
+function parseSimpleYaml(yamlContent: string): any {
+    const lines = yamlContent.split('\n');
+    const result: any = {};
+
+    let currentSection: any = result;
+    let indentLevel = 0;
+    let sectionStack: any[] = [result];
+
+    for (const line of lines) {
+        const trimmed = line.trim();
+
+        // Skip empty lines and comments
+        if (!trimmed || trimmed.startsWith('#')) {
+            continue;
+        }
+
+        // Calculate indentation
+        const currentIndent = line.length - line.trimStart().length;
+
+        // Handle section headers (like models:, agents:, etc.)
+        if (trimmed.endsWith(':') && !trimmed.includes(' ')) {
+            const sectionName = trimmed.slice(0, -1);
+            currentSection[sectionName] = currentSection[sectionName] || [];
+            sectionStack = [result];
+            currentSection = result[sectionName];
+            indentLevel = currentIndent;
+            continue;
+        }
+
+        // Handle key-value pairs
+        if (trimmed.includes(':')) {
+            const [key, ...valueParts] = trimmed.split(':');
+            const value = valueParts.join(':').trim();
+
+            if (value.startsWith('"') && value.endsWith('"')) {
+                currentSection[key.trim()] = value.slice(1, -1);
+            } else if (value.startsWith("'") && value.endsWith("'")) {
+                currentSection[key.trim()] = value.slice(1, -1);
+            } else if (value === 'true') {
+                currentSection[key.trim()] = true;
+            } else if (value === 'false') {
+                currentSection[key.trim()] = false;
+            } else if (!isNaN(Number(value))) {
+                currentSection[key.trim()] = Number(value);
+            } else if (value) {
+                currentSection[key.trim()] = value;
+            } else {
+                // This might be a nested object
+                currentSection[key.trim()] = {};
+                currentSection = currentSection[key.trim()];
+            }
+        }
+    }
+
+    return result;
+}

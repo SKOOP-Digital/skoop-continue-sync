@@ -47,7 +47,7 @@
     "watch": "tsc -watch -p ./",
     "lint": "eslint src --ext ts",
     "test": "echo 'Tests are for local development only - run in VS Code with display server'",
-    "package": "npx @vscode/vsce package --no-dependencies"
+    "package": "npx @vscode/vsce package"
   },
   "devDependencies": {
     "@types/vscode": "^1.74.0",
@@ -62,8 +62,5 @@
     "mocha": "^10.2.0",
     "glob": "^10.3.10"
   },
-  "dependencies": {
-    "yaml": "^2.3.4",
-    "fs-extra": "^11.1.1"
-  }
+  "dependencies": {}
 }
