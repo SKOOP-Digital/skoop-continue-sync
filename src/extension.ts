@@ -118,7 +118,7 @@ async function applyTeamSettings() {
     // Write updated config
     console.log('[Skoop Continue Sync] Writing updated config...');
     try {
-        const yamlContent = JSON.stringify(config, null, 2);
+        const yamlContent = configToYaml(config);
         console.log('[Skoop Continue Sync] Generated YAML content length:', yamlContent.length);
         console.log('[Skoop Continue Sync] Final config to write:', yamlContent);
         fs.writeFileSync(configPath, yamlContent, 'utf8');
@@ -394,6 +394,74 @@ function applyRulesAndPrompts(config: ContinueConfig): ContinueConfig {
 }
 
 export function deactivate() {}
+
+// Simple YAML serializer for basic structures
+function configToYaml(config: ContinueConfig): string {
+    let yaml = '';
+
+    // Add basic fields
+    if (config.name) yaml += `name: "${config.name}"\n`;
+    if (config.version) yaml += `version: "${config.version}"\n`;
+    if (config.schema) yaml += `schema: "${config.schema}"\n`;
+
+    // Add models
+    if (config.models && config.models.length > 0) {
+        yaml += '\nmodels:\n';
+        for (const model of config.models) {
+            yaml += '  - provider: ' + model.provider + '\n';
+            yaml += '    model: ' + model.model + '\n';
+            if (model.apiBase) yaml += '    apiBase: ' + model.apiBase + '\n';
+            if (model.apiKey) yaml += '    apiKey: ' + model.apiKey + '\n';
+            if (model.title) yaml += '    title: "' + model.title + '"\n';
+            if (model.roles && model.roles.length > 0) {
+                yaml += '    roles:\n';
+                for (const role of model.roles) {
+                    yaml += '      - ' + role + '\n';
+                }
+            }
+            if (model.isDefault) yaml += '    isDefault: true\n';
+        }
+    }
+
+    // Add agents
+    if (config.agents && config.agents.length > 0) {
+        yaml += '\nagents:\n';
+        for (const agent of config.agents) {
+            yaml += '  - name: "' + agent.name + '"\n';
+            if (agent.description) yaml += '    description: "' + agent.description + '"\n';
+            yaml += '    model: ' + agent.model + '\n';
+            if (agent.tools && agent.tools.length > 0) {
+                yaml += '    tools:\n';
+                for (const tool of agent.tools) {
+                    yaml += '      - ' + tool + '\n';
+                }
+            }
+            if (agent.prompt) yaml += '    prompt: "' + agent.prompt.replace(/"/g, '\\"') + '"\n';
+        }
+    }
+
+    // Add rules
+    if (config.rules && config.rules.length > 0) {
+        yaml += '\nrules:\n';
+        for (const rule of config.rules) {
+            yaml += '  - name: "' + rule.name + '"\n';
+            if (rule.description) yaml += '    description: "' + rule.description + '"\n';
+            yaml += '    rule: "' + rule.rule.replace(/"/g, '\\"') + '"\n';
+        }
+    }
+
+    // Add prompts
+    if (config.prompts && config.prompts.length > 0) {
+        yaml += '\nprompts:\n';
+        for (const prompt of config.prompts) {
+            yaml += '  - name: "' + prompt.name + '"\n';
+            if (prompt.description) yaml += '    description: "' + prompt.description + '"\n';
+            yaml += '    prompt: "' + prompt.prompt.replace(/"/g, '\\"').replace(/\n/g, '\\n') + '"\n';
+        }
+    }
+
+    return yaml;
+}
 
 // Simple YAML parser for basic YAML structures
 function parseSimpleYaml(yamlContent: string): Record<string, unknown> {
