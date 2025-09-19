@@ -342,23 +342,18 @@ function parseSimpleYaml(yamlContent) {
     const lines = yamlContent.split('\n');
     const result = {};
     let currentSection = result;
-    let indentLevel = 0;
-    let sectionStack = [result];
     for (const line of lines) {
         const trimmed = line.trim();
         // Skip empty lines and comments
         if (!trimmed || trimmed.startsWith('#')) {
             continue;
         }
-        // Calculate indentation
-        const currentIndent = line.length - line.trimStart().length;
         // Handle section headers (like models:, agents:, etc.)
         if (trimmed.endsWith(':') && !trimmed.includes(' ')) {
             const sectionName = trimmed.slice(0, -1);
-            currentSection[sectionName] = currentSection[sectionName] || [];
-            sectionStack = [result];
-            currentSection = result[sectionName];
-            indentLevel = currentIndent;
+            const newSection = [];
+            currentSection[sectionName] = newSection;
+            currentSection = result;
             continue;
         }
         // Handle key-value pairs
@@ -377,16 +372,11 @@ function parseSimpleYaml(yamlContent) {
             else if (value === 'false') {
                 currentSection[key.trim()] = false;
             }
-            else if (!isNaN(Number(value))) {
+            else if (!isNaN(Number(value)) && value !== '') {
                 currentSection[key.trim()] = Number(value);
             }
             else if (value) {
                 currentSection[key.trim()] = value;
-            }
-            else {
-                // This might be a nested object
-                currentSection[key.trim()] = {};
-                currentSection = currentSection[key.trim()];
             }
         }
     }

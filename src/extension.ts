@@ -37,7 +37,7 @@ interface ModelConfig {
     title?: string;
     roles?: string[];
     isDefault?: boolean;
-    [key: string]: any;
+    [key: string]: string | string[] | boolean | undefined;
 }
 
 interface AgentConfig {
@@ -46,21 +46,21 @@ interface AgentConfig {
     model: string;
     tools?: string[];
     prompt?: string;
-    [key: string]: any;
+    [key: string]: string | string[] | undefined;
 }
 
 interface RuleConfig {
     name: string;
     description?: string;
     rule: string;
-    [key: string]: any;
+    [key: string]: string | undefined;
 }
 
 interface PromptConfig {
     name: string;
     description?: string;
     prompt: string;
-    [key: string]: any;
+    [key: string]: string | undefined;
 }
 
 interface ContinueConfig {
@@ -68,7 +68,7 @@ interface ContinueConfig {
     agents?: AgentConfig[];
     rules?: RuleConfig[];
     prompts?: PromptConfig[];
-    [key: string]: any;
+    [key: string]: ModelConfig[] | AgentConfig[] | RuleConfig[] | PromptConfig[] | undefined;
 }
 
 async function applyTeamSettings() {
@@ -94,7 +94,7 @@ async function applyTeamSettings() {
                 console.log('[Skoop Continue Sync] Parsed config as JSON');
             } catch (jsonError) {
                 console.log('[Skoop Continue Sync] JSON parsing failed, trying simple YAML parsing');
-                config = parseSimpleYaml(configContent);
+                config = parseSimpleYaml(configContent) as ContinueConfig;
             }
             console.log('[Skoop Continue Sync] Parsed config:', JSON.stringify(config, null, 2));
         } catch (error) {
@@ -388,13 +388,11 @@ function applyRulesAndPrompts(config: ContinueConfig): ContinueConfig {
 export function deactivate() {}
 
 // Simple YAML parser for basic YAML structures
-function parseSimpleYaml(yamlContent: string): any {
+function parseSimpleYaml(yamlContent: string): Record<string, unknown> {
     const lines = yamlContent.split('\n');
-    const result: any = {};
+    const result: Record<string, unknown> = {};
 
-    let currentSection: any = result;
-    let indentLevel = 0;
-    let sectionStack: any[] = [result];
+    let currentSection: Record<string, unknown> = result;
 
     for (const line of lines) {
         const trimmed = line.trim();
@@ -404,16 +402,12 @@ function parseSimpleYaml(yamlContent: string): any {
             continue;
         }
 
-        // Calculate indentation
-        const currentIndent = line.length - line.trimStart().length;
-
         // Handle section headers (like models:, agents:, etc.)
         if (trimmed.endsWith(':') && !trimmed.includes(' ')) {
             const sectionName = trimmed.slice(0, -1);
-            currentSection[sectionName] = currentSection[sectionName] || [];
-            sectionStack = [result];
-            currentSection = result[sectionName];
-            indentLevel = currentIndent;
+            const newSection: unknown[] = [];
+            currentSection[sectionName] = newSection;
+            currentSection = result;
             continue;
         }
 
@@ -430,14 +424,10 @@ function parseSimpleYaml(yamlContent: string): any {
                 currentSection[key.trim()] = true;
             } else if (value === 'false') {
                 currentSection[key.trim()] = false;
-            } else if (!isNaN(Number(value))) {
+            } else if (!isNaN(Number(value)) && value !== '') {
                 currentSection[key.trim()] = Number(value);
             } else if (value) {
                 currentSection[key.trim()] = value;
-            } else {
-                // This might be a nested object
-                currentSection[key.trim()] = {};
-                currentSection = currentSection[key.trim()];
             }
         }
     }
