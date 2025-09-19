@@ -158,9 +158,9 @@ function applyLiteLLMSettings(config) {
     const litellmApiKey = vscode.workspace.getConfiguration('skoop-continue-sync').get('litellmApiKey', 'sk-Phkcy9C76yAAc2rNAAsnlg');
     console.log('[Skoop Continue Sync] LiteLLM URL:', litellmUrl);
     console.log('[Skoop Continue Sync] LiteLLM API Key length:', litellmApiKey.length);
-    // Initialize models array if it doesn't exist
-    if (!config.models) {
-        console.log('[Skoop Continue Sync] Initializing models array');
+    // Initialize models array if it doesn't exist or isn't an array
+    if (!config.models || !Array.isArray(config.models)) {
+        console.log('[Skoop Continue Sync] Initializing models array (was:', typeof config.models, ')');
         config.models = [];
     }
     else {
@@ -226,7 +226,9 @@ function applyLiteLLMSettings(config) {
 function applyModelSettings(config) {
     console.log('[Skoop Continue Sync] Setting default models...');
     // Set default models for different roles
-    config.models = config.models || [];
+    if (!config.models || !Array.isArray(config.models)) {
+        config.models = [];
+    }
     console.log('[Skoop Continue Sync] Models before setting defaults:', config.models.length);
     // Set primary chat model
     const chatModelIndex = config.models.findIndex((m) => m.model === 'openai/gpt-5-mini' && m.roles?.includes('chat'));
@@ -240,7 +242,9 @@ function applyModelSettings(config) {
 function applyAgentSettings(config) {
     console.log('[Skoop Continue Sync] Applying agent settings...');
     // Define team agents
-    config.agents = config.agents || [];
+    if (!config.agents || !Array.isArray(config.agents)) {
+        config.agents = [];
+    }
     console.log('[Skoop Continue Sync] Existing agents count:', config.agents.length);
     const teamAgents = [
         {
@@ -280,7 +284,9 @@ function applyAgentSettings(config) {
 function applyRulesAndPrompts(config) {
     console.log('[Skoop Continue Sync] Applying rules and prompts...');
     // Apply global rules
-    config.rules = config.rules || [];
+    if (!config.rules || !Array.isArray(config.rules)) {
+        config.rules = [];
+    }
     console.log('[Skoop Continue Sync] Existing rules count:', config.rules.length);
     const teamRules = [
         {
@@ -310,7 +316,9 @@ function applyRulesAndPrompts(config) {
         }
     }
     // Apply global prompts
-    config.prompts = config.prompts || [];
+    if (!config.prompts || !Array.isArray(config.prompts)) {
+        config.prompts = [];
+    }
     const teamPrompts = [
         {
             name: 'CodeReview',
@@ -361,7 +369,21 @@ function parseSimpleYaml(yamlContent) {
             const [key, ...valueParts] = trimmed.split(':');
             const value = valueParts.join(':').trim();
             if (value.startsWith('"') && value.endsWith('"')) {
-                currentSection[key.trim()] = value.slice(1, -1);
+                // Handle quoted strings
+                const stringValue = value.slice(1, -1);
+                // Check if it's a JSON array or object
+                if ((stringValue.startsWith('[') && stringValue.endsWith(']')) ||
+                    (stringValue.startsWith('{') && stringValue.endsWith('}'))) {
+                    try {
+                        currentSection[key.trim()] = JSON.parse(stringValue);
+                    }
+                    catch {
+                        currentSection[key.trim()] = stringValue;
+                    }
+                }
+                else {
+                    currentSection[key.trim()] = stringValue;
+                }
             }
             else if (value.startsWith("'") && value.endsWith("'")) {
                 currentSection[key.trim()] = value.slice(1, -1);
@@ -372,8 +394,21 @@ function parseSimpleYaml(yamlContent) {
             else if (value === 'false') {
                 currentSection[key.trim()] = false;
             }
+            else if (value === 'null') {
+                currentSection[key.trim()] = null;
+            }
             else if (!isNaN(Number(value)) && value !== '') {
                 currentSection[key.trim()] = Number(value);
+            }
+            else if ((value.startsWith('[') && value.endsWith(']')) ||
+                (value.startsWith('{') && value.endsWith('}'))) {
+                // Handle unquoted JSON arrays/objects
+                try {
+                    currentSection[key.trim()] = JSON.parse(value);
+                }
+                catch {
+                    currentSection[key.trim()] = value;
+                }
             }
             else if (value) {
                 currentSection[key.trim()] = value;
