@@ -29,42 +29,81 @@ const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const YAML = __importStar(require("yaml"));
 function activate(context) {
-    console.log('Skoop Continue Sync extension is now active!');
+    console.log('[Skoop Continue Sync] Extension activated successfully!');
+    console.log('[Skoop Continue Sync] Current workspace:', vscode.workspace.rootPath);
+    console.log('[Skoop Continue Sync] Process environment:', {
+        HOME: process.env.HOME,
+        USERPROFILE: process.env.USERPROFILE,
+        APPDATA: process.env.APPDATA
+    });
     const disposable = vscode.commands.registerCommand('skoop-continue-sync.applyTeamSettings', async () => {
+        console.log('[Skoop Continue Sync] Apply team settings command triggered');
         try {
+            console.log('[Skoop Continue Sync] Starting to apply team settings...');
             await applyTeamSettings();
+            console.log('[Skoop Continue Sync] Team settings applied successfully');
             vscode.window.showInformationMessage('Team Continue settings applied successfully!');
         }
         catch (error) {
-            console.error('Error applying team settings:', error);
+            console.error('[Skoop Continue Sync] Error applying team settings:', error);
             vscode.window.showErrorMessage(`Failed to apply team settings: ${error}`);
         }
     });
     context.subscriptions.push(disposable);
+    console.log('[Skoop Continue Sync] Command registered: skoop-continue-sync.applyTeamSettings');
 }
 exports.activate = activate;
 async function applyTeamSettings() {
+    console.log('[Skoop Continue Sync] Finding Continue config path...');
     const configPath = await findContinueConfigPath();
     if (!configPath) {
+        console.error('[Skoop Continue Sync] Could not find Continue.dev config file');
         throw new Error('Could not find Continue.dev config file. Please make sure Continue is installed and configured.');
     }
+    console.log('[Skoop Continue Sync] Found config path:', configPath);
     let config = {};
     // Read existing config if it exists
     if (fs.existsSync(configPath)) {
-        const configContent = fs.readFileSync(configPath, 'utf8');
-        config = YAML.parse(configContent) || {};
+        console.log('[Skoop Continue Sync] Reading existing config from:', configPath);
+        try {
+            const configContent = fs.readFileSync(configPath, 'utf8');
+            console.log('[Skoop Continue Sync] Config content length:', configContent.length);
+            config = YAML.parse(configContent) || {};
+            console.log('[Skoop Continue Sync] Parsed config:', JSON.stringify(config, null, 2));
+        }
+        catch (error) {
+            console.error('[Skoop Continue Sync] Error reading/parsing config:', error);
+            throw error;
+        }
+    }
+    else {
+        console.log('[Skoop Continue Sync] No existing config found, creating new one');
     }
     // Apply team settings
+    console.log('[Skoop Continue Sync] Applying LiteLLM settings...');
     config = applyLiteLLMSettings(config);
+    console.log('[Skoop Continue Sync] Applying model settings...');
     config = applyModelSettings(config);
+    console.log('[Skoop Continue Sync] Applying agent settings...');
     config = applyAgentSettings(config);
+    console.log('[Skoop Continue Sync] Applying rules and prompts...');
     config = applyRulesAndPrompts(config);
     // Write updated config
-    const yamlContent = YAML.stringify(config, { indent: 2 });
-    fs.writeFileSync(configPath, yamlContent, 'utf8');
-    console.log('Continue config updated at:', configPath);
+    console.log('[Skoop Continue Sync] Writing updated config...');
+    try {
+        const yamlContent = YAML.stringify(config, { indent: 2 });
+        console.log('[Skoop Continue Sync] Generated YAML content length:', yamlContent.length);
+        console.log('[Skoop Continue Sync] Final config to write:', yamlContent);
+        fs.writeFileSync(configPath, yamlContent, 'utf8');
+        console.log('[Skoop Continue Sync] Config written successfully to:', configPath);
+    }
+    catch (error) {
+        console.error('[Skoop Continue Sync] Error writing config:', error);
+        throw error;
+    }
 }
 async function findContinueConfigPath() {
+    console.log('[Skoop Continue Sync] Searching for Continue config file...');
     // Try to find Continue config in common locations
     const possiblePaths = [
         path.join(vscode.workspace.rootPath || '', '.continue', 'config.yaml'),
@@ -74,31 +113,55 @@ async function findContinueConfigPath() {
         path.join(process.env.USERPROFILE || '', '.continue', 'config.yaml'),
         path.join(process.env.USERPROFILE || '', '.continue', 'config.json'),
     ];
+    console.log('[Skoop Continue Sync] Checking possible config paths:');
     for (const configPath of possiblePaths) {
+        console.log(`[Skoop Continue Sync]   Checking: ${configPath}`);
+        console.log(`[Skoop Continue Sync]   Exists: ${fs.existsSync(configPath)}`);
         if (fs.existsSync(configPath)) {
+            console.log(`[Skoop Continue Sync]   Found existing config at: ${configPath}`);
             return configPath;
         }
     }
+    console.log('[Skoop Continue Sync] No existing config found, will create new one');
     // If no existing config found, create one in the workspace
     if (vscode.workspace.rootPath) {
         const workspaceConfigPath = path.join(vscode.workspace.rootPath, '.continue', 'config.yaml');
+        console.log(`[Skoop Continue Sync] Creating new config at workspace: ${workspaceConfigPath}`);
         const continueDir = path.dirname(workspaceConfigPath);
+        console.log(`[Skoop Continue Sync] Creating directory if needed: ${continueDir}`);
         if (!fs.existsSync(continueDir)) {
-            fs.mkdirSync(continueDir, { recursive: true });
+            try {
+                fs.mkdirSync(continueDir, { recursive: true });
+                console.log('[Skoop Continue Sync] Directory created successfully');
+            }
+            catch (error) {
+                console.error('[Skoop Continue Sync] Error creating directory:', error);
+                return null;
+            }
         }
+        console.log(`[Skoop Continue Sync] Will use new config path: ${workspaceConfigPath}`);
         return workspaceConfigPath;
     }
+    console.error('[Skoop Continue Sync] No workspace root path found, cannot create config');
     return null;
 }
 function applyLiteLLMSettings(config) {
+    console.log('[Skoop Continue Sync] Reading VS Code configuration...');
     const litellmUrl = vscode.workspace.getConfiguration('skoop-continue-sync').get('litellmUrl', 'https://litellm.skoop.digital/');
     const litellmApiKey = vscode.workspace.getConfiguration('skoop-continue-sync').get('litellmApiKey', 'sk-Phkcy9C76yAAc2rNAAsnlg');
+    console.log('[Skoop Continue Sync] LiteLLM URL:', litellmUrl);
+    console.log('[Skoop Continue Sync] LiteLLM API Key length:', litellmApiKey.length);
     // Initialize models array if it doesn't exist
     if (!config.models) {
+        console.log('[Skoop Continue Sync] Initializing models array');
         config.models = [];
+    }
+    else {
+        console.log('[Skoop Continue Sync] Existing models count:', config.models.length);
     }
     // Add LiteLLM provider if not already present
     const existingProviderIndex = config.models.findIndex((m) => m.provider === 'openai' && m.apiBase?.includes('litellm.skoop.digital'));
+    console.log('[Skoop Continue Sync] Existing LiteLLM provider index:', existingProviderIndex);
     const litellmProvider = {
         provider: 'openai',
         model: 'gpt-4',
@@ -107,9 +170,11 @@ function applyLiteLLMSettings(config) {
         title: 'LiteLLM Server'
     };
     if (existingProviderIndex === -1) {
+        console.log('[Skoop Continue Sync] Adding new LiteLLM provider');
         config.models.push(litellmProvider);
     }
     else {
+        console.log('[Skoop Continue Sync] Updating existing LiteLLM provider');
         config.models[existingProviderIndex] = litellmProvider;
     }
     // Add specific models from LiteLLM
@@ -139,28 +204,37 @@ function applyLiteLLMSettings(config) {
             roles: ['agent', 'chat']
         }
     ];
+    console.log('[Skoop Continue Sync] Adding team models...');
     // Add team models if they don't exist
     for (const teamModel of teamModels) {
         const existingModelIndex = config.models.findIndex((m) => m.model === teamModel.model && m.apiBase === teamModel.apiBase);
+        console.log(`[Skoop Continue Sync]   ${teamModel.title}: ${existingModelIndex === -1 ? 'Adding' : 'Already exists'}`);
         if (existingModelIndex === -1) {
             config.models.push(teamModel);
         }
     }
+    console.log('[Skoop Continue Sync] Final models count:', config.models.length);
     return config;
 }
 function applyModelSettings(config) {
+    console.log('[Skoop Continue Sync] Setting default models...');
     // Set default models for different roles
     config.models = config.models || [];
+    console.log('[Skoop Continue Sync] Models before setting defaults:', config.models.length);
     // Set primary chat model
     const chatModelIndex = config.models.findIndex((m) => m.model === 'openai/gpt-5-mini' && m.roles?.includes('chat'));
+    console.log('[Skoop Continue Sync] Chat model index:', chatModelIndex);
     if (chatModelIndex !== -1) {
         config.models[chatModelIndex].isDefault = true;
+        console.log('[Skoop Continue Sync] Set GPT-5 Mini as default chat model');
     }
     return config;
 }
 function applyAgentSettings(config) {
+    console.log('[Skoop Continue Sync] Applying agent settings...');
     // Define team agents
     config.agents = config.agents || [];
+    console.log('[Skoop Continue Sync] Existing agents count:', config.agents.length);
     const teamAgents = [
         {
             name: 'CodeReviewer',
@@ -197,8 +271,10 @@ function applyAgentSettings(config) {
     return config;
 }
 function applyRulesAndPrompts(config) {
+    console.log('[Skoop Continue Sync] Applying rules and prompts...');
     // Apply global rules
     config.rules = config.rules || [];
+    console.log('[Skoop Continue Sync] Existing rules count:', config.rules.length);
     const teamRules = [
         {
             name: 'CodeStyle',
