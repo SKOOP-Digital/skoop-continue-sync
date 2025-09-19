@@ -1,0 +1,16 @@
+.vscode/**
+.vscode-test/**
+src/**
+.gitignore
+.yarnrc
+webpack.config.js
+**/*.ts
+**/*.map
+.nyc_output
+coverage
+node_modules/**
+**/.eslintrc.json
+**/*.vsix
+.github/**
+**/.DS_Store
+**/*.vsix
