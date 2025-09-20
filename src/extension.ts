@@ -203,30 +203,30 @@ function applyLiteLLMSettings(config: ContinueConfig): ContinueConfig {
         config.models![existingProviderIndex] = litellmProvider;
     }
 
-    // Add specific models from LiteLLM
+    // Add specific models from LiteLLM using standard provider names
     const teamModels = [
         {
-            provider: 'litellm',
-            model: 'openai/gpt-5-mini',
+            provider: 'openai',
+            model: 'gpt-4o-mini',
             apiBase: litellmUrl,
             apiKey: litellmApiKey,
-            title: 'GPT-5 Mini (Team)',
+            title: 'GPT-4o Mini (Team)',
             roles: ['chat', 'autocomplete']
         },
         {
-            provider: 'litellm',
-            model: 'gemini/gemini-2.5-flash',
+            provider: 'gemini',
+            model: 'gemini-1.5-flash',
             apiBase: litellmUrl,
             apiKey: litellmApiKey,
-            title: 'Gemini 2.5 Flash (Team)',
+            title: 'Gemini 1.5 Flash (Team)',
             roles: ['chat', 'edit']
         },
         {
-            provider: 'litellm',
-            model: 'anthropic/claude-4-sonnet-20250514',
+            provider: 'anthropic',
+            model: 'claude-3-5-sonnet-20241022',
             apiBase: litellmUrl,
             apiKey: litellmApiKey,
-            title: 'Claude 4 Sonnet (Team)',
+            title: 'Claude 3.5 Sonnet (Team)',
             roles: ['agent', 'chat']
         }
     ];
@@ -235,7 +235,7 @@ function applyLiteLLMSettings(config: ContinueConfig): ContinueConfig {
     // Add team models if they don't exist
     for (const teamModel of teamModels) {
         const existingModelIndex = config.models!.findIndex((m: ModelConfig) =>
-            m.model === teamModel.model && m.apiBase === teamModel.apiBase && m.provider === teamModel.provider
+            m.model === teamModel.model && m.apiBase === teamModel.apiBase
         );
 
         console.log(`[Skoop Continue Sync]   ${teamModel.title}: ${existingModelIndex === -1 ? 'Adding' : 'Already exists'}`);
@@ -254,12 +254,12 @@ function applyModelSettings(config: ContinueConfig): ContinueConfig {
 
     // Set primary chat model
     const chatModelIndex = config.models!.findIndex((m: ModelConfig) =>
-        m.model === 'openai/gpt-5-mini' && m.provider === 'litellm' && m.roles?.includes('chat')
+        m.model === 'gpt-4o-mini' && m.roles?.includes('chat')
     );
     console.log('[Skoop Continue Sync] Chat model index:', chatModelIndex);
     if (chatModelIndex !== -1) {
         config.models![chatModelIndex].isDefault = true;
-        console.log('[Skoop Continue Sync] Set GPT-5 Mini as default chat model');
+        console.log('[Skoop Continue Sync] Set GPT-4o Mini as default chat model');
     }
 
     return config;
@@ -273,21 +273,21 @@ function applyAgentSettings(config: ContinueConfig): ContinueConfig {
         {
             name: 'CodeReviewer',
             description: 'Agent for code review tasks',
-            model: 'anthropic/claude-4-sonnet-20250514',
+            model: 'claude-3-5-sonnet-20241022',
             tools: ['read_file', 'run_terminal_cmd'],
             prompt: 'You are a senior developer reviewing code for quality, security, and best practices.'
         },
         {
             name: 'BugFixer',
             description: 'Agent for debugging and fixing issues',
-            model: 'gemini/gemini-2.5-flash',
+            model: 'gemini-1.5-flash',
             tools: ['read_file', 'grep', 'run_terminal_cmd'],
             prompt: 'You are an expert debugger. Analyze code, find bugs, and provide fixes with explanations.'
         },
         {
             name: 'DocumentationWriter',
             description: 'Agent for writing and updating documentation',
-            model: 'openai/gpt-5-mini',
+            model: 'gpt-4o-mini',
             tools: ['read_file', 'search_replace'],
             prompt: 'You are a technical writer. Create clear, comprehensive documentation for code and APIs.'
         }
