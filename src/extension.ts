@@ -195,13 +195,13 @@ function applyLiteLLMSettings(config: ContinueConfig): ContinueConfig {
 
     // Add LiteLLM provider if not already present
     const existingProviderIndex = config.models.findIndex((m: ModelConfig) =>
-        m.provider === 'openai' && m.apiBase?.includes('litellm.skoop.digital')
+        (m.provider === 'litellm' || m.provider === 'openai') && m.apiBase?.includes('litellm.skoop.digital')
     );
     console.log('[Skoop Continue Sync] Existing LiteLLM provider index:', existingProviderIndex);
 
     const litellmProvider = {
-        provider: 'openai',
-        model: 'gpt-4',
+        provider: 'litellm',
+        model: 'gpt-4o-mini',
         apiBase: litellmUrl,
         apiKey: litellmApiKey,
         title: 'LiteLLM Server'
@@ -218,7 +218,7 @@ function applyLiteLLMSettings(config: ContinueConfig): ContinueConfig {
     // Add specific models from LiteLLM
     const teamModels = [
         {
-            provider: 'openai',
+            provider: 'litellm',
             model: 'openai/gpt-5-mini',
             apiBase: litellmUrl,
             apiKey: litellmApiKey,
@@ -226,7 +226,7 @@ function applyLiteLLMSettings(config: ContinueConfig): ContinueConfig {
             roles: ['chat', 'autocomplete']
         },
         {
-            provider: 'openai',
+            provider: 'litellm',
             model: 'gemini/gemini-2.5-flash',
             apiBase: litellmUrl,
             apiKey: litellmApiKey,
@@ -234,7 +234,7 @@ function applyLiteLLMSettings(config: ContinueConfig): ContinueConfig {
             roles: ['chat', 'edit']
         },
         {
-            provider: 'openai',
+            provider: 'litellm',
             model: 'anthropic/claude-4-sonnet-20250514',
             apiBase: litellmUrl,
             apiKey: litellmApiKey,
@@ -247,7 +247,7 @@ function applyLiteLLMSettings(config: ContinueConfig): ContinueConfig {
     // Add team models if they don't exist
     for (const teamModel of teamModels) {
         const existingModelIndex = config.models.findIndex((m: ModelConfig) =>
-            m.model === teamModel.model && m.apiBase === teamModel.apiBase
+            m.model === teamModel.model && m.apiBase === teamModel.apiBase && m.provider === teamModel.provider
         );
 
         console.log(`[Skoop Continue Sync]   ${teamModel.title}: ${existingModelIndex === -1 ? 'Adding' : 'Already exists'}`);
@@ -270,7 +270,7 @@ function applyModelSettings(config: ContinueConfig): ContinueConfig {
 
     // Set primary chat model
     const chatModelIndex = config.models.findIndex((m: ModelConfig) =>
-        m.model === 'openai/gpt-5-mini' && m.roles?.includes('chat')
+        m.model === 'openai/gpt-5-mini' && m.provider === 'litellm' && m.roles?.includes('chat')
     );
     console.log('[Skoop Continue Sync] Chat model index:', chatModelIndex);
     if (chatModelIndex !== -1) {
