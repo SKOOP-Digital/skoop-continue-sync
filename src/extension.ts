@@ -88,7 +88,7 @@ async function applyTeamSettings() {
     // Initialize with clean config instead of trying to parse existing (potentially malformed) config
     console.log('[Skoop Continue Sync] Initializing with clean team configuration');
     config = {
-        name: "Skoop Team Agent",
+        name: "Skoop Team Models",
         version: "1.0.0",
         schema: "v1",
         models: [],
