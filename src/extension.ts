@@ -203,19 +203,19 @@ function applyLiteLLMSettings(config: ContinueConfig): ContinueConfig {
         config.models![existingProviderIndex] = litellmProvider;
     }
 
-    // Add specific models from LiteLLM - all use openai provider for LiteLLM routing
+    // Add specific models from LiteLLM - use different model names to avoid conflicts
     const teamModels = [
         {
             provider: 'openai',
-            model: 'openai/gpt-4o-mini',
+            model: 'gpt-4o',
             apiBase: litellmUrl,
             apiKey: litellmApiKey,
-            title: 'GPT-4o Mini (Team)',
+            title: 'GPT-4o (Team)',
             roles: ['chat', 'autocomplete']
         },
         {
             provider: 'openai',
-            model: 'gemini/gemini-1.5-flash',
+            model: 'gemini-1.5-flash',
             apiBase: litellmUrl,
             apiKey: litellmApiKey,
             title: 'Gemini 1.5 Flash (Team)',
@@ -223,7 +223,7 @@ function applyLiteLLMSettings(config: ContinueConfig): ContinueConfig {
         },
         {
             provider: 'openai',
-            model: 'anthropic/claude-3-5-sonnet-20241022',
+            model: 'claude-3-5-sonnet-20241022',
             apiBase: litellmUrl,
             apiKey: litellmApiKey,
             title: 'Claude 3.5 Sonnet (Team)',
@@ -235,7 +235,7 @@ function applyLiteLLMSettings(config: ContinueConfig): ContinueConfig {
     // Add team models if they don't exist
     for (const teamModel of teamModels) {
         const existingModelIndex = config.models!.findIndex((m: ModelConfig) =>
-            m.model === teamModel.model && m.apiBase === teamModel.apiBase && m.provider === teamModel.provider
+            m.model === teamModel.model && m.apiBase === teamModel.apiBase
         );
 
         console.log(`[Skoop Continue Sync]   ${teamModel.title}: ${existingModelIndex === -1 ? 'Adding' : 'Already exists'}`);
@@ -254,12 +254,12 @@ function applyModelSettings(config: ContinueConfig): ContinueConfig {
 
     // Set primary chat model
     const chatModelIndex = config.models!.findIndex((m: ModelConfig) =>
-        m.model === 'openai/gpt-4o-mini' && m.roles?.includes('chat')
+        m.model === 'gpt-4o' && m.roles?.includes('chat')
     );
     console.log('[Skoop Continue Sync] Chat model index:', chatModelIndex);
     if (chatModelIndex !== -1) {
         config.models![chatModelIndex].isDefault = true;
-        console.log('[Skoop Continue Sync] Set GPT-4o Mini as default chat model');
+        console.log('[Skoop Continue Sync] Set GPT-4o as default chat model');
     }
 
     return config;
@@ -287,7 +287,7 @@ function applyAgentSettings(config: ContinueConfig): ContinueConfig {
         {
             name: 'DocumentationWriter',
             description: 'Agent for writing and updating documentation',
-            model: 'openai/gpt-4o-mini',
+            model: 'gpt-4o',
             tools: ['read_file', 'search_replace'],
             prompt: 'You are a technical writer. Create clear, comprehensive documentation for code and APIs.'
         }
