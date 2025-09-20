@@ -7740,3 +7740,374 @@ The extension should now work perfectly with Continue.dev! 🎉
 
 ---
 
+_**User (2025-09-19 17:24Z)**_
+
+ INFO [Continue.continue]: Command `continue.focusContinueInput` already registered by Continue - open-source AI code agent (Continue.continue)
+console.ts:137 [Extension Host] [Skoop Continue Sync] Extension activated successfully!
+console.ts:137 [Extension Host] [Skoop Continue Sync] Current workspace: undefined
+console.ts:137 [Extension Host] [Skoop Continue Sync] Process environment: {USERPROFILE: 'C:\\Users\\JoshS', APPDATA: 'C:\\Users\\JoshS\\AppData\\Roaming'}
+console.ts:137 [Extension Host] [Skoop Continue Sync] Command registered: skoop-continue-sync.applyTeamSettings
+7[Violation] Added non-passive event listener to a scroll-blocking <some> event. Consider marking event handler as 'passive' to make the page more responsive. See <URL>
+log.ts:450  WARN Settings pattern "mcp" doesn't match any settings
+warn @ log.ts:450
+warn @ log.ts:559
+warn @ logService.ts:47
+XBs @ settingsTree.ts:610
+(anonymous) @ settingsTree.ts:578
+tdi @ settingsTree.ts:578
+(anonymous) @ settingsTree.ts:572
+tdi @ settingsTree.ts:572
+(anonymous) @ settingsTree.ts:572
+tdi @ settingsTree.ts:572
+edi @ settingsTree.ts:465
+fd @ settingsEditor2.ts:1398
+(anonymous) @ settingsEditor2.ts:458
+(anonymous) @ async.ts:403
+Promise.then
+trigger @ async.ts:397
+(anonymous) @ settingsEditor2.ts:457
+C @ event.ts:1201
+fire @ event.ts:1232
+(anonymous) @ preferencesModels.ts:232
+C @ event.ts:1201
+D @ event.ts:1212
+fire @ event.ts:1236
+deltaConfiguration @ configurationRegistry.ts:596
+(anonymous) @ configurationExtensionPoint.ts:309
+d @ extensionsRegistry.ts:154
+acceptUsers @ extensionsRegistry.ts:145
+Kb @ abstractExtensionService.ts:1173
+Hb @ abstractExtensionService.ts:1103
+fb @ abstractExtensionService.ts:328
+eb @ abstractExtensionService.ts:255
+await in eb
+(anonymous) @ abstractExtensionService.ts:191
+C @ event.ts:1201
+D @ event.ts:1212
+fire @ event.ts:1236
+(anonymous) @ event.ts:1530
+C @ event.ts:1201
+D @ event.ts:1212
+fire @ event.ts:1236
+y @ extensionManagementChannelClient.ts:63
+(anonymous) @ extensionManagementIpc.ts:213
+C @ event.ts:1201
+fire @ event.ts:1232
+C @ event.ts:1201
+fire @ event.ts:1232
+l @ ipc.ts:688
+t @ ipc.ts:756
+s @ ipc.ts:745
+(anonymous) @ ipc.ts:547
+C @ event.ts:1201
+D @ event.ts:1212
+fire @ event.ts:1236
+we @ event.ts:591
+console.ts:137 [Extension Host] [Skoop Continue Sync] Apply team settings command triggered
+console.ts:137 [Extension Host] [Skoop Continue Sync] Starting to apply team settings...
+console.ts:137 [Extension Host] [Skoop Continue Sync] Finding Continue config path...
+console.ts:137 [Extension Host] [Skoop Continue Sync] Searching for Continue config file...
+console.ts:137 [Extension Host] [Skoop Continue Sync] Checking possible config paths:
+console.ts:137 [Extension Host] [Skoop Continue Sync]   Checking: .continue\config.json
+console.ts:137 [Extension Host] [Skoop Continue Sync]   Exists: false
+console.ts:137 [Extension Host] [Skoop Continue Sync]   Checking: .continue\config.yaml
+console.ts:137 [Extension Host] [Skoop Continue Sync]   Exists: false
+console.ts:137 [Extension Host] [Skoop Continue Sync]   Checking: .continue\config.json
+console.ts:137 [Extension Host] [Skoop Continue Sync]   Exists: false
+console.ts:137 [Extension Host] [Skoop Continue Sync]   Checking: .continue\config.yaml
+console.ts:137 [Extension Host] [Skoop Continue Sync]   Exists: false
+console.ts:137 [Extension Host] [Skoop Continue Sync]   Checking: C:\Users\JoshS\.continue\config.json
+console.ts:137 [Extension Host] [Skoop Continue Sync]   Exists: false
+console.ts:137 [Extension Host] [Skoop Continue Sync]   Checking: C:\Users\JoshS\.continue\config.yaml
+console.ts:137 [Extension Host] [Skoop Continue Sync]   Exists: true
+console.ts:137 [Extension Host] [Skoop Continue Sync]   Found existing config at: C:\Users\JoshS\.continue\config.yaml
+console.ts:137 [Extension Host] [Skoop Continue Sync] Found config path: C:\Users\JoshS\.continue\config.yaml
+console.ts:137 [Extension Host] [Skoop Continue Sync] Initializing with clean team configuration
+console.ts:137 [Extension Host] [Skoop Continue Sync] Initialized clean config
+console.ts:137 [Extension Host] [Skoop Continue Sync] Applying LiteLLM settings...
+console.ts:137 [Extension Host] [Skoop Continue Sync] Reading VS Code configuration...
+console.ts:137 [Extension Host] [Skoop Continue Sync] LiteLLM URL: https://litellm.skoop.digital/
+console.ts:137 [Extension Host] [Skoop Continue Sync] LiteLLM API Key length: 25
+console.ts:137 [Extension Host] [Skoop Continue Sync] Models array initialized: 0
+console.ts:137 [Extension Host] [Skoop Continue Sync] Existing LiteLLM provider index: -1
+console.ts:137 [Extension Host] [Skoop Continue Sync] Adding new LiteLLM provider
+console.ts:137 [Extension Host] [Skoop Continue Sync] Adding team models...
+console.ts:137 [Extension Host] [Skoop Continue Sync]   GPT-4o Mini (Team): Already exists
+console.ts:137 [Extension Host] [Skoop Continue Sync]   Gemini 1.5 Flash (Team): Adding
+console.ts:137 [Extension Host] [Skoop Continue Sync]   Claude 3.5 Sonnet (Team): Adding
+console.ts:137 [Extension Host] [Skoop Continue Sync] Final models count: 3
+console.ts:137 [Extension Host] [Skoop Continue Sync] Applying model settings...
+console.ts:137 [Extension Host] [Skoop Continue Sync] Setting default models...
+console.ts:137 [Extension Host] [Skoop Continue Sync] Models before setting defaults: 3
+console.ts:137 [Extension Host] [Skoop Continue Sync] Chat model index: -1
+2console.ts:137 [Extension Host] [Skoop Continue Sync] Applying agent settings...
+console.ts:137 [Extension Host] [Skoop Continue Sync] Existing agents count: 0
+2console.ts:137 [Extension Host] [Skoop Continue Sync] Applying rules and prompts...
+console.ts:137 [Extension Host] [Skoop Continue Sync] Existing rules count: 0
+console.ts:137 [Extension Host] [Skoop Continue Sync] Writing updated config...
+console.ts:137 [Extension Host] [Skoop Continue Sync] Generated YAML content length: 2526
+console.ts:137 [Extension Host] [Skoop Continue Sync] Final config to write: name: "Skoop Team Agent"
+version: "1.0.0"
+schema: "v1"
+
+models:
+  - provider: litellm
+    model: gpt-4o-mini
+    apiBase: https://litellm.skoop.digital/
+    apiKey: sk-Phkcy9C76yAAc2rNAAsnlg
+    title: "LiteLLM Server"
+  - provider: gemini
+    model: gemini-1.5-flash
+    apiBase: https://litellm.skoop.digital/
+    apiKey: sk-Phkcy9C76yAAc2rNAAsnlg
+    title: "Gemini 1.5 Flash (Team)"
+    roles:
+      - chat
+      - edit
+  - provider: anthropic
+    model: claude-3-5-sonnet-20241022
+    apiBase: https://litellm.skoop.digital/
+    apiKey: sk-Phkcy9C76yAAc2rNAAsnlg
+    title: "Claude 3.5 Sonnet (Team)"
+    roles:
+      - agent
+      - chat
+
+agents:
+  - name: "CodeReviewer"
+    description: "Agent for code review tasks"
+    model: claude-3-5-sonnet-20241022
+    tools:
+      - read_file
+      - run_terminal_cmd
+    prompt: "You are a senior developer reviewing code for quality, security, and best practices."
+  - name: "BugFixer"
+    description: "Agent for debugging and fixing issues"
+    model: gemini-1.5-flash
+    tools:
+      - read_file
+      - grep
+      - run_terminal_cmd
+    prompt: "You are an expert debugger. Analyze code, find bugs, and provide fixes with explanations."
+  - name: "DocumentationWriter"
+    description: "Agent for writing and updating documentation"
+    model: gpt-4o-mini
+    tools:
+      - read_file
+      - search_replace
+    prompt: "You are a technical writer. Create clear, comprehensive documentation for code and APIs."
+
+rules:
+  - name: "CodeStyle"
+    description: "Enforce team coding standards"
+    rule: "Always use TypeScript with strict type checking. Follow ESLint rules. Use meaningful variable names."
+  - name: "Security"
+    description: "Security best practices"
+    rule: "Never commit API keys or sensitive data. Use environment variables for secrets. Validate all user inputs."
+  - name: "Documentation"
+    description: "Documentation requirements"
+    rule: "Add JSDoc comments to all public functions. Update README for any API changes."
+
+prompts:
+  - name: "CodeReview"
+    description: "Standard code review prompt"
+    prompt: "Please review this code for:\n1. Code quality and readability\n2. Security vulnerabilities\n3. Performance issues\n4. Best practices\n5. Test coverage\n\nProvide specific suggestions for improvement."
+  - name: "BugReport"
+    description: "Bug report analysis prompt"
+    prompt: "Analyze this bug report:\n1. Reproduce the issue\n2. Identify the root cause\n3. Suggest a fix\n4. Consider edge cases\n5. Update tests if needed"
+
+console.ts:137 [Extension Host] [Skoop Continue Sync] Config written successfully to: C:\Users\JoshS\.continue\config.yaml
+console.ts:137 [Extension Host] [Skoop Continue Sync] Team settings applied successfully
+log.ts:460   ERR [Extension Host] Failed to parse rolled assistant: name: "Skoop Team Agent"
+version: "1.0.0"
+schema: "v1"
+
+models:
+  - provider: litellm
+    model: gpt-4o-mini
+    apiBase: https://litellm.skoop.digital/
+    apiKey: sk-Phkcy9C76yAAc2rNAAsnlg
+    title: "LiteLLM Server"
+  - provider: gemini
+    model: gemini-1.5-flash
+    apiBase: https://litellm.skoop.digital/
+    apiKey: sk-Phkcy9C76yAAc2rNAAsnlg
+    title: "Gemini 1.5 Flash (Team)"
+    roles:
+      - chat
+      - edit
+  - provider: anthropic
+    model: claude-3-5-sonnet-20241022
+    apiBase: https://litellm.skoop.digital/
+    apiKey: sk-Phkcy9C76yAAc2rNAAsnlg
+    title: "Claude 3.5 Sonnet (Team)"
+    roles:
+      - agent
+      - chat
+
+agents:
+  - name: "CodeReviewer"
+    description: "Agent for code review tasks"
+    model: claude-3-5-sonnet-20241022
+    tools:
+      - read_file
+      - run_terminal_cmd
+    prompt: "You are a senior developer reviewing code for quality, security, and best practices."
+  - name: "BugFixer"
+    description: "Agent for debugging and fixing issues"
+    model: gemini-1.5-flash
+    tools:
+      - read_file
+      - grep
+      - run_terminal_cmd
+    prompt: "You are an expert debugger. Analyze code, find bugs, and provide fixes with explanations."
+  - name: "DocumentationWriter"
+    description: "Agent for writing and updating documentation"
+    model: gpt-4o-mini
+    tools:
+      - read_file
+      - search_replace
+    prompt: "You are a technical writer. Create clear, comprehensive documentation for code and APIs."
+
+rules:
+  - name: "CodeStyle"
+    description: "Enforce team coding standards"
+    rule: "Always use TypeScript with strict type checking. Follow ESLint rules. Use meaningful variable names."
+  - name: "Security"
+    description: "Security best practices"
+    rule: "Never commit API keys or sensitive data. Use environment variables for secrets. Validate all user inputs."
+  - name: "Documentation"
+    description: "Documentation requirements"
+    rule: "Add JSDoc comments to all public functions. Update README for any API changes."
+
+prompts:
+  - name: "CodeReview"
+    description: "Standard code review prompt"
+    prompt: "Please review this code for:\n1. Code quality and readability\n2. Security vulnerabilities\n3. Performance issues\n4. Best practices\n5. Test coverage\n\nProvide specific suggestions for improvement."
+  - name: "BugReport"
+    description: "Bug report analysis prompt"
+    prompt: "Analyze this bug report:\n1. Reproduce the issue\n2. Identify the root cause\n3. Suggest a fix\n4. Consider edge cases\n5. Update tests if needed"
+
+error @ log.ts:460
+error @ log.ts:565
+error @ logService.ts:51
+kvs @ remoteConsoleUtil.ts:58
+$logExtensionHostMessage @ mainThreadConsole.ts:38
+S @ rpcProtocol.ts:458
+Q @ rpcProtocol.ts:443
+M @ rpcProtocol.ts:373
+L @ rpcProtocol.ts:299
+(anonymous) @ rpcProtocol.ts:161
+C @ event.ts:1201
+fire @ event.ts:1232
+fire @ ipc.net.ts:652
+l.onmessage @ localProcessExtensionHost.ts:383
+console.ts:137 [Extension Host] Failed to parse rolled assistant: name: "Skoop Team Agent"
+version: "1.0.0"
+schema: "v1"
+
+models:
+  - provider: litellm
+    model: gpt-4o-mini
+    apiBase: https://litellm.skoop.digital/
+    apiKey: sk-Phkcy9C76yAAc2rNAAsnlg
+    title: "LiteLLM Server"
+  - provider: gemini
+    model: gemini-1.5-flash
+    apiBase: https://litellm.skoop.digital/
+    apiKey: sk-Phkcy9C76yAAc2rNAAsnlg
+    title: "Gemini 1.5 Flash (Team)"
+    roles:
+      - chat
+      - edit
+  - provider: anthropic
+    model: claude-3-5-sonnet-20241022
+    apiBase: https://litellm.skoop.digital/
+    apiKey: sk-Phkcy9C76yAAc2rNAAsnlg
+    title: "Claude 3.5 Sonnet (Team)"
+    roles:
+      - agent
+      - chat
+
+agents:
+  - name: "CodeReviewer"
+    description: "Agent for code review tasks"
+    model: claude-3-5-sonnet-20241022
+    tools:
+      - read_file
+      - run_terminal_cmd
+    prompt: "You are a senior developer reviewing code for quality, security, and best practices."
+  - name: "BugFixer"
+    description: "Agent for debugging and fixing issues"
+    model: gemini-1.5-flash
+    tools:
+      - read_file
+      - grep
+      - run_terminal_cmd
+    prompt: "You are an expert debugger. Analyze code, find bugs, and provide fixes with explanations."
+  - name: "DocumentationWriter"
+    description: "Agent for writing and updating documentation"
+    model: gpt-4o-mini
+    tools:
+      - read_file
+      - search_replace
+    prompt: "You are a technical writer. Create clear, comprehensive documentation for code and APIs."
+
+rules:
+  - name: "CodeStyle"
+    description: "Enforce team coding standards"
+    rule: "Always use TypeScript with strict type checking. Follow ESLint rules. Use meaningful variable names."
+  - name: "Security"
+    description: "Security best practices"
+    rule: "Never commit API keys or sensitive data. Use environment variables for secrets. Validate all user inputs."
+  - name: "Documentation"
+    description: "Documentation requirements"
+    rule: "Add JSDoc comments to all public functions. Update README for any API changes."
+
+prompts:
+  - name: "CodeReview"
+    description: "Standard code review prompt"
+    prompt: "Please review this code for:\n1. Code quality and readability\n2. Security vulnerabilities\n3. Performance issues\n4. Best practices\n5. Test coverage\n\nProvide specific suggestions for improvement."
+  - name: "BugReport"
+    description: "Bug report analysis prompt"
+    prompt: "Analyze this bug report:\n1. Reproduce the issue\n2. Identify the root cause\n3. Suggest a fix\n4. Consider edge cases\n5. Update tests if needed"
+
+Cvs @ console.ts:137
+$logExtensionHostMessage @ mainThreadConsole.ts:39
+S @ rpcProtocol.ts:458
+Q @ rpcProtocol.ts:443
+M @ rpcProtocol.ts:373
+L @ rpcProtocol.ts:299
+(anonymous) @ rpcProtocol.ts:161
+C @ event.ts:1201
+fire @ event.ts:1232
+fire @ ipc.net.ts:652
+l.onmessage @ localProcessExtensionHost.ts:383
+console.ts:137 [Extension Host] [@continuedev] error: Failed to parse agent: models.0: Invalid input, models.1: Invalid input, models.2: Invalid input {"context":"profile_config_loading"}
+3console.ts:137 [Extension Host] [@continuedev] error: Errors loading config:  {"0":{"fatal":true,"message":"Failed to parse agent: models.0: Invalid input, models.1: Invalid input, models.2: Invalid input\nError: Failed to parse agent: models.0: Invalid input, models.1: Invalid input, models.2: Invalid input\n\tat parseConfigYaml (c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:218595:13)\n\tat parseYamlOrMarkdownRule (c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:218972:18)\n\tat parseMarkdownRuleOrConfigYaml (c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:218967:10)\n\tat unrollAssistantFromContent (c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:218703:20)\n\tat unrollAssistant (c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:218689:19)\n\tat async loadConfigYaml (c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:716392:26)\n\tat async loadContinueConfigFromYaml (c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:716650:28)\n\tat async doLoadConfig (c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:716758:21)\n\tat async _LocalProfileLoader.doLoadConfig (c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:717085:25)\n\tat async c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:717272:25"}}
+console.ts:137 [Extension Host] Next Edit Theme initialized: Theme exists: "Default Dark Modern"
+localProcessExtensionHost.ts:280 Extension Host
+localProcessExtensionHost.ts:281 [@continuedev] error: Failed to parse agent: models.0: Invalid input, models.1: Invalid input, models.2: Invalid input {"context":"profile_config_loading"}
+[@continuedev] error: Errors loading config:  {"0":{"fatal":true,"message":"Failed to parse agent: models.0: Invalid input, models.1: Invalid input, models.2: Invalid input\nError: Failed to parse agent: models.0: Invalid input, models.1: Invalid input, models.2: Invalid input\n\tat parseConfigYaml (c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:218595:13)\n\tat parseYamlOrMarkdownRule (c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:218972:18)\n\tat parseMarkdownRuleOrConfigYaml (c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:218967:10)\n\tat unrollAssistantFromContent (c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:218703:20)\n\tat unrollAssistant (c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:218689:19)\n\tat async loadConfigYaml (c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:716392:26)\n\tat async loadContinueConfigFromYaml (c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:716650:28)\n\tat async doLoadConfig (c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:716758:21)\n\tat async _LocalProfileLoader.doLoadConfig (c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:717085:25)\n\tat async c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:717272:25"}}
+[@continuedev] error: Errors loading config:  {"0":{"fatal":true,"message":"Failed to parse agent: models.0: Invalid input, models.1: Invalid input, models.2: Invalid input\nError: Failed to parse agent: models.0: Invalid input, models.1: Invalid input, models.2: Invalid input\n\tat parseConfigYaml (c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:218595:13)\n\tat parseYamlOrMarkdownRule (c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:218972:18)\n\tat parseMarkdownRuleOrConfigYaml (c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:218967:10)\n\tat unrollAssistantFromContent (c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:218703:20)\n\tat unrollAssistant (c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:218689:19)\n\tat async loadConfigYaml (c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:716392:26)\n\tat async loadContinueConfigFromYaml (c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:716650:28)\n\tat async doLoadConfig (c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:716758:21)\n\tat async _LocalProfileLoader.doLoadConfig (c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:717085:25)\n\tat async c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:717272:25"}}
+[@continuedev] error: Errors loading config:  {"0":{"fatal":true,"message":"Failed to parse agent: models.0: Invalid input, models.1: Invalid input, models.2: Invalid input\nError: Failed to parse agent: models.0: Invalid input, models.1: Invalid input, models.2: Invalid input\n\tat parseConfigYaml (c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:218595:13)\n\tat parseYamlOrMarkdownRule (c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:218972:18)\n\tat parseMarkdownRuleOrConfigYaml (c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:218967:10)\n\tat unrollAssistantFromContent (c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:218703:20)\n\tat unrollAssistant (c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:218689:19)\n\tat async loadConfigYaml (c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:716392:26)\n\tat async loadContinueConfigFromYaml (c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:716650:28)\n\tat async doLoadConfig (c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:716758:21)\n\tat async _LocalProfileLoader.doLoadConfig (c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:717085:25)\n\tat async c:\\Users\\JoshS\\.vscode\\extensions\\continue.continue-1.2.4-win32-x64\\out\\extension.js:717272:25"}}
+
+index.css:1  GET https://file+.vscode-resource.vscode-cdn.net/fonts/Inter/InterDisplay-Light.woff2 net::ERR_ABORTED 401 (Unauthorized)
+index.css:1  GET https://file+.vscode-resource.vscode-cdn.net/fonts/JetBrainsMono/JetBrainsMono-Light.woff2 net::ERR_ABORTED 401 (Unauthorized)
+
+---
+
+_**Assistant**_
+
+
+
+---
+
+
+
+---
+
+
+
+---
+
