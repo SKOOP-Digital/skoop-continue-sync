@@ -207,13 +207,8 @@ function applyLiteLLMSettings(config) {
 function applyModelSettings(config) {
     console.log('[Skoop Continue Sync] Setting default models...');
     console.log('[Skoop Continue Sync] Models before setting defaults:', config.models.length);
-    // Set primary chat model
-    const chatModelIndex = config.models.findIndex((m) => m.model === 'gpt-4o' && m.roles?.includes('chat'));
-    console.log('[Skoop Continue Sync] Chat model index:', chatModelIndex);
-    if (chatModelIndex !== -1) {
-        config.models[chatModelIndex].isDefault = true;
-        console.log('[Skoop Continue Sync] Set GPT-4o as default chat model');
-    }
+    // Note: Continue.dev handles default model selection through its UI
+    // We don't need to set isDefault in the configuration
     return config;
 }
 function applyAgentSettings(config) {
@@ -321,26 +316,23 @@ function configToYaml(config) {
         yaml += `version: "${config.version}"\n`;
     if (config.schema)
         yaml += `schema: "${config.schema}"\n`;
-    // Add models
+    // Add models - match Continue.dev's expected format
     if (config.models && config.models.length > 0) {
         yaml += '\nmodels:\n';
         for (const model of config.models) {
-            yaml += '  - provider: ' + model.provider + '\n';
+            yaml += '  - name: "' + (model.title || model.model) + '"\n';
+            yaml += '    provider: ' + model.provider + '\n';
             yaml += '    model: ' + model.model + '\n';
+            if (model.apiKey)
+                yaml += '    apiKey: "' + model.apiKey + '"\n';
             if (model.apiBase)
                 yaml += '    apiBase: ' + model.apiBase + '\n';
-            if (model.apiKey)
-                yaml += '    apiKey: ' + model.apiKey + '\n';
-            if (model.title)
-                yaml += '    title: "' + model.title + '"\n';
             if (model.roles && model.roles.length > 0) {
                 yaml += '    roles:\n';
                 for (const role of model.roles) {
                     yaml += '      - ' + role + '\n';
                 }
             }
-            if (model.isDefault)
-                yaml += '    isDefault: true\n';
         }
     }
     // Add agents
