@@ -61,31 +61,18 @@ async function applyTeamSettings() {
     }
     console.log('[Skoop Continue Sync] Found config path:', configPath);
     let config = {};
-    // Read existing config if it exists
-    if (fs.existsSync(configPath)) {
-        console.log('[Skoop Continue Sync] Reading existing config from:', configPath);
-        try {
-            const configContent = fs.readFileSync(configPath, 'utf8');
-            console.log('[Skoop Continue Sync] Config content length:', configContent.length);
-            // Try JSON first, then fall back to simple YAML parsing
-            try {
-                config = JSON.parse(configContent);
-                console.log('[Skoop Continue Sync] Parsed config as JSON');
-            }
-            catch (jsonError) {
-                console.log('[Skoop Continue Sync] JSON parsing failed, trying simple YAML parsing');
-                config = parseSimpleYaml(configContent);
-            }
-            console.log('[Skoop Continue Sync] Parsed config:', JSON.stringify(config, null, 2));
-        }
-        catch (error) {
-            console.error('[Skoop Continue Sync] Error reading/parsing config:', error);
-            throw error;
-        }
-    }
-    else {
-        console.log('[Skoop Continue Sync] No existing config found, creating new one');
-    }
+    // Initialize with clean config instead of trying to parse existing (potentially malformed) config
+    console.log('[Skoop Continue Sync] Initializing with clean team configuration');
+    config = {
+        name: "Skoop Team Agent",
+        version: "1.0.0",
+        schema: "v1",
+        models: [],
+        agents: [],
+        rules: [],
+        prompts: []
+    };
+    console.log('[Skoop Continue Sync] Initialized clean config');
     // Apply team settings
     console.log('[Skoop Continue Sync] Applying LiteLLM settings...');
     config = applyLiteLLMSettings(config);
@@ -158,14 +145,8 @@ function applyLiteLLMSettings(config) {
     const litellmApiKey = vscode.workspace.getConfiguration('skoop-continue-sync').get('litellmApiKey', 'sk-Phkcy9C76yAAc2rNAAsnlg');
     console.log('[Skoop Continue Sync] LiteLLM URL:', litellmUrl);
     console.log('[Skoop Continue Sync] LiteLLM API Key length:', litellmApiKey.length);
-    // Initialize models array if it doesn't exist or isn't an array
-    if (!config.models || !Array.isArray(config.models)) {
-        console.log('[Skoop Continue Sync] Initializing models array (was:', typeof config.models, ')');
-        config.models = [];
-    }
-    else {
-        console.log('[Skoop Continue Sync] Existing models count:', config.models.length);
-    }
+    // Models array is already initialized as empty array
+    console.log('[Skoop Continue Sync] Models array initialized:', config.models.length);
     // Add LiteLLM provider if not already present
     const existingProviderIndex = config.models.findIndex((m) => (m.provider === 'litellm' || m.provider === 'openai') && m.apiBase?.includes('litellm.skoop.digital'));
     console.log('[Skoop Continue Sync] Existing LiteLLM provider index:', existingProviderIndex);
@@ -225,10 +206,6 @@ function applyLiteLLMSettings(config) {
 }
 function applyModelSettings(config) {
     console.log('[Skoop Continue Sync] Setting default models...');
-    // Set default models for different roles
-    if (!config.models || !Array.isArray(config.models)) {
-        config.models = [];
-    }
     console.log('[Skoop Continue Sync] Models before setting defaults:', config.models.length);
     // Set primary chat model
     const chatModelIndex = config.models.findIndex((m) => m.model === 'openai/gpt-5-mini' && m.provider === 'litellm' && m.roles?.includes('chat'));
@@ -241,10 +218,6 @@ function applyModelSettings(config) {
 }
 function applyAgentSettings(config) {
     console.log('[Skoop Continue Sync] Applying agent settings...');
-    // Define team agents
-    if (!config.agents || !Array.isArray(config.agents)) {
-        config.agents = [];
-    }
     console.log('[Skoop Continue Sync] Existing agents count:', config.agents.length);
     const teamAgents = [
         {
@@ -283,10 +256,6 @@ function applyAgentSettings(config) {
 }
 function applyRulesAndPrompts(config) {
     console.log('[Skoop Continue Sync] Applying rules and prompts...');
-    // Apply global rules
-    if (!config.rules || !Array.isArray(config.rules)) {
-        config.rules = [];
-    }
     console.log('[Skoop Continue Sync] Existing rules count:', config.rules.length);
     const teamRules = [
         {
@@ -315,10 +284,7 @@ function applyRulesAndPrompts(config) {
             config.rules[existingRuleIndex] = rule;
         }
     }
-    // Apply global prompts
-    if (!config.prompts || !Array.isArray(config.prompts)) {
-        config.prompts = [];
-    }
+    // Apply global prompts (already initialized as empty array)
     const teamPrompts = [
         {
             name: 'CodeReview',
@@ -416,77 +382,5 @@ function configToYaml(config) {
         }
     }
     return yaml;
-}
-// Simple YAML parser for basic YAML structures
-function parseSimpleYaml(yamlContent) {
-    const lines = yamlContent.split('\n');
-    const result = {};
-    let currentSection = result;
-    for (const line of lines) {
-        const trimmed = line.trim();
-        // Skip empty lines and comments
-        if (!trimmed || trimmed.startsWith('#')) {
-            continue;
-        }
-        // Handle section headers (like models:, agents:, etc.)
-        if (trimmed.endsWith(':') && !trimmed.includes(' ')) {
-            const sectionName = trimmed.slice(0, -1);
-            const newSection = [];
-            currentSection[sectionName] = newSection;
-            currentSection = result;
-            continue;
-        }
-        // Handle key-value pairs
-        if (trimmed.includes(':')) {
-            const [key, ...valueParts] = trimmed.split(':');
-            const value = valueParts.join(':').trim();
-            if (value.startsWith('"') && value.endsWith('"')) {
-                // Handle quoted strings
-                const stringValue = value.slice(1, -1);
-                // Check if it's a JSON array or object
-                if ((stringValue.startsWith('[') && stringValue.endsWith(']')) ||
-                    (stringValue.startsWith('{') && stringValue.endsWith('}'))) {
-                    try {
-                        currentSection[key.trim()] = JSON.parse(stringValue);
-                    }
-                    catch {
-                        currentSection[key.trim()] = stringValue;
-                    }
-                }
-                else {
-                    currentSection[key.trim()] = stringValue;
-                }
-            }
-            else if (value.startsWith("'") && value.endsWith("'")) {
-                currentSection[key.trim()] = value.slice(1, -1);
-            }
-            else if (value === 'true') {
-                currentSection[key.trim()] = true;
-            }
-            else if (value === 'false') {
-                currentSection[key.trim()] = false;
-            }
-            else if (value === 'null') {
-                currentSection[key.trim()] = null;
-            }
-            else if (!isNaN(Number(value)) && value !== '') {
-                currentSection[key.trim()] = Number(value);
-            }
-            else if ((value.startsWith('[') && value.endsWith(']')) ||
-                (value.startsWith('{') && value.endsWith('}'))) {
-                // Handle unquoted JSON arrays/objects
-                try {
-                    currentSection[key.trim()] = JSON.parse(value);
-                }
-                catch {
-                    currentSection[key.trim()] = value;
-                }
-            }
-            else if (value) {
-                currentSection[key.trim()] = value;
-            }
-        }
-    }
-    return result;
 }
 //# sourceMappingURL=extension.js.map

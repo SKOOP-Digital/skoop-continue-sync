@@ -64,11 +64,14 @@ interface PromptConfig {
 }
 
 interface ContinueConfig {
+    name?: string;
+    version?: string;
+    schema?: string;
     models?: ModelConfig[];
     agents?: AgentConfig[];
     rules?: RuleConfig[];
     prompts?: PromptConfig[];
-    [key: string]: ModelConfig[] | AgentConfig[] | RuleConfig[] | PromptConfig[] | undefined;
+    [key: string]: string | ModelConfig[] | AgentConfig[] | RuleConfig[] | PromptConfig[] | undefined;
 }
 
 async function applyTeamSettings() {
@@ -82,28 +85,18 @@ async function applyTeamSettings() {
 
     let config: ContinueConfig = {};
 
-    // Read existing config if it exists
-    if (fs.existsSync(configPath)) {
-        console.log('[Skoop Continue Sync] Reading existing config from:', configPath);
-        try {
-            const configContent = fs.readFileSync(configPath, 'utf8');
-            console.log('[Skoop Continue Sync] Config content length:', configContent.length);
-            // Try JSON first, then fall back to simple YAML parsing
-            try {
-                config = JSON.parse(configContent);
-                console.log('[Skoop Continue Sync] Parsed config as JSON');
-            } catch (jsonError) {
-                console.log('[Skoop Continue Sync] JSON parsing failed, trying simple YAML parsing');
-                config = parseSimpleYaml(configContent) as ContinueConfig;
-            }
-            console.log('[Skoop Continue Sync] Parsed config:', JSON.stringify(config, null, 2));
-        } catch (error) {
-            console.error('[Skoop Continue Sync] Error reading/parsing config:', error);
-            throw error;
-        }
-    } else {
-        console.log('[Skoop Continue Sync] No existing config found, creating new one');
-    }
+    // Initialize with clean config instead of trying to parse existing (potentially malformed) config
+    console.log('[Skoop Continue Sync] Initializing with clean team configuration');
+    config = {
+        name: "Skoop Team Agent",
+        version: "1.0.0",
+        schema: "v1",
+        models: [],
+        agents: [],
+        rules: [],
+        prompts: []
+    };
+    console.log('[Skoop Continue Sync] Initialized clean config');
 
     // Apply team settings
     console.log('[Skoop Continue Sync] Applying LiteLLM settings...');
@@ -185,16 +178,11 @@ function applyLiteLLMSettings(config: ContinueConfig): ContinueConfig {
     console.log('[Skoop Continue Sync] LiteLLM URL:', litellmUrl);
     console.log('[Skoop Continue Sync] LiteLLM API Key length:', litellmApiKey.length);
 
-    // Initialize models array if it doesn't exist or isn't an array
-    if (!config.models || !Array.isArray(config.models)) {
-        console.log('[Skoop Continue Sync] Initializing models array (was:', typeof config.models, ')');
-        config.models = [];
-    } else {
-        console.log('[Skoop Continue Sync] Existing models count:', config.models.length);
-    }
+    // Models array is already initialized as empty array
+    console.log('[Skoop Continue Sync] Models array initialized:', config.models!.length);
 
     // Add LiteLLM provider if not already present
-    const existingProviderIndex = config.models.findIndex((m: ModelConfig) =>
+    const existingProviderIndex = config.models!.findIndex((m: ModelConfig) =>
         (m.provider === 'litellm' || m.provider === 'openai') && m.apiBase?.includes('litellm.skoop.digital')
     );
     console.log('[Skoop Continue Sync] Existing LiteLLM provider index:', existingProviderIndex);
@@ -209,10 +197,10 @@ function applyLiteLLMSettings(config: ContinueConfig): ContinueConfig {
 
     if (existingProviderIndex === -1) {
         console.log('[Skoop Continue Sync] Adding new LiteLLM provider');
-        config.models.push(litellmProvider);
+        config.models!.push(litellmProvider);
     } else {
         console.log('[Skoop Continue Sync] Updating existing LiteLLM provider');
-        config.models[existingProviderIndex] = litellmProvider;
+        config.models![existingProviderIndex] = litellmProvider;
     }
 
     // Add specific models from LiteLLM
@@ -246,35 +234,31 @@ function applyLiteLLMSettings(config: ContinueConfig): ContinueConfig {
     console.log('[Skoop Continue Sync] Adding team models...');
     // Add team models if they don't exist
     for (const teamModel of teamModels) {
-        const existingModelIndex = config.models.findIndex((m: ModelConfig) =>
+        const existingModelIndex = config.models!.findIndex((m: ModelConfig) =>
             m.model === teamModel.model && m.apiBase === teamModel.apiBase && m.provider === teamModel.provider
         );
 
         console.log(`[Skoop Continue Sync]   ${teamModel.title}: ${existingModelIndex === -1 ? 'Adding' : 'Already exists'}`);
         if (existingModelIndex === -1) {
-            config.models.push(teamModel);
+            config.models!.push(teamModel);
         }
     }
 
-    console.log('[Skoop Continue Sync] Final models count:', config.models.length);
+    console.log('[Skoop Continue Sync] Final models count:', config.models!.length);
     return config;
 }
 
 function applyModelSettings(config: ContinueConfig): ContinueConfig {
     console.log('[Skoop Continue Sync] Setting default models...');
-    // Set default models for different roles
-    if (!config.models || !Array.isArray(config.models)) {
-        config.models = [];
-    }
-    console.log('[Skoop Continue Sync] Models before setting defaults:', config.models.length);
+    console.log('[Skoop Continue Sync] Models before setting defaults:', config.models!.length);
 
     // Set primary chat model
-    const chatModelIndex = config.models.findIndex((m: ModelConfig) =>
+    const chatModelIndex = config.models!.findIndex((m: ModelConfig) =>
         m.model === 'openai/gpt-5-mini' && m.provider === 'litellm' && m.roles?.includes('chat')
     );
     console.log('[Skoop Continue Sync] Chat model index:', chatModelIndex);
     if (chatModelIndex !== -1) {
-        config.models[chatModelIndex].isDefault = true;
+        config.models![chatModelIndex].isDefault = true;
         console.log('[Skoop Continue Sync] Set GPT-5 Mini as default chat model');
     }
 
@@ -283,11 +267,7 @@ function applyModelSettings(config: ContinueConfig): ContinueConfig {
 
 function applyAgentSettings(config: ContinueConfig): ContinueConfig {
     console.log('[Skoop Continue Sync] Applying agent settings...');
-    // Define team agents
-    if (!config.agents || !Array.isArray(config.agents)) {
-        config.agents = [];
-    }
-    console.log('[Skoop Continue Sync] Existing agents count:', config.agents.length);
+    console.log('[Skoop Continue Sync] Existing agents count:', config.agents!.length);
 
     const teamAgents = [
         {
@@ -315,11 +295,11 @@ function applyAgentSettings(config: ContinueConfig): ContinueConfig {
 
     // Add agents if they don't exist
     for (const agent of teamAgents) {
-        const existingAgentIndex = config.agents.findIndex((a: AgentConfig) => a.name === agent.name);
+        const existingAgentIndex = config.agents!.findIndex((a: AgentConfig) => a.name === agent.name);
         if (existingAgentIndex === -1) {
-            config.agents.push(agent);
+            config.agents!.push(agent);
         } else {
-            config.agents[existingAgentIndex] = agent;
+            config.agents![existingAgentIndex] = agent;
         }
     }
 
@@ -328,11 +308,7 @@ function applyAgentSettings(config: ContinueConfig): ContinueConfig {
 
 function applyRulesAndPrompts(config: ContinueConfig): ContinueConfig {
     console.log('[Skoop Continue Sync] Applying rules and prompts...');
-    // Apply global rules
-    if (!config.rules || !Array.isArray(config.rules)) {
-        config.rules = [];
-    }
-    console.log('[Skoop Continue Sync] Existing rules count:', config.rules.length);
+    console.log('[Skoop Continue Sync] Existing rules count:', config.rules!.length);
 
     const teamRules = [
         {
@@ -354,18 +330,15 @@ function applyRulesAndPrompts(config: ContinueConfig): ContinueConfig {
 
     // Add rules if they don't exist
     for (const rule of teamRules) {
-        const existingRuleIndex = config.rules.findIndex((r: RuleConfig) => r.name === rule.name);
+        const existingRuleIndex = config.rules!.findIndex((r: RuleConfig) => r.name === rule.name);
         if (existingRuleIndex === -1) {
-            config.rules.push(rule);
+            config.rules!.push(rule);
         } else {
-            config.rules[existingRuleIndex] = rule;
+            config.rules![existingRuleIndex] = rule;
         }
     }
 
-    // Apply global prompts
-    if (!config.prompts || !Array.isArray(config.prompts)) {
-        config.prompts = [];
-    }
+    // Apply global prompts (already initialized as empty array)
 
     const teamPrompts = [
         {
@@ -382,11 +355,11 @@ function applyRulesAndPrompts(config: ContinueConfig): ContinueConfig {
 
     // Add prompts if they don't exist
     for (const prompt of teamPrompts) {
-        const existingPromptIndex = config.prompts.findIndex((p: PromptConfig) => p.name === prompt.name);
+        const existingPromptIndex = config.prompts!.findIndex((p: PromptConfig) => p.name === prompt.name);
         if (existingPromptIndex === -1) {
-            config.prompts.push(prompt);
+            config.prompts!.push(prompt);
         } else {
-            config.prompts[existingPromptIndex] = prompt;
+            config.prompts![existingPromptIndex] = prompt;
         }
     }
 
@@ -461,74 +434,4 @@ function configToYaml(config: ContinueConfig): string {
     }
 
     return yaml;
-}
-
-// Simple YAML parser for basic YAML structures
-function parseSimpleYaml(yamlContent: string): Record<string, unknown> {
-    const lines = yamlContent.split('\n');
-    const result: Record<string, unknown> = {};
-
-    let currentSection: Record<string, unknown> = result;
-
-    for (const line of lines) {
-        const trimmed = line.trim();
-
-        // Skip empty lines and comments
-        if (!trimmed || trimmed.startsWith('#')) {
-            continue;
-        }
-
-        // Handle section headers (like models:, agents:, etc.)
-        if (trimmed.endsWith(':') && !trimmed.includes(' ')) {
-            const sectionName = trimmed.slice(0, -1);
-            const newSection: unknown[] = [];
-            currentSection[sectionName] = newSection;
-            currentSection = result;
-            continue;
-        }
-
-        // Handle key-value pairs
-        if (trimmed.includes(':')) {
-            const [key, ...valueParts] = trimmed.split(':');
-            const value = valueParts.join(':').trim();
-
-            if (value.startsWith('"') && value.endsWith('"')) {
-                // Handle quoted strings
-                const stringValue = value.slice(1, -1);
-                // Check if it's a JSON array or object
-                if ((stringValue.startsWith('[') && stringValue.endsWith(']')) ||
-                    (stringValue.startsWith('{') && stringValue.endsWith('}'))) {
-                    try {
-                        currentSection[key.trim()] = JSON.parse(stringValue);
-                    } catch {
-                        currentSection[key.trim()] = stringValue;
-                    }
-                } else {
-                    currentSection[key.trim()] = stringValue;
-                }
-            } else if (value.startsWith("'") && value.endsWith("'")) {
-                currentSection[key.trim()] = value.slice(1, -1);
-            } else if (value === 'true') {
-                currentSection[key.trim()] = true;
-            } else if (value === 'false') {
-                currentSection[key.trim()] = false;
-            } else if (value === 'null') {
-                currentSection[key.trim()] = null;
-            } else if (!isNaN(Number(value)) && value !== '') {
-                currentSection[key.trim()] = Number(value);
-            } else if ((value.startsWith('[') && value.endsWith(']')) ||
-                      (value.startsWith('{') && value.endsWith('}'))) {
-                // Handle unquoted JSON arrays/objects
-                try {
-                    currentSection[key.trim()] = JSON.parse(value);
-                } catch {
-                    currentSection[key.trim()] = value;
-                }
-            } else if (value) {
-                currentSection[key.trim()] = value;
-            }
-        }
-    }
-
-    return result;
 }
