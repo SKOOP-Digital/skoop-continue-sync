@@ -82,12 +82,23 @@ async function applyTeamSettings() {
     }
     console.log('[Skoop Continue Sync] Found config path:', configPath);
 
+    // Clear any existing config to avoid parsing issues
+    console.log('[Skoop Continue Sync] Clearing existing config file...');
+    try {
+        if (fs.existsSync(configPath)) {
+            fs.unlinkSync(configPath);
+            console.log('[Skoop Continue Sync] Existing config cleared');
+        }
+    } catch (error) {
+        console.warn('[Skoop Continue Sync] Could not clear existing config:', error);
+    }
+
     let config: ContinueConfig = {};
 
-    // Initialize with clean config instead of trying to parse existing (potentially malformed) config
+    // Initialize with clean config - start simple with just models first
     console.log('[Skoop Continue Sync] Initializing with clean team configuration');
     config = {
-        name: "Skoop Team Models",
+        name: "Skoop Team Config",
         version: "1.0.0",
         schema: "v1",
         models: [],
@@ -97,11 +108,13 @@ async function applyTeamSettings() {
     };
     console.log('[Skoop Continue Sync] Initialized clean config');
 
-    // Apply team settings
+    // Apply team settings - start with just models to isolate issues
     console.log('[Skoop Continue Sync] Applying LiteLLM settings...');
     config = applyLiteLLMSettings(config);
     console.log('[Skoop Continue Sync] Applying model settings...');
     config = applyModelSettings(config);
+
+    // Add agents, rules, and prompts with correct format
     console.log('[Skoop Continue Sync] Applying agent settings...');
     config = applyAgentSettings(config);
     console.log('[Skoop Continue Sync] Applying rules and prompts...');
@@ -188,7 +201,7 @@ function applyLiteLLMSettings(config: ContinueConfig): ContinueConfig {
 
     const litellmProvider = {
         provider: 'openai',
-        model: 'gpt-4o-mini',
+        model: 'gpt-4',
         apiBase: litellmUrl,
         apiKey: litellmApiKey,
         title: 'LiteLLM Server'
@@ -202,31 +215,23 @@ function applyLiteLLMSettings(config: ContinueConfig): ContinueConfig {
         config.models![existingProviderIndex] = litellmProvider;
     }
 
-    // Add specific models from LiteLLM - use different model names to avoid conflicts
+    // Add specific models from LiteLLM - use only basic OpenAI models that Continue.dev definitely supports
     const teamModels = [
         {
             provider: 'openai',
-            model: 'gpt-4o',
+            model: 'gpt-4',
             apiBase: litellmUrl,
             apiKey: litellmApiKey,
-            title: 'GPT-4o (Team)',
-            roles: ['chat', 'autocomplete']
-        },
-        {
-            provider: 'openai',
-            model: 'gemini-1.5-flash',
-            apiBase: litellmUrl,
-            apiKey: litellmApiKey,
-            title: 'Gemini 1.5 Flash (Team)',
+            title: 'GPT-4 (Team)',
             roles: ['chat', 'edit']
         },
         {
             provider: 'openai',
-            model: 'claude-3-5-sonnet-20241022',
+            model: 'gpt-3.5-turbo',
             apiBase: litellmUrl,
             apiKey: litellmApiKey,
-            title: 'Claude 3.5 Sonnet (Team)',
-            roles: ['agent', 'chat']
+            title: 'GPT-3.5 Turbo (Team)',
+            roles: ['chat', 'autocomplete']
         }
     ];
 
@@ -265,21 +270,21 @@ function applyAgentSettings(config: ContinueConfig): ContinueConfig {
         {
             name: 'CodeReviewer',
             description: 'Agent for code review tasks',
-            model: 'anthropic/claude-3-5-sonnet-20241022',
+            model: 'gpt-4',
             tools: ['read_file', 'run_terminal_cmd'],
             prompt: 'You are a senior developer reviewing code for quality, security, and best practices.'
         },
         {
             name: 'BugFixer',
             description: 'Agent for debugging and fixing issues',
-            model: 'gemini/gemini-1.5-flash',
+            model: 'gpt-3.5-turbo',
             tools: ['read_file', 'grep', 'run_terminal_cmd'],
             prompt: 'You are an expert debugger. Analyze code, find bugs, and provide fixes with explanations.'
         },
         {
             name: 'DocumentationWriter',
             description: 'Agent for writing and updating documentation',
-            model: 'gpt-4o',
+            model: 'gpt-4',
             tools: ['read_file', 'search_replace'],
             prompt: 'You are a technical writer. Create clear, comprehensive documentation for code and APIs.'
         }
