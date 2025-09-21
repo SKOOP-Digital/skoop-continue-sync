@@ -4,6 +4,9 @@ you create agents with docs, mcps, ... each which can have multiplemodels
 
 
 
+ageents specify the whole configuration around what roles use what models and the tools available etc. 
+might only need one of these
+
 
 context is for adding context like code, docs, web
 
@@ -109,3 +112,12 @@ or use this local: https://hub.continue.dev/opentools/playwright-mcp-server
 
 implement bitbcket mcp if needed
 
+
+
+need to sync our stuff, but allow a section for user to modify as well
+
+check if continue and specstory extension from store is installed
+
+make sure spectsory is added to spectory ignore
+
+add uninstall extension ability to remove all settings

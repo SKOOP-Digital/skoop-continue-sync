@@ -62,15 +62,26 @@ interface PromptConfig {
     [key: string]: string | undefined;
 }
 
+interface DocConfig {
+    name: string;
+    startUrl: string;
+    favicon?: string;
+    [key: string]: string | undefined;
+}
+
 interface ContinueConfig {
     name?: string;
     version?: string;
     schema?: string;
+    experimental?: {
+        useChromiumForDocsCrawling?: boolean;
+    };
     models?: ModelConfig[];
     agents?: AgentConfig[];
     rules?: RuleConfig[];
     prompts?: PromptConfig[];
-    [key: string]: string | ModelConfig[] | AgentConfig[] | RuleConfig[] | PromptConfig[] | undefined;
+    docs?: DocConfig[];
+    [key: string]: any;
 }
 
 async function applyTeamSettings() {
@@ -101,14 +112,22 @@ async function applyTeamSettings() {
         name: "Skoop Team Config",
         version: "1.0.0",
         schema: "v1",
+        experimental: {
+            useChromiumForDocsCrawling: true
+        },
         models: [],
         agents: [],
         rules: [],
-        prompts: []
+        prompts: [],
+        docs: []
     };
     console.log('[Skoop Continue Sync] Initialized clean config');
 
     // Apply team settings - start with just models to isolate issues
+    // Ensure Chromium is available for docs crawling
+    console.log('[Skoop Continue Sync] Checking Chromium availability...');
+    await ensureChromiumAvailable();
+
     console.log('[Skoop Continue Sync] Applying LiteLLM settings...');
     config = applyLiteLLMSettings(config);
     console.log('[Skoop Continue Sync] Applying model settings...');
@@ -119,6 +138,23 @@ async function applyTeamSettings() {
     config = applyAgentSettings(config);
     console.log('[Skoop Continue Sync] Applying rules and prompts...');
     config = applyRulesAndPrompts(config);
+
+    // Add docs to main config for better integration
+    console.log('[Skoop Continue Sync] Adding docs to main config...');
+    config.docs = [{
+        name: "Skoop Documentation",
+        startUrl: "https://www.skoopsignage.com/",
+        favicon: "https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://www.skoopsignage.com/&size=16"
+    }];
+
+    console.log('[Skoop Continue Sync] Adding sample docs, MCP tools, and data...');
+    await addSampleDocs(configPath);
+    await addSampleMcpTools(configPath);
+    await addSampleData(configPath);
+
+    // Force retry docs indexing to clear any previous failures
+    console.log('[Skoop Continue Sync] Forcing docs retry...');
+    forceDocsRetry(config);
 
     // Write updated config
     console.log('[Skoop Continue Sync] Writing updated config...');
@@ -182,6 +218,75 @@ async function findContinueConfigPath(): Promise<string | null> {
     return null;
 }
 
+// Ensure Chromium is available for docs crawling
+async function ensureChromiumAvailable() {
+    console.log('[Skoop Continue Sync] Ensuring Chromium is available for docs crawling...');
+
+    const os = require('os');
+    const path = require('path');
+    const fs = require('fs');
+
+    // Check common Chromium installation locations
+    const possiblePaths = [
+        'chromium', // In PATH
+        'chromium-browser', // Linux variant
+        'google-chrome', // Chrome as fallback
+        'chrome', // Chrome in PATH
+        path.join(os.homedir(), '.continue', '.utils', 'chromium', 'chrome'), // Continue.dev location
+        path.join(os.homedir(), '.continue', '.utils', 'chromium', 'chromium'), // Continue.dev location
+        '/usr/bin/chromium', // Linux system location
+        '/usr/bin/chromium-browser', // Linux system location
+        'C:\\Program Files\\Chromium\\Application\\chrome.exe', // Windows
+        'C:\\Program Files (x86)\\Chromium\\Application\\chrome.exe', // Windows x86
+    ];
+
+    for (const chromiumPath of possiblePaths) {
+        try {
+            console.log(`[Skoop Continue Sync] Checking Chromium at: ${chromiumPath}`);
+            const { spawn } = require('child_process');
+            const chromiumCheck = spawn(chromiumPath, ['--version'], { stdio: 'pipe' });
+
+            const result = await new Promise<boolean>((resolve) => {
+                chromiumCheck.on('close', (code: number) => {
+                    resolve(code === 0);
+                });
+                chromiumCheck.on('error', () => resolve(false));
+
+                // Timeout after 2 seconds
+                setTimeout(() => resolve(false), 2000);
+            });
+
+            if (result) {
+                console.log(`[Skoop Continue Sync] Chromium found at: ${chromiumPath}`);
+                return true;
+            }
+        } catch (error) {
+            // Continue to next path
+        }
+    }
+
+    console.log('[Skoop Continue Sync] Chromium not found in common locations, will be downloaded by Continue.dev');
+    console.log('[Skoop Continue Sync] Continue.dev typically installs Chromium to: ~/.continue/.utils/chromium/');
+    return false;
+}
+
+// Force retry docs indexing by updating timestamp
+function forceDocsRetry(config: ContinueConfig) {
+    console.log('[Skoop Continue Sync] Forcing docs retry by updating configuration...');
+
+    // Add a timestamp to force re-indexing
+    if (config.docs && Array.isArray(config.docs) && config.docs.length > 0) {
+        config.docs.forEach((doc: DocConfig) => {
+            if (doc.startUrl) {
+                // Add a cache-busting parameter
+                const separator = doc.startUrl.includes('?') ? '&' : '?';
+                doc.startUrl = `${doc.startUrl}${separator}retry=${Date.now()}`;
+                console.log(`[Skoop Continue Sync] Updated docs URL to force retry: ${doc.startUrl}`);
+            }
+        });
+    }
+}
+
 function applyLiteLLMSettings(config: ContinueConfig): ContinueConfig {
     console.log('[Skoop Continue Sync] Reading VS Code configuration...');
     const litellmUrl = vscode.workspace.getConfiguration('skoop-continue-sync').get('litellmUrl', 'https://litellm.skoop.digital/');
@@ -236,16 +341,14 @@ function applyLiteLLMSettings(config: ContinueConfig): ContinueConfig {
     ];
 
     console.log('[Skoop Continue Sync] Adding team models...');
-    // Add team models if they don't exist
-    for (const teamModel of teamModels) {
-        const existingModelIndex = config.models!.findIndex((m: ModelConfig) =>
-            m.model === teamModel.model && m.apiBase === teamModel.apiBase
-        );
+    // Clear existing models and add fresh ones to avoid conflicts
+    console.log('[Skoop Continue Sync] Clearing existing models to avoid conflicts...');
+    config.models!.length = 0; // Clear the array
 
-        console.log(`[Skoop Continue Sync]   ${teamModel.title}: ${existingModelIndex === -1 ? 'Adding' : 'Already exists'}`);
-        if (existingModelIndex === -1) {
-            config.models!.push(teamModel);
-        }
+    // Add all team models fresh
+    for (const teamModel of teamModels) {
+        console.log(`[Skoop Continue Sync]   Adding: ${teamModel.title}`);
+        config.models!.push(teamModel);
     }
 
     console.log('[Skoop Continue Sync] Final models count:', config.models!.length);
@@ -430,4 +533,202 @@ function configToYaml(config: ContinueConfig): string {
     }
 
     return yaml;
+}
+
+// Add sample documentation configuration
+async function addSampleDocs(configPath: string) {
+    console.log('[Skoop Continue Sync] Adding sample documentation...');
+
+    const docsDir = path.dirname(configPath);
+    const docsConfigDir = path.join(docsDir, 'docs');
+
+    if (!fs.existsSync(docsConfigDir)) {
+        fs.mkdirSync(docsConfigDir, { recursive: true });
+    }
+
+    // Create a docs block configuration
+    const docsYaml = `name: "Skoop Team Documentation"
+version: "1.0.0"
+schema: "v1"
+docs:
+  - name: "Skoop Documentation -2"
+    startUrl: https://www.skoopsignage.com/industry/sports-entertainment
+    favicon: https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://www.skoopsignage.com/&size=16
+`;
+
+    const docsConfigPath = path.join(docsConfigDir, 'skoop-docs.yaml');
+    fs.writeFileSync(docsConfigPath, docsYaml, 'utf8');
+    console.log(`[Skoop Continue Sync] Created docs config: ${docsConfigPath}`);
+}
+
+// Add sample MCP tools configuration
+async function addSampleMcpTools(configPath: string) {
+    console.log('[Skoop Continue Sync] Adding sample MCP tools...');
+
+    const mcpDir = path.dirname(configPath);
+    const mcpConfigDir = path.join(mcpDir, 'mcpServers');
+
+    if (!fs.existsSync(mcpConfigDir)) {
+        fs.mkdirSync(mcpConfigDir, { recursive: true });
+    }
+
+    // Clean up any old MCP configuration files
+    console.log('[Skoop Continue Sync] Cleaning up old MCP configurations...');
+    const oldMcpFiles = [
+        'database-mcp.yaml',
+        'url-mcp-demo.yaml',
+        'mcp-demo.yaml'
+    ];
+
+    for (const oldFile of oldMcpFiles) {
+        const oldPath = path.join(mcpConfigDir, oldFile);
+        if (fs.existsSync(oldPath)) {
+            try {
+                fs.unlinkSync(oldPath);
+                console.log(`[Skoop Continue Sync] Removed old MCP config: ${oldFile}`);
+            } catch (error) {
+                console.warn(`[Skoop Continue Sync] Could not remove old MCP config ${oldFile}:`, error);
+            }
+        }
+    }
+
+    // Create a simple MCP server block configuration
+    const mcpYaml = `name: "Skoop MCP Demo"
+version: "1.0.0"
+schema: "v1"
+mcpServers:
+  - name: "Simple Demo Server"
+    command: node
+    args:
+      - -e
+      - |
+        // Simple MCP server that responds to basic requests
+        const readline = require('readline');
+
+        const rl = readline.createInterface({
+          input: process.stdin,
+          output: process.stdout,
+          terminal: false
+        });
+
+        // Send initialize response
+        console.log(JSON.stringify({
+          jsonrpc: "2.0",
+          id: 0,
+          result: {
+            protocolVersion: "2024-11-05",
+            capabilities: {
+              tools: {
+                listChanged: true
+              }
+            },
+            serverInfo: {
+              name: "simple-demo",
+              version: "1.0.0"
+            }
+          }
+        }));
+
+        rl.on('line', (line) => {
+          try {
+            const request = JSON.parse(line.trim());
+
+            if (request.method === 'tools/list') {
+              // Respond to tools/list
+              console.log(JSON.stringify({
+                jsonrpc: "2.0",
+                id: request.id,
+                result: {
+                  tools: [{
+                    name: "demo_echo",
+                    description: "Echo back a message",
+                    inputSchema: {
+                      type: "object",
+                      properties: {
+                        text: {
+                          type: "string",
+                          description: "Text to echo"
+                        }
+                      },
+                      required: ["text"]
+                    }
+                  }]
+                }
+              }));
+            } else if (request.method === 'tools/call' && request.params.name === 'demo_echo') {
+              // Respond to tools/call
+              console.log(JSON.stringify({
+                jsonrpc: "2.0",
+                id: request.id,
+                result: {
+                  content: [{
+                    type: "text",
+                    text: "Echo from Skoop Demo: " + request.params.arguments.text
+                  }]
+                }
+              }));
+            } else if (request.method === 'resources/list' || request.method === 'resources/templates/list') {
+              // Handle resources requests (optional)
+              console.log(JSON.stringify({
+                jsonrpc: "2.0",
+                id: request.id,
+                result: []
+              }));
+            }
+          } catch (e) {
+            // Send error response
+            console.log(JSON.stringify({
+              jsonrpc: "2.0",
+              id: null,
+              error: {
+                code: -32700,
+                message: "Parse error: " + e.message
+              }
+            }));
+          }
+        });
+
+        process.on('SIGINT', () => {
+          rl.close();
+          process.exit(0);
+        });
+    env: {}
+`;
+
+    const mcpConfigPath = path.join(mcpConfigDir, 'skoop-mcp-demo.yaml');
+    fs.writeFileSync(mcpConfigPath, mcpYaml, 'utf8');
+    console.log(`[Skoop Continue Sync] Created MCP config: ${mcpConfigPath}`);
+    console.log(`[Skoop Continue Sync] MCP server will provide: demo_echo tool`);
+    console.log(`[Skoop Continue Sync] Note: MCP server may take a few seconds to initialize`);
+}
+
+// Add sample data configuration
+async function addSampleData(configPath: string) {
+    console.log('[Skoop Continue Sync] Adding sample data configuration...');
+
+    const dataDir = path.dirname(configPath);
+    const dataConfigDir = path.join(dataDir, 'data');
+
+    if (!fs.existsSync(dataConfigDir)) {
+        fs.mkdirSync(dataConfigDir, { recursive: true });
+    }
+
+    // Create a data block configuration
+    const dataYaml = `name: "Skoop Team Analytics"
+version: "1.0.0"
+schema: "v1"
+data:
+  - name: "Team Usage Analytics"
+    destination: file:///${process.env.USERPROFILE || process.env.HOME}/.continue/analytics.jsonl
+    schema: "0.2.0"
+    level: "all"
+    events:
+      - autocomplete
+      - chatInteraction
+      - agentAction
+`;
+
+    const dataConfigPath = path.join(dataConfigDir, 'analytics.yaml');
+    fs.writeFileSync(dataConfigPath, dataYaml, 'utf8');
+    console.log(`[Skoop Continue Sync] Created data config: ${dataConfigPath}`);
 }
