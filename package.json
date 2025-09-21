@@ -11,6 +11,19 @@
     "vscode": "^1.74.0",
     "node": ">=20.18.1"
   },
+  "extensionDependencies": [
+    "Continue.continue",
+    "SpecStory.specstory-vscode"
+  ],
+  "os": [
+    "win32",
+    "darwin",
+    "linux"
+  ],
+  "arch": [
+    "x64",
+    "arm64"
+  ],
   "categories": [
     "Other"
   ],
@@ -18,13 +31,17 @@
     "onCommand:skoop-continue-sync.applyTeamSettings"
   ],
   "main": "./out/extension.js",
-  "contributes": {
-    "commands": [
-      {
-        "command": "skoop-continue-sync.applyTeamSettings",
-        "title": "Apply Team Continue Settings"
-      }
-    ],
+    "contributes": {
+        "commands": [
+            {
+                "command": "skoop-continue-sync.applyTeamSettings",
+                "title": "Apply Team Continue Settings"
+            },
+            {
+                "command": "skoop-continue-sync.clearAllConfigs",
+                "title": "Clear All Continue Configurations"
+            }
+        ],
     "configuration": {
       "title": "Skoop Continue Sync",
       "properties": {

@@ -114,6 +114,7 @@ implement bitbcket mcp if needed
 
 
 
+
 need to sync our stuff, but allow a section for user to modify as well
 
 check if continue and specstory extension from store is installed
@@ -121,3 +122,16 @@ check if continue and specstory extension from store is installed
 make sure spectsory is added to spectory ignore
 
 add uninstall extension ability to remove all settings
+
+add ability to convert models in hub blocks to litellm models
+
+decide what contexts to give agents
+
+move to haivng multiple files for each agentin yaml like how it is incontinue.dev, and then the extension settings in afile called setting-config.yaml
+
+
+instead of having the agents in team-config.json, put them in a folder called agents each with a yaml file foreach agent.
+The extension configs can stay in the team-config.js
+but the agents need to go in their own yaml files.
+Also there will be noo top level docs, prompts, models, rules, .... all these will go underr the agents only.
+there always will be one agent called 'Local Agent'. this is the default continue agent andit's yaml goes into config.yaml. all the other agents go into the .continue/agents folder

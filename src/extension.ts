@@ -1,4 +1,4 @@
-import * as vscode from 'vscode';
+﻿import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -11,8 +11,45 @@ export function activate(context: vscode.ExtensionContext) {
         APPDATA: process.env.APPDATA
     });
 
-    const disposable = vscode.commands.registerCommand('skoop-continue-sync.applyTeamSettings', async () => {
+    // Check for required extensions
+    const requiredExtensions = [
+        { id: 'Continue.continue', name: 'Continue', marketplaceUrl: 'https://marketplace.visualstudio.com/items?itemName=Continue.continue' },
+        { id: 'SpecStory.specstory-vscode', name: 'SpecStory', marketplaceUrl: 'https://marketplace.visualstudio.com/items?itemName=SpecStory.specstory-vscode' }
+    ];
+
+    const missingExtensions = requiredExtensions.filter(ext => !vscode.extensions.getExtension(ext.id));
+
+    if (missingExtensions.length > 0) {
+        const extensionNames = missingExtensions.map(ext => ext.name).join(', ');
+        const message = `Skoop Continue Sync requires the following extensions to be installed: ${extensionNames}. Please install them from the VS Code marketplace.`;
+
+        console.error('[Skoop Continue Sync] Missing required extensions:', extensionNames);
+        vscode.window.showErrorMessage(message, 'Install Extensions').then(selection => {
+            if (selection === 'Install Extensions') {
+                // Open each missing extension in the marketplace
+                missingExtensions.forEach(ext => {
+                    vscode.env.openExternal(vscode.Uri.parse(ext.marketplaceUrl));
+                });
+            }
+        });
+
+        // Still register commands but they will show appropriate error messages
+    }
+
+    const applySettingsDisposable = vscode.commands.registerCommand('skoop-continue-sync.applyTeamSettings', async () => {
         console.log('[Skoop Continue Sync] Apply team settings command triggered');
+
+        // Check for required extensions before proceeding
+        const requiredExtensions = ['Continue.continue', 'SpecStory.specstory-vscode'];
+        const missingExtensions = requiredExtensions.filter(extId => !vscode.extensions.getExtension(extId));
+
+        if (missingExtensions.length > 0) {
+            const extensionNames = missingExtensions.map(id => id === 'Continue.continue' ? 'Continue' : 'SpecStory').join(', ');
+            const message = `Cannot apply team settings. Required extensions are not installed: ${extensionNames}. Please install them first.`;
+            console.error('[Skoop Continue Sync] Missing required extensions for command execution:', extensionNames);
+            vscode.window.showErrorMessage(message);
+            return;
+        }
 
         try {
             console.log('[Skoop Continue Sync] Starting to apply team settings...');
@@ -25,18 +62,78 @@ export function activate(context: vscode.ExtensionContext) {
         }
     });
 
-    context.subscriptions.push(disposable);
-    console.log('[Skoop Continue Sync] Command registered: skoop-continue-sync.applyTeamSettings');
+    const clearConfigDisposable = vscode.commands.registerCommand('skoop-continue-sync.clearAllConfigs', async () => {
+        console.log('[Skoop Continue Sync] Clear all configs command triggered');
+
+        // Check for required extensions before proceeding
+        const requiredExtensions = ['Continue.continue', 'SpecStory.specstory-vscode'];
+        const missingExtensions = requiredExtensions.filter(extId => !vscode.extensions.getExtension(extId));
+
+        if (missingExtensions.length > 0) {
+            const extensionNames = missingExtensions.map(id => id === 'Continue.continue' ? 'Continue' : 'SpecStory').join(', ');
+            const message = `Cannot clear configurations. Required extensions are not installed: ${extensionNames}. Please install them first.`;
+            console.error('[Skoop Continue Sync] Missing required extensions for command execution:', extensionNames);
+            vscode.window.showErrorMessage(message);
+            return;
+        }
+
+        try {
+            await clearAllContinueConfigs();
+            console.log('[Skoop Continue Sync] All Continue configs cleared successfully');
+            vscode.window.showInformationMessage('All Continue configurations cleared successfully!');
+        } catch (error) {
+            console.error('[Skoop Continue Sync] Error clearing configs:', error);
+            vscode.window.showErrorMessage(`Failed to clear configurations: ${error}`);
+        }
+    });
+
+    context.subscriptions.push(applySettingsDisposable, clearConfigDisposable);
+    console.log('[Skoop Continue Sync] Commands registered: skoop-continue-sync.applyTeamSettings, skoop-continue-sync.clearAllConfigs');
 }
 
 interface ModelConfig {
     provider?: string;
-    model: string;
+    model?: string;
     apiBase?: string;
     apiKey?: string;
+    name?: string;
     title?: string;
     roles?: string[];
-    [key: string]: string | string[] | undefined;
+    uses?: string;
+    with?: { [key: string]: string };
+    override?: { roles?: string[] };
+    defaultCompletionOptions?: {
+        contextLength?: number;
+        maxTokens?: number;
+        temperature?: number;
+        topP?: number;
+        stop?: string[];
+        [key: string]: any;
+    };
+    chatOptions?: {
+        baseSystemMessage?: string;
+        baseAgentSystemMessage?: string;
+        [key: string]: any;
+    };
+    autocompleteOptions?: {
+        disable?: boolean;
+        maxPromptTokens?: number;
+        debounceDelay?: number;
+        maxSuffixPercentage?: number;
+        prefixPercentage?: number;
+        onlyMyCode?: boolean;
+        useCache?: boolean;
+        useImports?: boolean;
+        useRecentlyEdited?: boolean;
+        useRecentlyOpened?: boolean;
+        [key: string]: any;
+    };
+    embedOptions?: {
+        maxChunkSize?: number;
+        maxBatchSize?: number;
+        [key: string]: any;
+    };
+    [key: string]: any;
 }
 
 interface AgentConfig {
@@ -49,16 +146,18 @@ interface AgentConfig {
 }
 
 interface RuleConfig {
-    name: string;
+    name?: string;
     description?: string;
-    rule: string;
+    rule?: string;
+    uses?: string;
     [key: string]: string | undefined;
 }
 
 interface PromptConfig {
-    name: string;
+    name?: string;
     description?: string;
-    prompt: string;
+    prompt?: string;
+    uses?: string;
     [key: string]: string | undefined;
 }
 
@@ -93,6 +192,34 @@ async function applyTeamSettings() {
     }
     console.log('[Skoop Continue Sync] Found config path:', configPath);
 
+    // Load team configuration from external file
+    console.log('[Skoop Continue Sync] Loading team configuration...');
+    const teamConfigPath = path.join(__dirname, '..', 'team-config.json');
+    console.log('[Skoop Continue Sync] Looking for config at:', teamConfigPath);
+    let teamConfig;
+    try {
+        const teamConfigContent = fs.readFileSync(teamConfigPath, 'utf8');
+        teamConfig = JSON.parse(teamConfigContent);
+        console.log('[Skoop Continue Sync] Team configuration loaded successfully');
+    } catch (error) {
+        console.error('[Skoop Continue Sync] Failed to load team configuration:', error);
+        console.error('[Skoop Continue Sync] __dirname:', __dirname);
+        console.error('[Skoop Continue Sync] Attempted path:', teamConfigPath);
+        throw new Error('Could not load team configuration file. Please ensure the extension is properly installed.');
+    }
+
+    // Load the Local Agent configuration from the extension's agents folder
+    console.log('[Skoop Continue Sync] Loading Local Agent configuration...');
+    const localAgentPath = path.join(__dirname, '..', 'agents', 'local-agent.yaml');
+    let localAgentContent;
+    try {
+        localAgentContent = fs.readFileSync(localAgentPath, 'utf8');
+        console.log('[Skoop Continue Sync] Local Agent configuration loaded successfully');
+    } catch (error) {
+        console.error('[Skoop Continue Sync] Failed to load Local Agent configuration:', error);
+        throw new Error('Could not load Local Agent configuration. Please ensure the extension is properly installed.');
+    }
+
     // Clear any existing config to avoid parsing issues
     console.log('[Skoop Continue Sync] Clearing existing config file...');
     try {
@@ -104,66 +231,32 @@ async function applyTeamSettings() {
         console.warn('[Skoop Continue Sync] Could not clear existing config:', error);
     }
 
-    let config: ContinueConfig = {};
+    // Use the Local Agent content as the main config
+    console.log('[Skoop Continue Sync] Using Local Agent as main configuration');
 
-    // Initialize with clean config - start simple with just models first
-    console.log('[Skoop Continue Sync] Initializing with clean team configuration');
-    config = {
-        name: "Skoop Team Config",
-        version: "1.0.0",
-        schema: "v1",
-        experimental: {
-            useChromiumForDocsCrawling: true
-        },
-        models: [],
-        agents: [],
-        rules: [],
-        prompts: [],
-        docs: []
-    };
-    console.log('[Skoop Continue Sync] Initialized clean config');
-
-    // Apply team settings - start with just models to isolate issues
     // Ensure Chromium is available for docs crawling
     console.log('[Skoop Continue Sync] Checking Chromium availability...');
     await ensureChromiumAvailable();
 
-    console.log('[Skoop Continue Sync] Applying LiteLLM settings...');
-    config = applyLiteLLMSettings(config);
-    console.log('[Skoop Continue Sync] Applying model settings...');
-    config = applyModelSettings(config);
+    // Configure VS Code Continue.dev extension settings
+    console.log('[Skoop Continue Sync] Configuring Continue.dev extension settings...');
+    await configureContinueSettings(teamConfig);
 
-    // Add agents, rules, and prompts with correct format
-    console.log('[Skoop Continue Sync] Applying agent settings...');
-    config = applyAgentSettings(config);
-    console.log('[Skoop Continue Sync] Applying rules and prompts...');
-    config = applyRulesAndPrompts(config);
-
-    // Add docs to main config for better integration
-    console.log('[Skoop Continue Sync] Adding docs to main config...');
-    config.docs = [{
-        name: "Skoop Documentation",
-        startUrl: "https://www.skoopsignage.com/",
-        favicon: "https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://www.skoopsignage.com/&size=16"
-    }];
-
-    console.log('[Skoop Continue Sync] Adding sample docs, MCP tools, and data...');
-    await addSampleDocs(configPath);
-    await addSampleMcpTools(configPath);
-    await addSampleData(configPath);
+    console.log('[Skoop Continue Sync] Installing agent files...');
+    await installAgentFiles(configPath);
 
     // Force retry docs indexing to clear any previous failures
-    console.log('[Skoop Continue Sync] Forcing docs retry...');
-    forceDocsRetry(config);
+    console.log('[Skoop Continue Sync] Processing Local Agent config for docs retry...');
+    // Parse the YAML to get the docs section for retry logic
+    const localAgentConfig = parseYamlToConfig(localAgentContent);
+    forceDocsRetry(localAgentConfig);
 
-    // Write updated config
-    console.log('[Skoop Continue Sync] Writing updated config...');
+    // Write the Local Agent config as the main config
+    console.log('[Skoop Continue Sync] Writing Local Agent config...');
     try {
-        const yamlContent = configToYaml(config);
-        console.log('[Skoop Continue Sync] Generated YAML content length:', yamlContent.length);
-        console.log('[Skoop Continue Sync] Final config to write:', yamlContent);
-        fs.writeFileSync(configPath, yamlContent, 'utf8');
-        console.log('[Skoop Continue Sync] Config written successfully to:', configPath);
+        console.log('[Skoop Continue Sync] Final config to write:', localAgentContent);
+        fs.writeFileSync(configPath, localAgentContent, 'utf8');
+        console.log('[Skoop Continue Sync] Local Agent config written successfully to:', configPath);
     } catch (error) {
         console.error('[Skoop Continue Sync] Error writing config:', error);
         throw error;
@@ -270,6 +363,38 @@ async function ensureChromiumAvailable() {
     return false;
 }
 
+// Configure VS Code Continue.dev extension settings
+async function configureContinueSettings(teamConfig: any) {
+    console.log('[Skoop Continue Sync] Configuring VS Code Continue.dev extension settings...');
+
+    try {
+        const vscodeSettings = teamConfig.vscodeSettings || {};
+
+        for (const [settingKey, desiredValue] of Object.entries(vscodeSettings)) {
+            // Parse the setting key (e.g., "continue.enableConsole" -> ["continue", "enableConsole"])
+            const [extensionId, settingName] = settingKey.split('.', 2);
+
+            if (extensionId && settingName) {
+                const config = vscode.workspace.getConfiguration(extensionId);
+                const currentValue = config.get(settingName);
+
+                console.log(`[Skoop Continue Sync] Checking ${settingKey}: current=${currentValue}, desired=${desiredValue}`);
+
+                if (currentValue !== desiredValue) {
+                    await config.update(settingName, desiredValue, vscode.ConfigurationTarget.Global);
+                    console.log(`[Skoop Continue Sync] Set ${settingKey} to ${desiredValue}`);
+                } else {
+                    console.log(`[Skoop Continue Sync] ${settingKey} already set to ${desiredValue}`);
+                }
+            }
+        }
+
+        console.log('[Skoop Continue Sync] Continue.dev extension settings configured successfully');
+    } catch (error) {
+        console.warn('[Skoop Continue Sync] Error configuring Continue.dev settings:', error);
+    }
+}
+
 // Force retry docs indexing by updating timestamp
 function forceDocsRetry(config: ContinueConfig) {
     console.log('[Skoop Continue Sync] Forcing docs retry by updating configuration...');
@@ -287,10 +412,10 @@ function forceDocsRetry(config: ContinueConfig) {
     }
 }
 
-function applyLiteLLMSettings(config: ContinueConfig): ContinueConfig {
+function applyLiteLLMSettings(config: ContinueConfig, teamConfig: any): ContinueConfig {
     console.log('[Skoop Continue Sync] Reading VS Code configuration...');
-    const litellmUrl = vscode.workspace.getConfiguration('skoop-continue-sync').get('litellmUrl', 'https://litellm.skoop.digital/');
-    const litellmApiKey = vscode.workspace.getConfiguration('skoop-continue-sync').get('litellmApiKey', 'sk-Phkcy9C76yAAc2rNAAsnlg');
+    const litellmUrl = vscode.workspace.getConfiguration('skoop-continue-sync').get('litellmUrl', teamConfig.liteLLM?.url || 'https://litellm.skoop.digital/');
+    const litellmApiKey = vscode.workspace.getConfiguration('skoop-continue-sync').get('litellmApiKey', teamConfig.liteLLM?.apiKey || 'sk-Phkcy9C76yAAc2rNAAsnlg');
 
     console.log('[Skoop Continue Sync] LiteLLM URL:', litellmUrl);
     console.log('[Skoop Continue Sync] LiteLLM API Key length:', litellmApiKey.length);
@@ -320,25 +445,15 @@ function applyLiteLLMSettings(config: ContinueConfig): ContinueConfig {
         config.models![existingProviderIndex] = litellmProvider;
     }
 
-    // Add specific models from LiteLLM - use only basic OpenAI models that Continue.dev definitely supports
-    const teamModels = [
-        {
-            provider: 'openai',
-            model: 'gpt-4',
-            apiBase: litellmUrl,
-            apiKey: litellmApiKey,
-            title: 'GPT-4 (Team)',
-            roles: ['chat', 'edit']
-        },
-        {
-            provider: 'openai',
-            model: 'gpt-3.5-turbo',
-            apiBase: litellmUrl,
-            apiKey: litellmApiKey,
-            title: 'GPT-3.5 Turbo (Team)',
-            roles: ['chat', 'autocomplete']
-        }
-    ];
+    // Add specific models from team config
+    const teamModels = teamConfig.models?.map((modelConfig: any) => ({
+        provider: modelConfig.provider,
+        model: modelConfig.model,
+        apiBase: litellmUrl,
+        apiKey: litellmApiKey,
+        name: modelConfig.name,
+        roles: modelConfig.roles
+    })) || [];
 
     console.log('[Skoop Continue Sync] Adding team models...');
     // Clear existing models and add fresh ones to avoid conflicts
@@ -347,7 +462,7 @@ function applyLiteLLMSettings(config: ContinueConfig): ContinueConfig {
 
     // Add all team models fresh
     for (const teamModel of teamModels) {
-        console.log(`[Skoop Continue Sync]   Adding: ${teamModel.title}`);
+        console.log(`[Skoop Continue Sync]   Adding: ${teamModel.name}`);
         config.models!.push(teamModel);
     }
 
@@ -359,116 +474,110 @@ function applyModelSettings(config: ContinueConfig): ContinueConfig {
     console.log('[Skoop Continue Sync] Setting default models...');
     console.log('[Skoop Continue Sync] Models before setting defaults:', config.models!.length);
 
-    // Note: Continue.dev handles default model selection through its UI
-    // We don't need to set isDefault in the configuration
-
     return config;
 }
 
-function applyAgentSettings(config: ContinueConfig): ContinueConfig {
-    console.log('[Skoop Continue Sync] Applying agent settings...');
-    console.log('[Skoop Continue Sync] Existing agents count:', config.agents!.length);
 
-    const teamAgents = [
-        {
-            name: 'CodeReviewer',
-            description: 'Agent for code review tasks',
-            model: 'gpt-4',
-            tools: ['read_file', 'run_terminal_cmd'],
-            prompt: 'You are a senior developer reviewing code for quality, security, and best practices.'
-        },
-        {
-            name: 'BugFixer',
-            description: 'Agent for debugging and fixing issues',
-            model: 'gpt-3.5-turbo',
-            tools: ['read_file', 'grep', 'run_terminal_cmd'],
-            prompt: 'You are an expert debugger. Analyze code, find bugs, and provide fixes with explanations.'
-        },
-        {
-            name: 'DocumentationWriter',
-            description: 'Agent for writing and updating documentation',
-            model: 'gpt-4',
-            tools: ['read_file', 'search_replace'],
-            prompt: 'You are a technical writer. Create clear, comprehensive documentation for code and APIs.'
-        }
-    ];
-
-    // Add agents if they don't exist
-    for (const agent of teamAgents) {
-        const existingAgentIndex = config.agents!.findIndex((a: AgentConfig) => a.name === agent.name);
-        if (existingAgentIndex === -1) {
-            config.agents!.push(agent);
-        } else {
-            config.agents![existingAgentIndex] = agent;
-        }
-    }
-
-    return config;
-}
-
-function applyRulesAndPrompts(config: ContinueConfig): ContinueConfig {
+function applyRulesAndPrompts(config: ContinueConfig, teamConfig: any): ContinueConfig {
     console.log('[Skoop Continue Sync] Applying rules and prompts...');
     console.log('[Skoop Continue Sync] Existing rules count:', config.rules!.length);
 
-    const teamRules = [
-        {
-            name: 'CodeStyle',
-            description: 'Enforce team coding standards',
-            rule: 'Always use TypeScript with strict type checking. Follow ESLint rules. Use meaningful variable names.'
-        },
-        {
-            name: 'Security',
-            description: 'Security best practices',
-            rule: 'Never commit API keys or sensitive data. Use environment variables for secrets. Validate all user inputs.'
-        },
-        {
-            name: 'Documentation',
-            description: 'Documentation requirements',
-            rule: 'Add JSDoc comments to all public functions. Update README for any API changes.'
-        }
-    ];
+    const teamRules = teamConfig.rules || [];
 
     // Add rules if they don't exist
     for (const rule of teamRules) {
-        const existingRuleIndex = config.rules!.findIndex((r: RuleConfig) => r.name === rule.name);
-        if (existingRuleIndex === -1) {
-            config.rules!.push(rule);
+        // Handle hub blocks (uses syntax)
+        if (rule.uses) {
+            const existingRuleIndex = config.rules!.findIndex((r: any) => r.uses === rule.uses);
+            if (existingRuleIndex === -1) {
+                config.rules!.push(rule);
+            } else {
+                config.rules![existingRuleIndex] = rule;
+            }
         } else {
-            config.rules![existingRuleIndex] = rule;
+            // Handle local blocks
+            const existingRuleIndex = config.rules!.findIndex((r: RuleConfig) => r.name === rule.name);
+            if (existingRuleIndex === -1) {
+                config.rules!.push(rule);
+            } else {
+                config.rules![existingRuleIndex] = rule;
+            }
         }
     }
 
     // Apply global prompts (already initialized as empty array)
 
-    const teamPrompts = [
-        {
-            name: 'CodeReview',
-            description: 'Standard code review prompt',
-            prompt: 'Please review this code for:\n1. Code quality and readability\n2. Security vulnerabilities\n3. Performance issues\n4. Best practices\n5. Test coverage\n\nProvide specific suggestions for improvement.'
-        },
-        {
-            name: 'BugReport',
-            description: 'Bug report analysis prompt',
-            prompt: 'Analyze this bug report:\n1. Reproduce the issue\n2. Identify the root cause\n3. Suggest a fix\n4. Consider edge cases\n5. Update tests if needed'
-        }
-    ];
+    const teamPrompts = teamConfig.prompts || [];
 
     // Add prompts if they don't exist
     for (const prompt of teamPrompts) {
-        const existingPromptIndex = config.prompts!.findIndex((p: PromptConfig) => p.name === prompt.name);
-        if (existingPromptIndex === -1) {
-            config.prompts!.push(prompt);
+        // Handle hub blocks (uses syntax)
+        if (prompt.uses) {
+            const existingPromptIndex = config.prompts!.findIndex((p: any) => p.uses === prompt.uses);
+            if (existingPromptIndex === -1) {
+                config.prompts!.push(prompt);
+            } else {
+                config.prompts![existingPromptIndex] = prompt;
+            }
         } else {
-            config.prompts![existingPromptIndex] = prompt;
+            // Handle local blocks
+            const existingPromptIndex = config.prompts!.findIndex((p: PromptConfig) => p.name === prompt.name);
+            if (existingPromptIndex === -1) {
+                config.prompts!.push(prompt);
+            } else {
+                config.prompts![existingPromptIndex] = prompt;
+            }
         }
     }
 
     return config;
 }
 
+// Clear all Continue.dev configurations
+async function clearAllContinueConfigs() {
+    console.log('[Skoop Continue Sync] Starting to clear all Continue configurations...');
+
+    // Clear main config file (write empty content instead of deleting)
+    const configPath = await findContinueConfigPath();
+    if (configPath && fs.existsSync(configPath)) {
+        // Write empty but valid YAML instead of deleting
+        const emptyConfig = `name: "Empty Config"\nversion: "1.0.0"\nschema: "v1"\n\nmodels: []\nrules: []\nprompts: []\ndocs: []\n`;
+        fs.writeFileSync(configPath, emptyConfig, 'utf8');
+        console.log('[Skoop Continue Sync] Cleared main config file content');
+
+        // Also create empty config.json if it exists
+        const jsonConfigPath = configPath.replace('.yaml', '.json');
+        if (fs.existsSync(jsonConfigPath)) {
+            fs.writeFileSync(jsonConfigPath, '{}', 'utf8');
+            console.log('[Skoop Continue Sync] Cleared config.json content');
+        }
+    }
+
+    // Clear all subdirectories
+    const continueDir = path.dirname(configPath || path.join(process.env.USERPROFILE || '', '.continue', 'config.yaml'));
+
+    const subDirs = ['agents', 'models', 'rules', 'prompts', 'docs', 'mcpServers'];
+    for (const subDir of subDirs) {
+        const dirPath = path.join(continueDir, subDir);
+        if (fs.existsSync(dirPath)) {
+            // Remove all files in the directory
+            const files = fs.readdirSync(dirPath);
+            for (const file of files) {
+                const filePath = path.join(dirPath, file);
+                if (fs.statSync(filePath).isFile()) {
+                    fs.unlinkSync(filePath);
+                    console.log(`[Skoop Continue Sync] Removed ${subDir}/${file}`);
+                }
+            }
+        }
+    }
+
+    console.log('[Skoop Continue Sync] All Continue configurations cleared');
+}
+
 export function deactivate() {}
 
-// Simple YAML serializer for basic structures
+// Simple YAML serializer for basic structures with hub support
 function configToYaml(config: ContinueConfig): string {
     let yaml = '';
 
@@ -477,19 +586,46 @@ function configToYaml(config: ContinueConfig): string {
     if (config.version) yaml += `version: "${config.version}"\n`;
     if (config.schema) yaml += `schema: "${config.schema}"\n`;
 
-    // Add models - match Continue.dev's expected format
+    // Add models - support both hub and local formats
     if (config.models && config.models.length > 0) {
         yaml += '\nmodels:\n';
         for (const model of config.models) {
-            yaml += '  - name: "' + (model.title || model.model) + '"\n';
-            yaml += '    provider: ' + model.provider + '\n';
-            yaml += '    model: ' + model.model + '\n';
-            if (model.apiKey) yaml += '    apiKey: "' + model.apiKey + '"\n';
-            if (model.apiBase) yaml += '    apiBase: ' + model.apiBase + '\n';
-            if (model.roles && model.roles.length > 0) {
-                yaml += '    roles:\n';
-                for (const role of model.roles) {
-                    yaml += '      - ' + role + '\n';
+            if ((model as any).uses) {
+                // Hub reference format
+                yaml += `  - uses: ${(model as any).uses}\n`;
+                if ((model as any).with) {
+                    yaml += '    with:\n';
+                    for (const [key, value] of Object.entries((model as any).with)) {
+                        yaml += `      ${key}: "${value}"\n`;
+                    }
+                }
+                if ((model as any).override) {
+                    yaml += '    override:\n';
+                    if ((model as any).override.roles) {
+                        yaml += '      roles:\n';
+                        for (const role of (model as any).override.roles) {
+                            yaml += `        - ${role}\n`;
+                        }
+                    }
+                }
+            } else {
+                // Local model format
+                yaml += '  - name: "' + (model.title || model.name || model.model) + '"\n';
+                yaml += '    provider: ' + model.provider + '\n';
+                yaml += '    model: ' + model.model + '\n';
+                if (model.apiKey) yaml += '    apiKey: "' + model.apiKey + '"\n';
+                if (model.apiBase) yaml += '    apiBase: ' + model.apiBase + '\n';
+                if (model.roles && model.roles.length > 0) {
+                    yaml += '    roles:\n';
+                    for (const role of model.roles) {
+                        yaml += '      - ' + role + '\n';
+                    }
+                }
+                if ((model as any).defaultCompletionOptions) {
+                    yaml += '    defaultCompletionOptions:\n';
+                    const opts = (model as any).defaultCompletionOptions;
+                    if (opts.contextLength) yaml += `      contextLength: ${opts.contextLength}\n`;
+                    if (opts.maxTokens) yaml += `      maxTokens: ${opts.maxTokens}\n`;
                 }
             }
         }
@@ -512,223 +648,146 @@ function configToYaml(config: ContinueConfig): string {
         }
     }
 
-    // Add rules
+    // Add rules - support both hub and local formats
     if (config.rules && config.rules.length > 0) {
         yaml += '\nrules:\n';
         for (const rule of config.rules) {
-            yaml += '  - name: "' + rule.name + '"\n';
-            if (rule.description) yaml += '    description: "' + rule.description + '"\n';
-            yaml += '    rule: "' + rule.rule.replace(/"/g, '\\"') + '"\n';
+            if ((rule as any).uses) {
+                // Hub reference format
+                yaml += `  - uses: ${(rule as any).uses}\n`;
+            } else {
+                // Local rule format
+                if (rule.name) yaml += '  - name: "' + rule.name + '"\n';
+                if (rule.description) yaml += '    description: "' + rule.description + '"\n';
+                if (rule.rule) yaml += '    rule: "' + rule.rule.replace(/"/g, '\\"') + '"\n';
+            }
         }
     }
 
-    // Add prompts
+    // Add prompts - support both hub and local formats
     if (config.prompts && config.prompts.length > 0) {
         yaml += '\nprompts:\n';
         for (const prompt of config.prompts) {
-            yaml += '  - name: "' + prompt.name + '"\n';
-            if (prompt.description) yaml += '    description: "' + prompt.description + '"\n';
-            yaml += '    prompt: "' + prompt.prompt.replace(/"/g, '\\"').replace(/\n/g, '\\n') + '"\n';
+            if ((prompt as any).uses) {
+                // Hub reference format
+                yaml += `  - uses: ${(prompt as any).uses}\n`;
+            } else {
+                // Local prompt format
+                if (prompt.name) yaml += '  - name: "' + prompt.name + '"\n';
+                if (prompt.description) yaml += '    description: "' + prompt.description + '"\n';
+                if (prompt.prompt) yaml += '    prompt: "' + prompt.prompt.replace(/"/g, '\\"').replace(/\n/g, '\\n') + '"\n';
+            }
+        }
+    }
+
+    // Add docs
+    if (config.docs && config.docs.length > 0) {
+        yaml += '\ndocs:\n';
+        for (const doc of config.docs) {
+            yaml += '  - name: "' + doc.name + '"\n';
+            yaml += '    startUrl: ' + doc.startUrl + '\n';
+            if (doc.favicon) yaml += '    favicon: ' + doc.favicon + '\n';
         }
     }
 
     return yaml;
 }
 
-// Add sample documentation configuration
-async function addSampleDocs(configPath: string) {
-    console.log('[Skoop Continue Sync] Adding sample documentation...');
 
-    const docsDir = path.dirname(configPath);
-    const docsConfigDir = path.join(docsDir, 'docs');
+// Install agent files from extension's agents folder to .continue/agents/
+async function installAgentFiles(configPath: string) {
+    console.log('[Skoop Continue Sync] Installing agent files...');
 
-    if (!fs.existsSync(docsConfigDir)) {
-        fs.mkdirSync(docsConfigDir, { recursive: true });
+    const configDir = path.dirname(configPath);
+    const targetAgentsDir = path.join(configDir, 'agents');
+    const sourceAgentsDir = path.join(__dirname, '..', 'agents');
+
+    // Ensure target agents directory exists
+    if (!fs.existsSync(targetAgentsDir)) {
+        fs.mkdirSync(targetAgentsDir, { recursive: true });
+        console.log('[Skoop Continue Sync] Created agents directory:', targetAgentsDir);
     }
 
-    // Create a docs block configuration
-    const docsYaml = `name: "Skoop Team Documentation"
-version: "1.0.0"
-schema: "v1"
-docs:
-  - name: "Skoop Documentation -2"
-    startUrl: https://www.skoopsignage.com/industry/sports-entertainment
-    favicon: https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://www.skoopsignage.com/&size=16
-`;
+    // Clean up any existing agent files
+    console.log('[Skoop Continue Sync] Cleaning up existing agent files...');
+    const existingFiles = fs.readdirSync(targetAgentsDir).filter(file => file.endsWith('.yaml'));
+    for (const file of existingFiles) {
+        const filePath = path.join(targetAgentsDir, file);
+        try {
+            fs.unlinkSync(filePath);
+            console.log(`[Skoop Continue Sync] Removed existing agent file: ${file}`);
+        } catch (error) {
+            console.warn(`[Skoop Continue Sync] Could not remove agent file ${file}:`, error);
+        }
+    }
 
-    const docsConfigPath = path.join(docsConfigDir, 'skoop-docs.yaml');
-    fs.writeFileSync(docsConfigPath, docsYaml, 'utf8');
-    console.log(`[Skoop Continue Sync] Created docs config: ${docsConfigPath}`);
+    // Copy agent files from extension's agents folder (excluding local-agent.yaml)
+    if (fs.existsSync(sourceAgentsDir)) {
+        const agentFiles = fs.readdirSync(sourceAgentsDir).filter(file =>
+            file.endsWith('.yaml') && file !== 'local-agent.yaml'
+        );
+
+        for (const file of agentFiles) {
+            const sourcePath = path.join(sourceAgentsDir, file);
+            const targetPath = path.join(targetAgentsDir, file);
+
+            try {
+                const content = fs.readFileSync(sourcePath, 'utf8');
+                fs.writeFileSync(targetPath, content, 'utf8');
+                console.log(`[Skoop Continue Sync] Installed agent file: ${file}`);
+            } catch (error) {
+                console.warn(`[Skoop Continue Sync] Could not copy agent file ${file}:`, error);
+            }
+        }
+
+        console.log(`[Skoop Continue Sync] Installed ${agentFiles.length} agent files in ${targetAgentsDir}`);
+    } else {
+        console.warn('[Skoop Continue Sync] Source agents directory not found:', sourceAgentsDir);
+    }
 }
 
-// Add sample MCP tools configuration
-async function addSampleMcpTools(configPath: string) {
-    console.log('[Skoop Continue Sync] Adding sample MCP tools...');
+// Simple YAML parser to extract docs section for retry logic
+function parseYamlToConfig(yamlContent: string): ContinueConfig {
+    const config: ContinueConfig = {
+        docs: []
+    };
 
-    const mcpDir = path.dirname(configPath);
-    const mcpConfigDir = path.join(mcpDir, 'mcpServers');
+    // Simple parsing to extract docs section
+    const lines = yamlContent.split('\n');
+    let inDocsSection = false;
 
-    if (!fs.existsSync(mcpConfigDir)) {
-        fs.mkdirSync(mcpConfigDir, { recursive: true });
-    }
+    for (const line of lines) {
+        if (line.trim() === 'docs:') {
+            inDocsSection = true;
+            continue;
+        }
 
-    // Clean up any old MCP configuration files
-    console.log('[Skoop Continue Sync] Cleaning up old MCP configurations...');
-    const oldMcpFiles = [
-        'database-mcp.yaml',
-        'url-mcp-demo.yaml',
-        'mcp-demo.yaml'
-    ];
-
-    for (const oldFile of oldMcpFiles) {
-        const oldPath = path.join(mcpConfigDir, oldFile);
-        if (fs.existsSync(oldPath)) {
-            try {
-                fs.unlinkSync(oldPath);
-                console.log(`[Skoop Continue Sync] Removed old MCP config: ${oldFile}`);
-            } catch (error) {
-                console.warn(`[Skoop Continue Sync] Could not remove old MCP config ${oldFile}:`, error);
+        if (inDocsSection) {
+            if (line.startsWith('  - name:')) {
+                // Extract doc name
+                const nameMatch = line.match(/name:\s*"([^"]+)"/);
+                if (nameMatch) {
+                    config.docs!.push({
+                        name: nameMatch[1],
+                        startUrl: '',
+                        favicon: ''
+                    });
+                }
+            } else if (line.startsWith('    startUrl:')) {
+                // Extract startUrl
+                const urlMatch = line.match(/startUrl:\s*(.+)/);
+                if (urlMatch && config.docs!.length > 0) {
+                    config.docs![config.docs!.length - 1].startUrl = urlMatch[1];
+                }
+            } else if (line.startsWith('    favicon:')) {
+                // Extract favicon
+                const faviconMatch = line.match(/favicon:\s*(.+)/);
+                if (faviconMatch && config.docs!.length > 0) {
+                    config.docs![config.docs!.length - 1].favicon = faviconMatch[1];
+                }
             }
         }
     }
 
-    // Create a simple MCP server block configuration
-    const mcpYaml = `name: "Skoop MCP Demo"
-version: "1.0.0"
-schema: "v1"
-mcpServers:
-  - name: "Simple Demo Server"
-    command: node
-    args:
-      - -e
-      - |
-        // Simple MCP server that responds to basic requests
-        const readline = require('readline');
-
-        const rl = readline.createInterface({
-          input: process.stdin,
-          output: process.stdout,
-          terminal: false
-        });
-
-        // Send initialize response
-        console.log(JSON.stringify({
-          jsonrpc: "2.0",
-          id: 0,
-          result: {
-            protocolVersion: "2024-11-05",
-            capabilities: {
-              tools: {
-                listChanged: true
-              }
-            },
-            serverInfo: {
-              name: "simple-demo",
-              version: "1.0.0"
-            }
-          }
-        }));
-
-        rl.on('line', (line) => {
-          try {
-            const request = JSON.parse(line.trim());
-
-            if (request.method === 'tools/list') {
-              // Respond to tools/list
-              console.log(JSON.stringify({
-                jsonrpc: "2.0",
-                id: request.id,
-                result: {
-                  tools: [{
-                    name: "demo_echo",
-                    description: "Echo back a message",
-                    inputSchema: {
-                      type: "object",
-                      properties: {
-                        text: {
-                          type: "string",
-                          description: "Text to echo"
-                        }
-                      },
-                      required: ["text"]
-                    }
-                  }]
-                }
-              }));
-            } else if (request.method === 'tools/call' && request.params.name === 'demo_echo') {
-              // Respond to tools/call
-              console.log(JSON.stringify({
-                jsonrpc: "2.0",
-                id: request.id,
-                result: {
-                  content: [{
-                    type: "text",
-                    text: "Echo from Skoop Demo: " + request.params.arguments.text
-                  }]
-                }
-              }));
-            } else if (request.method === 'resources/list' || request.method === 'resources/templates/list') {
-              // Handle resources requests (optional)
-              console.log(JSON.stringify({
-                jsonrpc: "2.0",
-                id: request.id,
-                result: []
-              }));
-            }
-          } catch (e) {
-            // Send error response
-            console.log(JSON.stringify({
-              jsonrpc: "2.0",
-              id: null,
-              error: {
-                code: -32700,
-                message: "Parse error: " + e.message
-              }
-            }));
-          }
-        });
-
-        process.on('SIGINT', () => {
-          rl.close();
-          process.exit(0);
-        });
-    env: {}
-`;
-
-    const mcpConfigPath = path.join(mcpConfigDir, 'skoop-mcp-demo.yaml');
-    fs.writeFileSync(mcpConfigPath, mcpYaml, 'utf8');
-    console.log(`[Skoop Continue Sync] Created MCP config: ${mcpConfigPath}`);
-    console.log(`[Skoop Continue Sync] MCP server will provide: demo_echo tool`);
-    console.log(`[Skoop Continue Sync] Note: MCP server may take a few seconds to initialize`);
-}
-
-// Add sample data configuration
-async function addSampleData(configPath: string) {
-    console.log('[Skoop Continue Sync] Adding sample data configuration...');
-
-    const dataDir = path.dirname(configPath);
-    const dataConfigDir = path.join(dataDir, 'data');
-
-    if (!fs.existsSync(dataConfigDir)) {
-        fs.mkdirSync(dataConfigDir, { recursive: true });
-    }
-
-    // Create a data block configuration
-    const dataYaml = `name: "Skoop Team Analytics"
-version: "1.0.0"
-schema: "v1"
-data:
-  - name: "Team Usage Analytics"
-    destination: file:///${process.env.USERPROFILE || process.env.HOME}/.continue/analytics.jsonl
-    schema: "0.2.0"
-    level: "all"
-    events:
-      - autocomplete
-      - chatInteraction
-      - agentAction
-`;
-
-    const dataConfigPath = path.join(dataConfigDir, 'analytics.yaml');
-    fs.writeFileSync(dataConfigPath, dataYaml, 'utf8');
-    console.log(`[Skoop Continue Sync] Created data config: ${dataConfigPath}`);
+    return config;
 }

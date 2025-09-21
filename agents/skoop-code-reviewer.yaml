@@ -1,0 +1,124 @@
+name: "Skoop Code Reviewer"
+version: "1.0.0"
+schema: "v1"
+description: "Advanced code review agent with comprehensive analysis capabilities"
+
+# Models section - using LiteLLM models
+models:
+  - name: "GPT-4 (Team)"
+    provider: openai
+    model: gpt-4
+    apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+    apiBase: https://litellm.skoop.digital/
+    roles:
+      - chat
+      - edit
+      - apply
+      - summarize
+    capabilities:
+      - tool_use
+    defaultCompletionOptions:
+      temperature: 0.7
+      maxTokens: 2000
+  - name: "GPT-4o (Team)"
+    provider: openai
+    model: gpt-4o
+    apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+    apiBase: https://litellm.skoop.digital/
+    roles:
+      - chat
+      - edit
+      - apply
+      - summarize
+    capabilities:
+      - tool_use
+    defaultCompletionOptions:
+      temperature: 0.7
+      maxTokens: 2000
+
+# Rules section - mix of hub and local rules
+rules:
+  - uses: starter/javascript-rules
+  - name: "Code Review Standards"
+    rule: "Follow comprehensive code review guidelines: check for security, performance, maintainability, and best practices."
+    globs: "**/*.{ts,js,py,java}"
+  - name: "Security Best Practices"
+    rule: "Never commit API keys or sensitive data. Use environment variables for secrets. Validate all inputs."
+    globs: "**/*.{ts,js,json}"
+
+# Prompts section - mix of hub and local prompts
+prompts:
+  - name: "Code Review Analysis"
+    description: "Comprehensive code review with detailed feedback"
+    prompt: |
+      Please conduct a thorough code review focusing on:
+
+      1. **Code Quality & Readability**
+         - Naming conventions and clarity
+         - Code structure and organization
+         - Documentation and comments
+
+      2. **Security Vulnerabilities**
+         - Input validation and sanitization
+         - Authentication and authorization
+         - Data exposure risks
+         - Injection vulnerabilities
+
+      3. **Performance & Efficiency**
+         - Algorithm complexity
+         - Resource usage optimization
+         - Memory leaks and management
+
+      4. **Architecture & Design**
+         - Design patterns and principles
+         - Scalability considerations
+         - Modularity and reusability
+
+      5. **Testing & Reliability**
+         - Test coverage adequacy
+         - Edge case handling
+         - Error handling robustness
+
+      6. **Best Practices**
+         - Language/framework conventions
+         - Industry standards compliance
+         - Maintainability factors
+
+      Provide specific, actionable feedback with code examples where appropriate.
+      Prioritize critical issues and suggest concrete improvement steps.
+  - name: "Security Audit"
+    description: "Focused security vulnerability assessment"
+    prompt: "Perform a security audit on this code. Identify potential vulnerabilities, insecure patterns, and provide remediation recommendations."
+
+# Context providers section
+context:
+  - uses: continuedev/code-context
+  - uses: continuedev/diff-context
+  - uses: continuedev/folder-context
+  - provider: file
+  - provider: terminal
+  - provider: problems
+  - provider: tree
+
+# Documentation sources
+docs:
+  - name: "OWASP Security Guidelines"
+    startUrl: https://owasp.org/www-project-top-ten/
+    favicon: https://owasp.org/assets/images/logo.png
+  - name: "Skoop Documentation"
+    startUrl: https://www.skoopsignage.com/
+    favicon: https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://www.skoopsignage.com/&size=16
+
+# MCP Servers section - agent-specific tools
+mcpServers:
+  - uses: continuedev/continue-docs-mcp
+  - name: Security Analysis Tools
+    command: npx
+    args:
+      - "-y"
+      - "@modelcontextprotocol/server-security"
+  - name: Code Quality Analyzer
+    command: npx
+    args:
+      - "-y"
+      - "@modelcontextprotocol/server-code-quality"
