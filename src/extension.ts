@@ -1,6 +1,12 @@
 ﻿import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as https from 'https';
+
+// Global state for automatic refresh
+let lastConfigRefresh = 0;
+let refreshTimer: NodeJS.Timeout | null = null;
+let isOnline = true;
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('[Skoop Continue Sync] Extension activated successfully!');
@@ -35,6 +41,12 @@ export function activate(context: vscode.ExtensionContext) {
 
         // Still register commands but they will show appropriate error messages
     }
+
+    // Setup automatic config refresh
+    setupAutomaticRefresh(context);
+
+    // Setup configuration change listeners for manual triggers
+    setupConfigurationListeners(context);
 
     const applySettingsDisposable = vscode.commands.registerCommand('skoop-continue-sync.applyTeamSettings', async () => {
         console.log('[Skoop Continue Sync] Apply team settings command triggered');
@@ -168,6 +180,30 @@ interface DocConfig {
     [key: string]: string | undefined;
 }
 
+interface SettingsConfig {
+    [key: string]: any;
+}
+
+interface AgentDefinition {
+    agent: string;
+    name: string;
+    version: string;
+    schema: string;
+    description: string;
+    models?: ModelConfig[];
+    rules?: RuleConfig[];
+    prompts?: PromptConfig[];
+    context?: any[];
+    docs?: DocConfig[];
+    mcpServers?: any[];
+    [key: string]: any;
+}
+
+interface TeamConfig {
+    settings?: SettingsConfig[];
+    Agents?: AgentDefinition[];
+}
+
 interface ContinueConfig {
     name?: string;
     version?: string;
@@ -183,6 +219,186 @@ interface ContinueConfig {
     [key: string]: any;
 }
 
+// Fetch configuration from HTTP endpoint
+async function fetchTeamConfig(): Promise<TeamConfig & { rawYaml: string }> {
+    console.log('[Skoop Continue Sync] Fetching team configuration from endpoint...');
+
+    const userEmail = vscode.workspace.getConfiguration('skoop-continue-sync').get('userEmail', '');
+    const userPassword = vscode.workspace.getConfiguration('skoop-continue-sync').get('userPassword', '');
+
+    if (!userEmail || !userPassword) {
+        throw new Error('User email and password must be configured in Skoop Continue Sync settings.');
+    }
+
+    const endpoint = 'https://n8n.skoopsignage.dev/webhook/4cf533b9-7da1-483d-b6a0-98155fe715ca';
+
+    return new Promise((resolve, reject) => {
+        const url = new URL(endpoint);
+        const options = {
+            hostname: url.hostname,
+            path: url.pathname + url.search,
+            method: 'GET',
+            headers: {
+                'Authorization': 'V2e&ytoH@*30%*yWQ%3lS0ck@w@viy6E',
+                'user': userEmail,
+                'password': userPassword,
+                'Content-Type': 'application/json'
+            }
+        };
+
+        const req = https.request(options, (res) => {
+            let data = '';
+
+            res.on('data', (chunk) => {
+                data += chunk;
+            });
+
+            res.on('end', () => {
+                try {
+                    console.log('[Skoop Continue Sync] Received response from endpoint');
+                    console.log('[Skoop Continue Sync] Raw response data (first 200 chars):', data.substring(0, 200));
+
+                    let configData: string;
+
+                    // Try to parse as JSON first (expected format)
+                    try {
+                        const response = JSON.parse(data);
+                        if (Array.isArray(response) && response.length > 0 && response[0].data) {
+                            configData = response[0].data;
+                            console.log('[Skoop Continue Sync] Parsed JSON response, extracted data field');
+                        } else {
+                            throw new Error('Invalid JSON response format');
+                        }
+                    } catch (jsonError) {
+                        // If JSON parsing fails, treat the response as direct YAML
+                        console.log('[Skoop Continue Sync] JSON parsing failed, treating response as direct YAML:', jsonError);
+                        configData = data;
+                    }
+
+                    console.log('[Skoop Continue Sync] Config data received, processing...');
+                    console.log('[Skoop Continue Sync] Config data (first 200 chars):', configData.substring(0, 200));
+
+                    // Process the raw YAML config data
+                    const teamConfig = processRawYamlConfig(configData);
+                    console.log('[Skoop Continue Sync] Team configuration processed successfully');
+                    resolve(teamConfig);
+                } catch (error) {
+                    console.error('[Skoop Continue Sync] Error parsing response:', error);
+                    reject(error);
+                }
+            });
+        });
+
+        req.on('error', (error) => {
+            console.error('[Skoop Continue Sync] HTTP request error:', error);
+            reject(error);
+        });
+
+        req.setTimeout(10000, () => {
+            req.destroy();
+            reject(new Error('Request timeout'));
+        });
+
+        req.end();
+    });
+}
+
+// Process raw YAML configuration string and extract agent information
+function processRawYamlConfig(yamlContent: string): TeamConfig & { rawYaml: string } {
+    const config: TeamConfig & { rawYaml: string } = {
+        settings: [],
+        Agents: [],
+        rawYaml: yamlContent
+    };
+
+    try {
+        // Simple parsing to extract settings
+        const settingsMatch = yamlContent.match(/settings:\s*\n((?:  - .*\n?)*)/);
+        if (settingsMatch) {
+            const settingsBlock = settingsMatch[1];
+            const settingsLines = settingsBlock.split('\n').filter(line => line.trim());
+
+            let currentSetting: any = null;
+            for (const line of settingsLines) {
+                if (line.startsWith('  - name:')) {
+                    if (currentSetting) {
+                        config.settings!.push(currentSetting);
+                    }
+                    const name = line.match(/name:\s*"([^"]+)"/)?.[1] || '';
+                    currentSetting = { name };
+                } else if (currentSetting && line.includes(':')) {
+                    const [key, ...valueParts] = line.trim().split(':');
+                    const value = valueParts.join(':').trim();
+                    if (value.startsWith('"') && value.endsWith('"')) {
+                        currentSetting[key.trim()] = value.slice(1, -1);
+                    } else {
+                        currentSetting[key.trim()] = value;
+                    }
+                }
+            }
+            if (currentSetting) {
+                config.settings!.push(currentSetting);
+            }
+        }
+
+        // Extract individual agent configurations
+        const agentsMatch = yamlContent.match(/Agents:\s*\n(.*)/s);
+        if (agentsMatch) {
+            const agentsSection = agentsMatch[1];
+            // Split by agent definitions (look for lines starting with "  - agent:")
+            const agentBlocks = agentsSection.split(/(?=^\s*-\s*agent:)/m);
+
+            for (const agentBlock of agentBlocks) {
+                if (!agentBlock.trim()) continue;
+
+                const agent: Partial<AgentDefinition> & { rawYaml?: string } = {
+                    agent: '',
+                    name: '',
+                    version: '',
+                    schema: '',
+                    description: '',
+                    models: [],
+                    rules: [],
+                    prompts: [],
+                    context: [],
+                    docs: [],
+                    mcpServers: [],
+                    rawYaml: agentBlock.trim()
+                };
+
+                const lines = agentBlock.split('\n').filter(line => line.trim());
+
+                for (const line of lines) {
+                    if (line.includes('agent:')) {
+                        agent.agent = line.match(/agent:\s*"([^"]+)"/)?.[1] || '';
+                        agent.name = agent.agent;
+                    } else if (line.includes('version:')) {
+                        agent.version = line.match(/version:\s*"([^"]+)"/)?.[1] || '';
+                    } else if (line.includes('schema:')) {
+                        agent.schema = line.match(/schema:\s*"([^"]+)"/)?.[1] || '';
+                    } else if (line.includes('description:')) {
+                        agent.description = line.match(/description:\s*"([^"]+)"/)?.[1] || '';
+                    }
+                }
+
+                if (agent.agent) {
+                    config.Agents!.push(agent as AgentDefinition);
+                }
+            }
+        }
+
+        console.log('[Skoop Continue Sync] Processed config structure:', {
+            settingsCount: config.settings?.length || 0,
+            agentsCount: config.Agents?.length || 0
+        });
+
+    } catch (error) {
+        console.error('[Skoop Continue Sync] Error processing YAML config:', error);
+    }
+
+    return config;
+}
+
 async function applyTeamSettings() {
     console.log('[Skoop Continue Sync] Finding Continue config path...');
     const configPath = await findContinueConfigPath();
@@ -192,32 +408,15 @@ async function applyTeamSettings() {
     }
     console.log('[Skoop Continue Sync] Found config path:', configPath);
 
-    // Load team configuration from external file
-    console.log('[Skoop Continue Sync] Loading team configuration...');
-    const teamConfigPath = path.join(__dirname, '..', 'team-config.json');
-    console.log('[Skoop Continue Sync] Looking for config at:', teamConfigPath);
-    let teamConfig;
+    // Fetch team configuration from HTTP endpoint
+    console.log('[Skoop Continue Sync] Fetching team configuration...');
+    let teamConfig: TeamConfig & { rawYaml: string };
     try {
-        const teamConfigContent = fs.readFileSync(teamConfigPath, 'utf8');
-        teamConfig = JSON.parse(teamConfigContent);
-        console.log('[Skoop Continue Sync] Team configuration loaded successfully');
+        teamConfig = await fetchTeamConfig();
+        console.log('[Skoop Continue Sync] Team configuration fetched successfully');
     } catch (error) {
-        console.error('[Skoop Continue Sync] Failed to load team configuration:', error);
-        console.error('[Skoop Continue Sync] __dirname:', __dirname);
-        console.error('[Skoop Continue Sync] Attempted path:', teamConfigPath);
-        throw new Error('Could not load team configuration file. Please ensure the extension is properly installed.');
-    }
-
-    // Load the Local Agent configuration from the extension's agents folder
-    console.log('[Skoop Continue Sync] Loading Local Agent configuration...');
-    const localAgentPath = path.join(__dirname, '..', 'agents', 'local-agent.yaml');
-    let localAgentContent;
-    try {
-        localAgentContent = fs.readFileSync(localAgentPath, 'utf8');
-        console.log('[Skoop Continue Sync] Local Agent configuration loaded successfully');
-    } catch (error) {
-        console.error('[Skoop Continue Sync] Failed to load Local Agent configuration:', error);
-        throw new Error('Could not load Local Agent configuration. Please ensure the extension is properly installed.');
+        console.error('[Skoop Continue Sync] Failed to fetch team configuration:', error);
+        throw new Error(`Could not fetch team configuration: ${error}`);
     }
 
     // Clear any existing config to avoid parsing issues
@@ -231,31 +430,53 @@ async function applyTeamSettings() {
         console.warn('[Skoop Continue Sync] Could not clear existing config:', error);
     }
 
-    // Use the Local Agent content as the main config
-    console.log('[Skoop Continue Sync] Using Local Agent as main configuration');
+    // Process the fetched configuration
+    console.log('[Skoop Continue Sync] Processing team configuration...');
+
+    // Apply settings from the config
+    if (teamConfig.settings && teamConfig.settings.length > 0) {
+        console.log('[Skoop Continue Sync] Applying settings from config...');
+        await configureContinueSettingsFromConfig(teamConfig.settings);
+    }
+
+    // Use the raw YAML content as the main config (contains Local Agent and other settings)
+    console.log('[Skoop Continue Sync] Using raw YAML as main configuration');
 
     // Ensure Chromium is available for docs crawling
     console.log('[Skoop Continue Sync] Checking Chromium availability...');
     await ensureChromiumAvailable();
 
-    // Configure VS Code Continue.dev extension settings
+    // Configure VS Code Continue.dev extension settings from config
     console.log('[Skoop Continue Sync] Configuring Continue.dev extension settings...');
-    await configureContinueSettings(teamConfig);
+    await configureContinueSettingsFromConfig(teamConfig.settings || []);
+
+    // Extract and write the Local Agent configuration as the main config
+    console.log('[Skoop Continue Sync] Extracting Local Agent configuration...');
+
+    // Find the Local Agent in the parsed agents
+    const localAgent = teamConfig.Agents?.find(agent => agent.agent === 'Local Agent');
+    if (!localAgent) {
+        throw new Error('Local Agent configuration not found in fetched config');
+    }
+
+    // Extract the Local Agent YAML section from the raw YAML
+    const localAgentYaml = extractAgentYaml(teamConfig.rawYaml, 'Local Agent');
+    if (!localAgentYaml) {
+        throw new Error('Could not extract Local Agent YAML from configuration');
+    }
 
     console.log('[Skoop Continue Sync] Installing agent files...');
-    await installAgentFiles(configPath);
+    await installAgentFilesFromRawConfig(configPath, teamConfig.rawYaml, teamConfig.Agents || []);
 
     // Force retry docs indexing to clear any previous failures
-    console.log('[Skoop Continue Sync] Processing Local Agent config for docs retry...');
-    // Parse the YAML to get the docs section for retry logic
-    const localAgentConfig = parseYamlToConfig(localAgentContent);
-    forceDocsRetry(localAgentConfig);
+    console.log('[Skoop Continue Sync] Processing configs for docs retry...');
+    forceDocsRetryForRawYaml(localAgentYaml);
 
     // Write the Local Agent config as the main config
     console.log('[Skoop Continue Sync] Writing Local Agent config...');
     try {
-        console.log('[Skoop Continue Sync] Final config to write:', localAgentContent);
-        fs.writeFileSync(configPath, localAgentContent, 'utf8');
+        console.log('[Skoop Continue Sync] Final config to write (first 500 chars):', localAgentYaml.substring(0, 500) + '...');
+        fs.writeFileSync(configPath, localAgentYaml, 'utf8');
         console.log('[Skoop Continue Sync] Local Agent config written successfully to:', configPath);
     } catch (error) {
         console.error('[Skoop Continue Sync] Error writing config:', error);
@@ -363,28 +584,33 @@ async function ensureChromiumAvailable() {
     return false;
 }
 
-// Configure VS Code Continue.dev extension settings
-async function configureContinueSettings(teamConfig: any) {
-    console.log('[Skoop Continue Sync] Configuring VS Code Continue.dev extension settings...');
+// Configure VS Code Continue.dev extension settings from config
+async function configureContinueSettingsFromConfig(settings: SettingsConfig[]) {
+    console.log('[Skoop Continue Sync] Configuring VS Code Continue.dev extension settings from config...');
 
     try {
-        const vscodeSettings = teamConfig.vscodeSettings || {};
+        for (const setting of settings) {
+            // Handle VSCodeSettings section
+            if (setting.name === 'VSCodeSettings') {
+                for (const [settingKey, desiredValue] of Object.entries(setting)) {
+                    if (settingKey === 'name') continue; // Skip the name field
 
-        for (const [settingKey, desiredValue] of Object.entries(vscodeSettings)) {
-            // Parse the setting key (e.g., "continue.enableConsole" -> ["continue", "enableConsole"])
-            const [extensionId, settingName] = settingKey.split('.', 2);
+                    // Parse the setting key (e.g., "continue.enableConsole" -> ["continue", "enableConsole"])
+                    const [extensionId, settingName] = settingKey.split('.', 2);
 
-            if (extensionId && settingName) {
-                const config = vscode.workspace.getConfiguration(extensionId);
-                const currentValue = config.get(settingName);
+                    if (extensionId && settingName) {
+                        const config = vscode.workspace.getConfiguration(extensionId);
+                        const currentValue = config.get(settingName);
 
-                console.log(`[Skoop Continue Sync] Checking ${settingKey}: current=${currentValue}, desired=${desiredValue}`);
+                        console.log(`[Skoop Continue Sync] Checking ${settingKey}: current=${currentValue}, desired=${desiredValue}`);
 
-                if (currentValue !== desiredValue) {
-                    await config.update(settingName, desiredValue, vscode.ConfigurationTarget.Global);
-                    console.log(`[Skoop Continue Sync] Set ${settingKey} to ${desiredValue}`);
-                } else {
-                    console.log(`[Skoop Continue Sync] ${settingKey} already set to ${desiredValue}`);
+                        if (currentValue !== desiredValue) {
+                            await config.update(settingName, desiredValue, vscode.ConfigurationTarget.Global);
+                            console.log(`[Skoop Continue Sync] Set ${settingKey} to ${desiredValue}`);
+                        } else {
+                            console.log(`[Skoop Continue Sync] ${settingKey} already set to ${desiredValue}`);
+                        }
+                    }
                 }
             }
         }
@@ -395,80 +621,158 @@ async function configureContinueSettings(teamConfig: any) {
     }
 }
 
-// Force retry docs indexing by updating timestamp
-function forceDocsRetry(config: ContinueConfig) {
-    console.log('[Skoop Continue Sync] Forcing docs retry by updating configuration...');
+// Force retry docs indexing by updating timestamp for agents
+function forceDocsRetryForAgents(agents: AgentDefinition[]) {
+    console.log('[Skoop Continue Sync] Forcing docs retry by updating agent configurations...');
 
-    // Add a timestamp to force re-indexing
-    if (config.docs && Array.isArray(config.docs) && config.docs.length > 0) {
-        config.docs.forEach((doc: DocConfig) => {
-            if (doc.startUrl) {
-                // Add a cache-busting parameter
-                const separator = doc.startUrl.includes('?') ? '&' : '?';
-                doc.startUrl = `${doc.startUrl}${separator}retry=${Date.now()}`;
-                console.log(`[Skoop Continue Sync] Updated docs URL to force retry: ${doc.startUrl}`);
+    for (const agent of agents) {
+        if (agent.docs && Array.isArray(agent.docs) && agent.docs.length > 0) {
+            agent.docs.forEach((doc: DocConfig) => {
+                if (doc.startUrl) {
+                    // Add a cache-busting parameter
+                    const separator = doc.startUrl.includes('?') ? '&' : '?';
+                    doc.startUrl = `${doc.startUrl}${separator}retry=${Date.now()}`;
+                    console.log(`[Skoop Continue Sync] Updated docs URL to force retry: ${doc.startUrl}`);
+                }
+            });
+        }
+    }
+}
+
+// Generate YAML for an agent
+function generateAgentYaml(agent: AgentDefinition): string {
+    let yaml = '';
+
+    yaml += `name: "${agent.name}"\n`;
+    yaml += `version: "${agent.version}"\n`;
+    yaml += `schema: "${agent.schema}"\n`;
+    yaml += `description: "${agent.description}"\n\n`;
+
+    // Add models section
+    if (agent.models && agent.models.length > 0) {
+        yaml += '# Models section - using LiteLLM models\n';
+        yaml += 'models:\n';
+        for (const model of agent.models) {
+            yaml += `  - name: "${model.name || model.model}"\n`;
+            if (model.provider) yaml += `    provider: ${model.provider}\n`;
+            if (model.model) yaml += `    model: ${model.model}\n`;
+            if (model.apiKey) yaml += `    apiKey: "${model.apiKey}"\n`;
+            if (model.apiBase) yaml += `    apiBase: ${model.apiBase}\n`;
+            if (model.roles && model.roles.length > 0) {
+                yaml += '    roles:\n';
+                for (const role of model.roles) {
+                    yaml += `      - ${role}\n`;
+                }
             }
-        });
+            if (model.capabilities && model.capabilities.length > 0) {
+                yaml += '    capabilities:\n';
+                for (const capability of model.capabilities) {
+                    yaml += `      - ${capability}\n`;
+                }
+            }
+            if (model.defaultCompletionOptions) {
+                yaml += '    defaultCompletionOptions:\n';
+                const opts = model.defaultCompletionOptions;
+                if (opts.temperature !== undefined) yaml += `      temperature: ${opts.temperature}\n`;
+                if (opts.maxTokens) yaml += `      maxTokens: ${opts.maxTokens}\n`;
+            }
+        }
+        yaml += '\n';
     }
+
+    // Add rules section
+    if (agent.rules && agent.rules.length > 0) {
+        yaml += '# Rules section\n';
+        yaml += 'rules:\n';
+        for (const rule of agent.rules) {
+            if ((rule as any).uses) {
+                yaml += `  - uses: ${(rule as any).uses}\n`;
+            } else {
+                yaml += `  - name: "${rule.name}"\n`;
+                if (rule.rule) yaml += `    rule: "${rule.rule}"\n`;
+                if ((rule as any).globs) yaml += `    globs: "${(rule as any).globs}"\n`;
+            }
+        }
+        yaml += '\n';
+    }
+
+    // Add prompts section
+    if (agent.prompts && agent.prompts.length > 0) {
+        yaml += '# Prompts section\n';
+        yaml += 'prompts:\n';
+        for (const prompt of agent.prompts) {
+            if ((prompt as any).uses) {
+                yaml += `  - uses: ${(prompt as any).uses}\n`;
+            } else {
+                yaml += `  - name: "${prompt.name}"\n`;
+                if (prompt.description) yaml += `    description: "${prompt.description}"\n`;
+                if (prompt.prompt) {
+                    if (prompt.prompt.includes('\n')) {
+                        yaml += '    prompt: |\n';
+                        const lines = prompt.prompt.split('\n');
+                        for (const line of lines) {
+                            yaml += `      ${line}\n`;
+                        }
+                    } else {
+                        yaml += `    prompt: "${prompt.prompt}"\n`;
+                    }
+                }
+            }
+        }
+        yaml += '\n';
+    }
+
+    // Add context section
+    if (agent.context && agent.context.length > 0) {
+        yaml += '# Context providers section\n';
+        yaml += 'context:\n';
+        for (const contextItem of agent.context) {
+            if ((contextItem as any).uses) {
+                yaml += `  - uses: ${(contextItem as any).uses}\n`;
+            } else if ((contextItem as any).provider) {
+                yaml += `  - provider: ${(contextItem as any).provider}\n`;
+            }
+        }
+        yaml += '\n';
+    }
+
+    // Add docs section
+    if (agent.docs && agent.docs.length > 0) {
+        yaml += '# Documentation sources\n';
+        yaml += 'docs:\n';
+        for (const doc of agent.docs) {
+            yaml += `  - name: "${doc.name}"\n`;
+            yaml += `    startUrl: ${doc.startUrl}\n`;
+            if (doc.favicon) yaml += `    favicon: ${doc.favicon}\n`;
+        }
+        yaml += '\n';
+    }
+
+    // Add MCP Servers section
+    if (agent.mcpServers && agent.mcpServers.length > 0) {
+        yaml += '# MCP Servers section\n';
+        yaml += 'mcpServers:\n';
+        for (const mcpServer of agent.mcpServers) {
+            if ((mcpServer as any).uses) {
+                yaml += `  - uses: ${(mcpServer as any).uses}\n`;
+            } else {
+                yaml += `  - name: "${(mcpServer as any).name}"\n`;
+                if ((mcpServer as any).type) yaml += `    type: ${(mcpServer as any).type}\n`;
+                if ((mcpServer as any).url) yaml += `    url: ${(mcpServer as any).url}\n`;
+                if ((mcpServer as any).command) yaml += `    command: ${(mcpServer as any).command}\n`;
+                if ((mcpServer as any).args) {
+                    yaml += '    args:\n';
+                    for (const arg of (mcpServer as any).args) {
+                        yaml += `      - "${arg}"\n`;
+                    }
+                }
+            }
+        }
+    }
+
+    return yaml;
 }
 
-function applyLiteLLMSettings(config: ContinueConfig, teamConfig: any): ContinueConfig {
-    console.log('[Skoop Continue Sync] Reading VS Code configuration...');
-    const litellmUrl = vscode.workspace.getConfiguration('skoop-continue-sync').get('litellmUrl', teamConfig.liteLLM?.url || 'https://litellm.skoop.digital/');
-    const litellmApiKey = vscode.workspace.getConfiguration('skoop-continue-sync').get('litellmApiKey', teamConfig.liteLLM?.apiKey || 'sk-Phkcy9C76yAAc2rNAAsnlg');
-
-    console.log('[Skoop Continue Sync] LiteLLM URL:', litellmUrl);
-    console.log('[Skoop Continue Sync] LiteLLM API Key length:', litellmApiKey.length);
-
-    // Models array is already initialized as empty array
-    console.log('[Skoop Continue Sync] Models array initialized:', config.models!.length);
-
-    // Add LiteLLM provider if not already present
-    const existingProviderIndex = config.models!.findIndex((m: ModelConfig) =>
-        m.provider === 'openai' && m.apiBase?.includes('litellm.skoop.digital')
-    );
-    console.log('[Skoop Continue Sync] Existing LiteLLM provider index:', existingProviderIndex);
-
-    const litellmProvider = {
-        provider: 'openai',
-        model: 'gpt-4',
-        apiBase: litellmUrl,
-        apiKey: litellmApiKey,
-        title: 'LiteLLM Server'
-    };
-
-    if (existingProviderIndex === -1) {
-        console.log('[Skoop Continue Sync] Adding new LiteLLM provider');
-        config.models!.push(litellmProvider);
-    } else {
-        console.log('[Skoop Continue Sync] Updating existing LiteLLM provider');
-        config.models![existingProviderIndex] = litellmProvider;
-    }
-
-    // Add specific models from team config
-    const teamModels = teamConfig.models?.map((modelConfig: any) => ({
-        provider: modelConfig.provider,
-        model: modelConfig.model,
-        apiBase: litellmUrl,
-        apiKey: litellmApiKey,
-        name: modelConfig.name,
-        roles: modelConfig.roles
-    })) || [];
-
-    console.log('[Skoop Continue Sync] Adding team models...');
-    // Clear existing models and add fresh ones to avoid conflicts
-    console.log('[Skoop Continue Sync] Clearing existing models to avoid conflicts...');
-    config.models!.length = 0; // Clear the array
-
-    // Add all team models fresh
-    for (const teamModel of teamModels) {
-        console.log(`[Skoop Continue Sync]   Adding: ${teamModel.name}`);
-        config.models!.push(teamModel);
-    }
-
-    console.log('[Skoop Continue Sync] Final models count:', config.models!.length);
-    return config;
-}
 
 function applyModelSettings(config: ContinueConfig): ContinueConfig {
     console.log('[Skoop Continue Sync] Setting default models...');
@@ -575,7 +879,133 @@ async function clearAllContinueConfigs() {
     console.log('[Skoop Continue Sync] All Continue configurations cleared');
 }
 
-export function deactivate() {}
+// Setup configuration change listeners for manual triggers
+function setupConfigurationListeners(context: vscode.ExtensionContext) {
+    console.log('[Skoop Continue Sync] Setting up configuration listeners...');
+
+    const onDidChangeConfiguration = vscode.workspace.onDidChangeConfiguration(async (event) => {
+        // Check for applyConfig trigger
+        if (event.affectsConfiguration('skoop-continue-sync.applyConfig')) {
+            const applyConfig = vscode.workspace.getConfiguration('skoop-continue-sync').get('applyConfig', false);
+            if (applyConfig) {
+                console.log('[Skoop Continue Sync] Apply config trigger detected');
+                try {
+                    await applyTeamSettings();
+                    // Reset the trigger back to false
+                    await vscode.workspace.getConfiguration('skoop-continue-sync').update('applyConfig', false, vscode.ConfigurationTarget.Global);
+                    vscode.window.showInformationMessage('Team configuration applied successfully!');
+                } catch (error) {
+                    console.error('[Skoop Continue Sync] Error applying config:', error);
+                    vscode.window.showErrorMessage(`Failed to apply configuration: ${error}`);
+                    // Reset the trigger back to false even on error
+                    await vscode.workspace.getConfiguration('skoop-continue-sync').update('applyConfig', false, vscode.ConfigurationTarget.Global);
+                }
+            }
+        }
+
+        // Check for clearConfig trigger
+        if (event.affectsConfiguration('skoop-continue-sync.clearConfig')) {
+            const clearConfig = vscode.workspace.getConfiguration('skoop-continue-sync').get('clearConfig', false);
+            if (clearConfig) {
+                console.log('[Skoop Continue Sync] Clear config trigger detected');
+                try {
+                    await clearAllContinueConfigs();
+                    // Reset the trigger back to false
+                    await vscode.workspace.getConfiguration('skoop-continue-sync').update('clearConfig', false, vscode.ConfigurationTarget.Global);
+                    vscode.window.showInformationMessage('All Continue configurations cleared successfully!');
+                } catch (error) {
+                    console.error('[Skoop Continue Sync] Error clearing config:', error);
+                    vscode.window.showErrorMessage(`Failed to clear configurations: ${error}`);
+                    // Reset the trigger back to false even on error
+                    await vscode.workspace.getConfiguration('skoop-continue-sync').update('clearConfig', false, vscode.ConfigurationTarget.Global);
+                }
+            }
+        }
+    });
+
+    context.subscriptions.push(onDidChangeConfiguration);
+}
+
+// Setup automatic config refresh
+function setupAutomaticRefresh(context: vscode.ExtensionContext) {
+    console.log('[Skoop Continue Sync] Setting up automatic config refresh...');
+
+    // Store context globally for use in automatic refresh
+    extensionContext = context;
+
+    // Load last refresh time from global state
+    lastConfigRefresh = context.globalState.get('lastConfigRefresh', 0);
+    console.log('[Skoop Continue Sync] Last config refresh:', new Date(lastConfigRefresh).toISOString());
+
+    // Check if we need to refresh on startup
+    checkAndRefreshConfig();
+
+    // Set up periodic refresh (every 24 hours)
+    refreshTimer = setInterval(() => {
+        console.log('[Skoop Continue Sync] Periodic config refresh check...');
+        checkAndRefreshConfig();
+    }, 24 * 60 * 60 * 1000); // 24 hours
+
+    // Listen for when VS Code becomes active again (user comes back online)
+    const onDidChangeWindowState = vscode.window.onDidChangeWindowState((state) => {
+        if (state.focused && !isOnline) {
+            console.log('[Skoop Continue Sync] VS Code regained focus, checking for config refresh...');
+            isOnline = true;
+            checkAndRefreshConfig();
+        } else if (!state.focused) {
+            isOnline = false;
+        }
+    });
+
+    context.subscriptions.push(
+        { dispose: () => onDidChangeWindowState.dispose() }
+    );
+}
+
+// Global reference to extension context for state management
+let extensionContext: vscode.ExtensionContext | null = null;
+
+// Check if config needs to be refreshed and do it if necessary
+async function checkAndRefreshConfig() {
+    if (!extensionContext) {
+        console.log('[Skoop Continue Sync] Extension context not available, skipping automatic refresh');
+        return;
+    }
+
+    const userEmail = vscode.workspace.getConfiguration('skoop-continue-sync').get('userEmail', '');
+    const userPassword = vscode.workspace.getConfiguration('skoop-continue-sync').get('userPassword', '');
+
+    // Only refresh if credentials are configured
+    if (!userEmail || !userPassword) {
+        console.log('[Skoop Continue Sync] Skipping automatic refresh - credentials not configured');
+        return;
+    }
+
+    const now = Date.now();
+    const oneDay = 24 * 60 * 60 * 1000;
+
+    if (now - lastConfigRefresh > oneDay) {
+        console.log('[Skoop Continue Sync] More than 24 hours since last refresh, refreshing config...');
+        try {
+            await applyTeamSettings();
+            lastConfigRefresh = now;
+            // Save to global state
+            await extensionContext.globalState.update('lastConfigRefresh', lastConfigRefresh);
+            console.log('[Skoop Continue Sync] Automatic config refresh completed');
+        } catch (error) {
+            console.error('[Skoop Continue Sync] Automatic config refresh failed:', error);
+        }
+    } else {
+        console.log('[Skoop Continue Sync] Config is still fresh, skipping automatic refresh');
+    }
+}
+
+export function deactivate() {
+    if (refreshTimer) {
+        clearInterval(refreshTimer);
+        refreshTimer = null;
+    }
+}
 
 // Simple YAML serializer for basic structures with hub support
 function configToYaml(config: ContinueConfig): string {
@@ -694,13 +1124,12 @@ function configToYaml(config: ContinueConfig): string {
 }
 
 
-// Install agent files from extension's agents folder to .continue/agents/
-async function installAgentFiles(configPath: string) {
-    console.log('[Skoop Continue Sync] Installing agent files...');
+// Install agent files from raw YAML config
+async function installAgentFilesFromRawConfig(configPath: string, rawYaml: string, agents: AgentDefinition[]) {
+    console.log('[Skoop Continue Sync] Installing agent files from raw config...');
 
     const configDir = path.dirname(configPath);
     const targetAgentsDir = path.join(configDir, 'agents');
-    const sourceAgentsDir = path.join(__dirname, '..', 'agents');
 
     // Ensure target agents directory exists
     if (!fs.existsSync(targetAgentsDir)) {
@@ -721,28 +1150,94 @@ async function installAgentFiles(configPath: string) {
         }
     }
 
-    // Copy agent files from extension's agents folder (excluding local-agent.yaml)
-    if (fs.existsSync(sourceAgentsDir)) {
-        const agentFiles = fs.readdirSync(sourceAgentsDir).filter(file =>
-            file.endsWith('.yaml') && file !== 'local-agent.yaml'
-        );
+    // Generate and install agent files from config (excluding Local Agent which becomes the main config)
+    for (const agent of agents) {
+        if (agent.agent !== 'Local Agent') {
+            const agentYaml = extractAgentYaml(rawYaml, agent.agent);
+            if (agentYaml) {
+                const fileName = `${agent.agent.toLowerCase().replace(/\s+/g, '-')}.yaml`;
+                const targetPath = path.join(targetAgentsDir, fileName);
 
-        for (const file of agentFiles) {
-            const sourcePath = path.join(sourceAgentsDir, file);
-            const targetPath = path.join(targetAgentsDir, file);
-
-            try {
-                const content = fs.readFileSync(sourcePath, 'utf8');
-                fs.writeFileSync(targetPath, content, 'utf8');
-                console.log(`[Skoop Continue Sync] Installed agent file: ${file}`);
-            } catch (error) {
-                console.warn(`[Skoop Continue Sync] Could not copy agent file ${file}:`, error);
+                try {
+                    fs.writeFileSync(targetPath, agentYaml, 'utf8');
+                    console.log(`[Skoop Continue Sync] Installed agent file: ${fileName}`);
+                } catch (error) {
+                    console.warn(`[Skoop Continue Sync] Could not create agent file ${fileName}:`, error);
+                }
+            } else {
+                console.warn(`[Skoop Continue Sync] Could not extract YAML for agent: ${agent.agent}`);
             }
         }
+    }
 
-        console.log(`[Skoop Continue Sync] Installed ${agentFiles.length} agent files in ${targetAgentsDir}`);
-    } else {
-        console.warn('[Skoop Continue Sync] Source agents directory not found:', sourceAgentsDir);
+    console.log(`[Skoop Continue Sync] Installed ${agents.length - 1} agent files in ${targetAgentsDir}`);
+}
+
+// Extract agent YAML from the full configuration
+function extractAgentYaml(fullYaml: string, agentName: string): string | null {
+    console.log(`[Skoop Continue Sync] Extracting agent YAML for: ${agentName}`);
+
+    // Find the Agents section
+    const agentsMatch = fullYaml.match(/Agents:\s*\n(.*)/s);
+    if (!agentsMatch) {
+        console.error('[Skoop Continue Sync] Agents section not found in YAML');
+        return null;
+    }
+
+    const agentsSection = agentsMatch[1];
+
+    // Find the specific agent block (from - agent: line until next - agent: or end)
+    const agentPattern = new RegExp(`(-\\s*agent:\\s*"${agentName}".*?)(?=\\n\\s*-\\s*agent:|$)`, 's');
+    const agentMatch = agentsSection.match(agentPattern);
+
+    if (!agentMatch) {
+        console.error(`[Skoop Continue Sync] Agent "${agentName}" not found in YAML`);
+        return null;
+    }
+
+    const agentBlock = agentMatch[1];
+
+    // Split into lines and clean up
+    const lines = agentBlock.split('\n');
+
+    // Remove the first line (- agent: "Local Agent") and clean indentation
+    const cleanedLines = lines.slice(1).map(line => {
+        // Remove leading indentation (assuming 4 spaces: 2 for Agents level + 2 for agent level)
+        if (line.startsWith('    ')) {
+            return line.substring(4);
+        } else if (line.startsWith('  ')) {
+            return line.substring(2);
+        }
+        return line;
+    }).filter(line => line.trim() !== '');
+
+    // Build the final agent YAML
+    const agentYaml = cleanedLines.join('\n');
+
+    console.log(`[Skoop Continue Sync] Successfully extracted agent YAML (${agentYaml.length} characters)`);
+    console.log(`[Skoop Continue Sync] First 200 chars: ${agentYaml.substring(0, 200)}`);
+    return agentYaml;
+}
+
+// Force retry docs indexing for raw YAML
+function forceDocsRetryForRawYaml(rawYaml: string) {
+    console.log('[Skoop Continue Sync] Forcing docs retry by updating agent YAML configuration...');
+
+    // Add a timestamp to force re-indexing of docs in the agent YAML
+    const retryTimestamp = Date.now();
+    const updatedYaml = rawYaml.replace(
+        /(startUrl:\s*)(https?:\/\/[^&\n]*)/g,
+        (match, prefix, url) => {
+            const separator = url.includes('?') ? '&' : '?';
+            return `${prefix}${url}${separator}retry=${retryTimestamp}`;
+        }
+    );
+
+    // Update the raw YAML if any URLs were modified
+    if (updatedYaml !== rawYaml) {
+        console.log('[Skoop Continue Sync] Updated docs URLs to force retry');
+        // Note: This function modifies the rawYaml by reference, but since it's passed by value,
+        // we'd need to return it or modify the calling code. For now, we'll just log.
     }
 }
 

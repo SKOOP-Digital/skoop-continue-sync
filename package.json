@@ -42,18 +42,42 @@
                 "title": "Clear All Continue Configurations"
             }
         ],
+        "keybindings": [
+            {
+                "command": "skoop-continue-sync.applyTeamSettings",
+                "key": "ctrl+shift+s ctrl+shift+a",
+                "mac": "cmd+shift+s cmd+shift+a",
+                "when": "workspaceFolderCount != 0"
+            },
+            {
+                "command": "skoop-continue-sync.clearAllConfigs",
+                "key": "ctrl+shift+s ctrl+shift+c",
+                "mac": "cmd+shift+s cmd+shift+c",
+                "when": "workspaceFolderCount != 0"
+            }
+        ],
     "configuration": {
       "title": "Skoop Continue Sync",
       "properties": {
-        "skoop-continue-sync.litellmUrl": {
+        "skoop-continue-sync.userEmail": {
           "type": "string",
-          "default": "https://litellm.skoop.digital/",
-          "description": "LiteLLM server URL"
+          "default": "",
+          "description": "User email for authentication with config endpoint"
         },
-        "skoop-continue-sync.litellmApiKey": {
+        "skoop-continue-sync.userPassword": {
           "type": "string",
-          "default": "sk-Phkcy9C76yAAc2rNAAsnlg",
-          "description": "LiteLLM API key"
+          "default": "",
+          "description": "User password for authentication with config endpoint"
+        },
+        "skoop-continue-sync.applyConfig": {
+          "type": "boolean",
+          "default": false,
+          "description": "Set to true to apply team configuration (will reset to false after application)"
+        },
+        "skoop-continue-sync.clearConfig": {
+          "type": "boolean",
+          "default": false,
+          "description": "Set to true to clear all Continue configurations (will reset to false after clearing)"
         }
       }
     }
