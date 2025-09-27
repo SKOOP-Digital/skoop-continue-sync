@@ -549,3 +549,233 @@ Lines added: 13, lines removed: 10
 
 ---
 
+```bash
+npm run compile
+```
+
+```
+PS C:\Users\JoshS\Documents\GitHub\skoop-continue-sync> npm run compile
+
+> skoop-continue-sync@0.0.1 compile
+> tsc -p ./
+```
+
+---
+
+<think><details><summary>Thought Process</summary>Perfect! The code compiles successfully. Let me mark the todo as completed and summarize what I've done.</details></think>
+
+---
+
+## Todo List
+
+- [x] Simplify configuration listeners to call the command palette commands instead of duplicating logic
+
+---
+
+<think><details><summary>Thought Process</summary>Perfect! I've successfully fixed the issue. Let me summarize what I did for the user.</details></think>
+
+---
+
+Perfect! I've fixed the issue with the extension settings not working reliably. Here's what was causing the problem and how I solved it:
+
+## The Problem
+The extension settings (`applyConfig` and `clearConfig`) were implemented with configuration change listeners that duplicated the logic from the command palette commands. This led to reliability issues where the settings would sometimes stay checked instead of resetting to false.
+
+## The Solution
+I simplified the configuration change listeners to call the same command palette commands (`skoop-continue-sync.applyTeamSettings` and `skoop-continue-sync.clearAllConfigs`) instead of duplicating the logic. This ensures:
+
+1. **Consistent behavior** - The settings-based triggers now use the exact same code paths as the working command palette commands
+2. **Reliable execution** - No more issues with configuration change events not firing properly
+3. **Proper cleanup** - The settings still get reset to false after execution, but now it happens reliably
+
+## Changes Made
+
+### Updated `setupConfigurationListeners()` function:
+- **Before**: Configuration listeners directly called `applyTeamSettings()` and `clearAllContinueConfigs()` functions
+- **After**: Configuration listeners now call `vscode.commands.executeCommand()` to execute the same commands as the command palette
+
+### Benefits:
+- The "Clear Config" setting now does exactly the same thing as running "Clear All Continue Configurations" from the command palette
+- Both settings-based and command palette triggers use identical code paths
+- More reliable execution and cleanup
+- Easier to maintain since there's only one implementation of each function
+
+The extension compiles successfully and should now work consistently whether you trigger actions through the settings checkboxes or the command palette commands. The settings will properly reset to false after execution in all cases.
+
+---
+
+_**User (2025-09-24 05:13Z)**_
+
+3s
+Run npm run lint
+
+> skoop-continue-sync@0.0.1 lint
+> eslint src --ext ts
+
+
+/home/runner/work/skoop-continue-sync/skoop-continue-sync/src/extension.ts
+Error:      8:19  error    'NodeJS' is not defined                              no-undef
+Warning:    123:24  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:    128:24  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:    141:24  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:    146:24  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:    148:20  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:    184:20  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:    196:15  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:    198:18  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:    199:20  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:    219:20  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Error:    316:49  error    Spaces are hard to count. Use {2}                    no-regex-spaces
+Warning:    321:33  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:    325:25  warning  Forbidden non-null assertion                         @typescript-eslint/no-non-null-assertion
+Warning:    340:17  warning  Forbidden non-null assertion                         @typescript-eslint/no-non-null-assertion
+Warning:    385:21  warning  Forbidden non-null assertion                         @typescript-eslint/no-non-null-assertion
+Error:    517:11  error    'fs' is assigned a value but never used              @typescript-eslint/no-unused-vars
+Error:    631:10  error    'forceDocsRetryForAgents' is defined but never used  @typescript-eslint/no-unused-vars
+Error:    649:10  error    'generateAgentYaml' is defined but never used        @typescript-eslint/no-unused-vars
+Warning:    694:26  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:    695:47  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:    699:30  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:    699:74  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:    710:28  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:    711:49  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:    736:33  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:    737:54  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:    738:40  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:    739:58  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:    762:31  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:    763:52  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:    765:53  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:    766:35  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:    766:81  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:    767:35  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:    767:79  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:    768:35  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:    768:87  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:    769:35  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:    771:53  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Error:    783:10  error    'applyModelSettings' is defined but never used       @typescript-eslint/no-unused-vars
+Warning:    785:74  warning  Forbidden non-null assertion                         @typescript-eslint/no-non-null-assertion
+Error:    791:10  error    'applyRulesAndPrompts' is defined but never used     @typescript-eslint/no-unused-vars
+Warning:    791:67  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:    793:64  warning  Forbidden non-null assertion                         @typescript-eslint/no-non-null-assertion
+Warning:    801:39  warning  Forbidden non-null assertion                         @typescript-eslint/no-non-null-assertion
+Warning:    801:67  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:    803:17  warning  Forbidden non-null assertion                         @typescript-eslint/no-non-null-assertion
+Warning:    805:17  warning  Forbidden non-null assertion                         @typescript-eslint/no-non-null-assertion
+Warning:    809:39  warning  Forbidden non-null assertion                         @typescript-eslint/no-non-null-assertion
+Warning:    811:17  warning  Forbidden non-null assertion                         @typescript-eslint/no-non-null-assertion
+Warning:    813:17  warning  Forbidden non-null assertion                         @typescript-eslint/no-non-null-assertion
+Warning:    826:41  warning  Forbidden non-null assertion                         @typescript-eslint/no-non-null-assertion
+Warning:    826:71  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:    828:17  warning  Forbidden non-null assertion                         @typescript-eslint/no-non-null-assertion
+Warning:    830:17  warning  Forbidden non-null assertion                         @typescript-eslint/no-non-null-assertion
+Warning:    834:41  warning  Forbidden non-null assertion                         @typescript-eslint/no-non-null-assertion
+Warning:    836:17  warning  Forbidden non-null assertion                         @typescript-eslint/no-non-null-assertion
+Warning:    838:17  warning  Forbidden non-null assertion                         @typescript-eslint/no-non-null-assertion
+Error:   1024:10  error    'configToYaml' is defined but never used             @typescript-eslint/no-unused-vars
+Warning:   1036:27  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:   1038:48  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:   1039:31  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:   1041:73  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:   1045:31  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:   1047:35  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:   1049:54  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:   1067:31  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:   1069:44  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:   1098:26  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:   1100:47  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:   1114:28  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Warning:   1116:49  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+Error:   1258:10  error    'parseYamlToConfig' is defined but never used        @typescript-eslint/no-unused-vars
+Warning:   1278:21  warning  Forbidden non-null assertion                         @typescript-eslint/no-non-null-assertion
+Warning:   1287:33  warning  Forbidden non-null assertion                         @typescript-eslint/no-non-null-assertion
+Warning:   1288:21  warning  Forbidden non-null assertion                         @typescript-eslint/no-non-null-assertion
+Warning:   1288:34  warning  Forbidden non-null assertion                         @typescript-eslint/no-non-null-assertion
+Warning:   1293:37  warning  Forbidden non-null assertion                         @typescript-eslint/no-non-null-assertion
+Warning:   1294:21  warning  Forbidden non-null assertion                         @typescript-eslint/no-non-null-assertion
+Warning:   1294:34  warning  Forbidden non-null assertion                         @typescript-eslint/no-non-null-assertion
+
+✖ 81 problems (9 errors, 72 warnings)
+  1 error and 0 warnings potentially fixable with the `--fix` option.
+
+Error: Process completed with exit code 1.
+
+
+github actions gives this error
+
+---
+
+_**Assistant**_
+
+<think><details><summary>Thought Process</summary>The user is showing me ESLint errors from a GitHub Actions run. There are several issues:
+</details></think>
+
+---
+
+## Todo List
+
+- [ ] Fix 'NodeJS' is not defined error by importing proper types
+- [ ] Remove unused function definitions or add eslint-disable comments
+- [ ] Fix the regex with multiple spaces on line 316
+- [ ] Remove unused fs import on line 517
+
+---
+
+<think><details><summary>Thought Process</summary>Let me start by checking the current imports and see what needs to be fixed.</details></think>
+
+---
+
+Read file: undefined
+
+---
+
+<think><details><summary>Thought Process</summary>I see the issue. The NodeJS.Timeout type is used on line 8, but NodeJS types aren't imported. I need to add the NodeJS import. Let me check the package.json to see what TypeScript version and node types are being used.</details></think>
+
+---
+
+Read file: undefined
+
+---
+
+<think><details><summary>Thought Process</summary>Good, @types/node is installed. Now let me start fixing the issues. First, I'll fix the NodeJS import issue.</details></think>
+
+---
+
+## Todo List
+
+- [-] Fix 'NodeJS' is not defined error by importing proper types
+- [ ] Remove unused function definitions or add eslint-disable comments
+- [ ] Fix the regex with multiple spaces on line 316
+- [ ] Remove unused fs import on line 517
+
+---
+
+<think><details><summary>Thought Process</summary>I need to import the NodeJS types. Since @types/node is installed, I should be able to import NodeJS. Let me add the import.</details></think>
+
+---
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+undefined
+
+**Chunk 1**
+Lines added: 1, lines removed: undefined
+
+```diff
+@@ -3,4 +3,5 @@
+  import * as path from 'path';
+  import * as https from 'https';
++ import { Timer } from 'timers';
+  
+  // Global state for automatic refresh
+```
+
+</details>
+
+---
+
+
+
+---
+

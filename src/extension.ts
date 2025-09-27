@@ -5,7 +5,7 @@ import * as https from 'https';
 
 // Global state for automatic refresh
 let lastConfigRefresh = 0;
-let refreshTimer: NodeJS.Timeout | null = null;
+let refreshTimer: ReturnType<typeof setInterval> | null = null;
 let isOnline = true;
 
 export function activate(context: vscode.ExtensionContext) {
@@ -148,14 +148,6 @@ interface ModelConfig {
     [key: string]: any;
 }
 
-interface AgentConfig {
-    name: string;
-    description?: string;
-    model: string;
-    tools?: string[];
-    prompt?: string;
-    [key: string]: string | string[] | undefined;
-}
 
 interface RuleConfig {
     name?: string;
@@ -204,20 +196,6 @@ interface TeamConfig {
     Agents?: AgentDefinition[];
 }
 
-interface ContinueConfig {
-    name?: string;
-    version?: string;
-    schema?: string;
-    experimental?: {
-        useChromiumForDocsCrawling?: boolean;
-    };
-    models?: ModelConfig[];
-    agents?: AgentConfig[];
-    rules?: RuleConfig[];
-    prompts?: PromptConfig[];
-    docs?: DocConfig[];
-    [key: string]: any;
-}
 
 // Fetch configuration from HTTP endpoint
 async function fetchTeamConfig(): Promise<TeamConfig & { rawYaml: string }> {
@@ -313,7 +291,7 @@ function processRawYamlConfig(yamlContent: string): TeamConfig & { rawYaml: stri
 
     try {
         // Simple parsing to extract settings
-        const settingsMatch = yamlContent.match(/settings:\s*\n((?:  - .*\n?)*)/);
+        const settingsMatch = yamlContent.match(/settings:\s*\n((?:[ ]{2}- .*\n?)*)/);
         if (settingsMatch) {
             const settingsBlock = settingsMatch[1];
             const settingsLines = settingsBlock.split('\n').filter(line => line.trim());
@@ -514,7 +492,6 @@ async function ensureChromiumAvailable() {
 
     const os = require('os');
     const path = require('path');
-    const fs = require('fs');
 
     // Check common Chromium installation locations
     const possiblePaths = [
@@ -627,221 +604,11 @@ async function configureContinueSettingsFromConfig(settings: SettingsConfig[]) {
     }
 }
 
-// Force retry docs indexing by updating timestamp for agents
-function forceDocsRetryForAgents(agents: AgentDefinition[]) {
-    console.log('[Skoop Continue Sync] Forcing docs retry by updating agent configurations...');
-
-    for (const agent of agents) {
-        if (agent.docs && Array.isArray(agent.docs) && agent.docs.length > 0) {
-            agent.docs.forEach((doc: DocConfig) => {
-                if (doc.startUrl) {
-                    // Add a cache-busting parameter
-                    const separator = doc.startUrl.includes('?') ? '&' : '?';
-                    doc.startUrl = `${doc.startUrl}${separator}retry=${Date.now()}`;
-                    console.log(`[Skoop Continue Sync] Updated docs URL to force retry: ${doc.startUrl}`);
-                }
-            });
-        }
-    }
-}
-
-// Generate YAML for an agent
-function generateAgentYaml(agent: AgentDefinition): string {
-    let yaml = '';
-
-    yaml += `name: "${agent.name}"\n`;
-    yaml += `version: "${agent.version}"\n`;
-    yaml += `schema: "${agent.schema}"\n`;
-    yaml += `description: "${agent.description}"\n\n`;
-
-    // Add models section
-    if (agent.models && agent.models.length > 0) {
-        yaml += '# Models section - using LiteLLM models\n';
-        yaml += 'models:\n';
-        for (const model of agent.models) {
-            yaml += `  - name: "${model.name || model.model}"\n`;
-            if (model.provider) yaml += `    provider: ${model.provider}\n`;
-            if (model.model) yaml += `    model: ${model.model}\n`;
-            if (model.apiKey) yaml += `    apiKey: "${model.apiKey}"\n`;
-            if (model.apiBase) yaml += `    apiBase: ${model.apiBase}\n`;
-            if (model.roles && model.roles.length > 0) {
-                yaml += '    roles:\n';
-                for (const role of model.roles) {
-                    yaml += `      - ${role}\n`;
-                }
-            }
-            if (model.capabilities && model.capabilities.length > 0) {
-                yaml += '    capabilities:\n';
-                for (const capability of model.capabilities) {
-                    yaml += `      - ${capability}\n`;
-                }
-            }
-            if (model.defaultCompletionOptions) {
-                yaml += '    defaultCompletionOptions:\n';
-                const opts = model.defaultCompletionOptions;
-                if (opts.temperature !== undefined) yaml += `      temperature: ${opts.temperature}\n`;
-                if (opts.maxTokens) yaml += `      maxTokens: ${opts.maxTokens}\n`;
-            }
-        }
-        yaml += '\n';
-    }
-
-    // Add rules section
-    if (agent.rules && agent.rules.length > 0) {
-        yaml += '# Rules section\n';
-        yaml += 'rules:\n';
-        for (const rule of agent.rules) {
-            if ((rule as any).uses) {
-                yaml += `  - uses: ${(rule as any).uses}\n`;
-            } else {
-                yaml += `  - name: "${rule.name}"\n`;
-                if (rule.rule) yaml += `    rule: "${rule.rule}"\n`;
-                if ((rule as any).globs) yaml += `    globs: "${(rule as any).globs}"\n`;
-            }
-        }
-        yaml += '\n';
-    }
-
-    // Add prompts section
-    if (agent.prompts && agent.prompts.length > 0) {
-        yaml += '# Prompts section\n';
-        yaml += 'prompts:\n';
-        for (const prompt of agent.prompts) {
-            if ((prompt as any).uses) {
-                yaml += `  - uses: ${(prompt as any).uses}\n`;
-            } else {
-                yaml += `  - name: "${prompt.name}"\n`;
-                if (prompt.description) yaml += `    description: "${prompt.description}"\n`;
-                if (prompt.prompt) {
-                    if (prompt.prompt.includes('\n')) {
-                        yaml += '    prompt: |\n';
-                        const lines = prompt.prompt.split('\n');
-                        for (const line of lines) {
-                            yaml += `      ${line}\n`;
-                        }
-                    } else {
-                        yaml += `    prompt: "${prompt.prompt}"\n`;
-                    }
-                }
-            }
-        }
-        yaml += '\n';
-    }
-
-    // Add context section
-    if (agent.context && agent.context.length > 0) {
-        yaml += '# Context providers section\n';
-        yaml += 'context:\n';
-        for (const contextItem of agent.context) {
-            if ((contextItem as any).uses) {
-                yaml += `  - uses: ${(contextItem as any).uses}\n`;
-            } else if ((contextItem as any).provider) {
-                yaml += `  - provider: ${(contextItem as any).provider}\n`;
-            }
-        }
-        yaml += '\n';
-    }
-
-    // Add docs section
-    if (agent.docs && agent.docs.length > 0) {
-        yaml += '# Documentation sources\n';
-        yaml += 'docs:\n';
-        for (const doc of agent.docs) {
-            yaml += `  - name: "${doc.name}"\n`;
-            yaml += `    startUrl: ${doc.startUrl}\n`;
-            if (doc.favicon) yaml += `    favicon: ${doc.favicon}\n`;
-        }
-        yaml += '\n';
-    }
-
-    // Add MCP Servers section
-    if (agent.mcpServers && agent.mcpServers.length > 0) {
-        yaml += '# MCP Servers section\n';
-        yaml += 'mcpServers:\n';
-        for (const mcpServer of agent.mcpServers) {
-            if ((mcpServer as any).uses) {
-                yaml += `  - uses: ${(mcpServer as any).uses}\n`;
-            } else {
-                yaml += `  - name: "${(mcpServer as any).name}"\n`;
-                if ((mcpServer as any).type) yaml += `    type: ${(mcpServer as any).type}\n`;
-                if ((mcpServer as any).url) yaml += `    url: ${(mcpServer as any).url}\n`;
-                if ((mcpServer as any).command) yaml += `    command: ${(mcpServer as any).command}\n`;
-                if ((mcpServer as any).args) {
-                    yaml += '    args:\n';
-                    for (const arg of (mcpServer as any).args) {
-                        yaml += `      - "${arg}"\n`;
-                    }
-                }
-            }
-        }
-    }
-
-    return yaml;
-}
 
 
-function applyModelSettings(config: ContinueConfig): ContinueConfig {
-    console.log('[Skoop Continue Sync] Setting default models...');
-    console.log('[Skoop Continue Sync] Models before setting defaults:', config.models!.length);
-
-    return config;
-}
 
 
-function applyRulesAndPrompts(config: ContinueConfig, teamConfig: any): ContinueConfig {
-    console.log('[Skoop Continue Sync] Applying rules and prompts...');
-    console.log('[Skoop Continue Sync] Existing rules count:', config.rules!.length);
 
-    const teamRules = teamConfig.rules || [];
-
-    // Add rules if they don't exist
-    for (const rule of teamRules) {
-        // Handle hub blocks (uses syntax)
-        if (rule.uses) {
-            const existingRuleIndex = config.rules!.findIndex((r: any) => r.uses === rule.uses);
-            if (existingRuleIndex === -1) {
-                config.rules!.push(rule);
-            } else {
-                config.rules![existingRuleIndex] = rule;
-            }
-        } else {
-            // Handle local blocks
-            const existingRuleIndex = config.rules!.findIndex((r: RuleConfig) => r.name === rule.name);
-            if (existingRuleIndex === -1) {
-                config.rules!.push(rule);
-            } else {
-                config.rules![existingRuleIndex] = rule;
-            }
-        }
-    }
-
-    // Apply global prompts (already initialized as empty array)
-
-    const teamPrompts = teamConfig.prompts || [];
-
-    // Add prompts if they don't exist
-    for (const prompt of teamPrompts) {
-        // Handle hub blocks (uses syntax)
-        if (prompt.uses) {
-            const existingPromptIndex = config.prompts!.findIndex((p: any) => p.uses === prompt.uses);
-            if (existingPromptIndex === -1) {
-                config.prompts!.push(prompt);
-            } else {
-                config.prompts![existingPromptIndex] = prompt;
-            }
-        } else {
-            // Handle local blocks
-            const existingPromptIndex = config.prompts!.findIndex((p: PromptConfig) => p.name === prompt.name);
-            if (existingPromptIndex === -1) {
-                config.prompts!.push(prompt);
-            } else {
-                config.prompts![existingPromptIndex] = prompt;
-            }
-        }
-    }
-
-    return config;
-}
 
 // Clear all Continue.dev configurations
 async function clearAllContinueConfigs() {
@@ -1020,121 +787,6 @@ export function deactivate() {
     }
 }
 
-// Simple YAML serializer for basic structures with hub support
-function configToYaml(config: ContinueConfig): string {
-    let yaml = '';
-
-    // Add basic fields
-    if (config.name) yaml += `name: "${config.name}"\n`;
-    if (config.version) yaml += `version: "${config.version}"\n`;
-    if (config.schema) yaml += `schema: "${config.schema}"\n`;
-
-    // Add models - support both hub and local formats
-    if (config.models && config.models.length > 0) {
-        yaml += '\nmodels:\n';
-        for (const model of config.models) {
-            if ((model as any).uses) {
-                // Hub reference format
-                yaml += `  - uses: ${(model as any).uses}\n`;
-                if ((model as any).with) {
-                    yaml += '    with:\n';
-                    for (const [key, value] of Object.entries((model as any).with)) {
-                        yaml += `      ${key}: "${value}"\n`;
-                    }
-                }
-                if ((model as any).override) {
-                    yaml += '    override:\n';
-                    if ((model as any).override.roles) {
-                        yaml += '      roles:\n';
-                        for (const role of (model as any).override.roles) {
-                            yaml += `        - ${role}\n`;
-                        }
-                    }
-                }
-            } else {
-                // Local model format
-                yaml += '  - name: "' + (model.title || model.name || model.model) + '"\n';
-                yaml += '    provider: ' + model.provider + '\n';
-                yaml += '    model: ' + model.model + '\n';
-                if (model.apiKey) yaml += '    apiKey: "' + model.apiKey + '"\n';
-                if (model.apiBase) yaml += '    apiBase: ' + model.apiBase + '\n';
-                if (model.roles && model.roles.length > 0) {
-                    yaml += '    roles:\n';
-                    for (const role of model.roles) {
-                        yaml += '      - ' + role + '\n';
-                    }
-                }
-                if ((model as any).defaultCompletionOptions) {
-                    yaml += '    defaultCompletionOptions:\n';
-                    const opts = (model as any).defaultCompletionOptions;
-                    if (opts.contextLength) yaml += `      contextLength: ${opts.contextLength}\n`;
-                    if (opts.maxTokens) yaml += `      maxTokens: ${opts.maxTokens}\n`;
-                }
-            }
-        }
-    }
-
-    // Add agents
-    if (config.agents && config.agents.length > 0) {
-        yaml += '\nagents:\n';
-        for (const agent of config.agents) {
-            yaml += '  - name: "' + agent.name + '"\n';
-            if (agent.description) yaml += '    description: "' + agent.description + '"\n';
-            yaml += '    model: ' + agent.model + '\n';
-            if (agent.tools && agent.tools.length > 0) {
-                yaml += '    tools:\n';
-                for (const tool of agent.tools) {
-                    yaml += '      - ' + tool + '\n';
-                }
-            }
-            if (agent.prompt) yaml += '    prompt: "' + agent.prompt.replace(/"/g, '\\"') + '"\n';
-        }
-    }
-
-    // Add rules - support both hub and local formats
-    if (config.rules && config.rules.length > 0) {
-        yaml += '\nrules:\n';
-        for (const rule of config.rules) {
-            if ((rule as any).uses) {
-                // Hub reference format
-                yaml += `  - uses: ${(rule as any).uses}\n`;
-            } else {
-                // Local rule format
-                if (rule.name) yaml += '  - name: "' + rule.name + '"\n';
-                if (rule.description) yaml += '    description: "' + rule.description + '"\n';
-                if (rule.rule) yaml += '    rule: "' + rule.rule.replace(/"/g, '\\"') + '"\n';
-            }
-        }
-    }
-
-    // Add prompts - support both hub and local formats
-    if (config.prompts && config.prompts.length > 0) {
-        yaml += '\nprompts:\n';
-        for (const prompt of config.prompts) {
-            if ((prompt as any).uses) {
-                // Hub reference format
-                yaml += `  - uses: ${(prompt as any).uses}\n`;
-            } else {
-                // Local prompt format
-                if (prompt.name) yaml += '  - name: "' + prompt.name + '"\n';
-                if (prompt.description) yaml += '    description: "' + prompt.description + '"\n';
-                if (prompt.prompt) yaml += '    prompt: "' + prompt.prompt.replace(/"/g, '\\"').replace(/\n/g, '\\n') + '"\n';
-            }
-        }
-    }
-
-    // Add docs
-    if (config.docs && config.docs.length > 0) {
-        yaml += '\ndocs:\n';
-        for (const doc of config.docs) {
-            yaml += '  - name: "' + doc.name + '"\n';
-            yaml += '    startUrl: ' + doc.startUrl + '\n';
-            if (doc.favicon) yaml += '    favicon: ' + doc.favicon + '\n';
-        }
-    }
-
-    return yaml;
-}
 
 
 // Install agent files from raw YAML config
@@ -1252,50 +904,4 @@ function forceDocsRetryForRawYaml(rawYaml: string) {
         // Note: This function modifies the rawYaml by reference, but since it's passed by value,
         // we'd need to return it or modify the calling code. For now, we'll just log.
     }
-}
-
-// Simple YAML parser to extract docs section for retry logic
-function parseYamlToConfig(yamlContent: string): ContinueConfig {
-    const config: ContinueConfig = {
-        docs: []
-    };
-
-    // Simple parsing to extract docs section
-    const lines = yamlContent.split('\n');
-    let inDocsSection = false;
-
-    for (const line of lines) {
-        if (line.trim() === 'docs:') {
-            inDocsSection = true;
-            continue;
-        }
-
-        if (inDocsSection) {
-            if (line.startsWith('  - name:')) {
-                // Extract doc name
-                const nameMatch = line.match(/name:\s*"([^"]+)"/);
-                if (nameMatch) {
-                    config.docs!.push({
-                        name: nameMatch[1],
-                        startUrl: '',
-                        favicon: ''
-                    });
-                }
-            } else if (line.startsWith('    startUrl:')) {
-                // Extract startUrl
-                const urlMatch = line.match(/startUrl:\s*(.+)/);
-                if (urlMatch && config.docs!.length > 0) {
-                    config.docs![config.docs!.length - 1].startUrl = urlMatch[1];
-                }
-            } else if (line.startsWith('    favicon:')) {
-                // Extract favicon
-                const faviconMatch = line.match(/favicon:\s*(.+)/);
-                if (faviconMatch && config.docs!.length > 0) {
-                    config.docs![config.docs!.length - 1].favicon = faviconMatch[1];
-                }
-            }
-        }
-    }
-
-    return config;
 }
