@@ -1,4 +1,10 @@
 settings:
+  - name: "continueignore"
+    .specstory/
+    .gitignore
+    node_modules/
+    *.specstory
+    .git/
 
 Agents:
   - agent: "Local Agent"

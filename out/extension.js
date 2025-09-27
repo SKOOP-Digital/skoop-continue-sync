@@ -351,47 +351,24 @@ async function applyTeamSettings() {
     }
 }
 async function findContinueConfigPath() {
-    console.log('[Skoop Continue Sync] Searching for Continue config file...');
-    // Try to find Continue config in common locations (prefer JSON over YAML)
-    const possiblePaths = [
-        path.join(vscode.workspace.rootPath || '', '.continue', 'config.json'),
-        path.join(vscode.workspace.rootPath || '', '.continue', 'config.yaml'),
-        path.join(process.env.HOME || '', '.continue', 'config.json'),
-        path.join(process.env.HOME || '', '.continue', 'config.yaml'),
-        path.join(process.env.USERPROFILE || '', '.continue', 'config.json'),
-        path.join(process.env.USERPROFILE || '', '.continue', 'config.yaml'),
-    ];
-    console.log('[Skoop Continue Sync] Checking possible config paths:');
-    for (const configPath of possiblePaths) {
-        console.log(`[Skoop Continue Sync]   Checking: ${configPath}`);
-        console.log(`[Skoop Continue Sync]   Exists: ${fs.existsSync(configPath)}`);
-        if (fs.existsSync(configPath)) {
-            console.log(`[Skoop Continue Sync]   Found existing config at: ${configPath}`);
-            return configPath;
+    console.log('[Skoop Continue Sync] Finding global Continue config path...');
+    // Always use global .continue directory with YAML format
+    const globalContinueDir = path.join(process.env.HOME || process.env.USERPROFILE || '', '.continue');
+    const configPath = path.join(globalContinueDir, 'config.yaml');
+    console.log(`[Skoop Continue Sync] Using global config path: ${configPath}`);
+    // Ensure the global .continue directory exists
+    if (!fs.existsSync(globalContinueDir)) {
+        try {
+            fs.mkdirSync(globalContinueDir, { recursive: true });
+            console.log('[Skoop Continue Sync] Created global .continue directory');
+        }
+        catch (error) {
+            console.error('[Skoop Continue Sync] Error creating global .continue directory:', error);
+            return null;
         }
     }
-    console.log('[Skoop Continue Sync] No existing config found, will create new one');
-    // If no existing config found, create one in the workspace
-    if (vscode.workspace.rootPath) {
-        const workspaceConfigPath = path.join(vscode.workspace.rootPath, '.continue', 'config.json');
-        console.log(`[Skoop Continue Sync] Creating new config at workspace: ${workspaceConfigPath}`);
-        const continueDir = path.dirname(workspaceConfigPath);
-        console.log(`[Skoop Continue Sync] Creating directory if needed: ${continueDir}`);
-        if (!fs.existsSync(continueDir)) {
-            try {
-                fs.mkdirSync(continueDir, { recursive: true });
-                console.log('[Skoop Continue Sync] Directory created successfully');
-            }
-            catch (error) {
-                console.error('[Skoop Continue Sync] Error creating directory:', error);
-                return null;
-            }
-        }
-        console.log(`[Skoop Continue Sync] Will use new config path: ${workspaceConfigPath}`);
-        return workspaceConfigPath;
-    }
-    console.error('[Skoop Continue Sync] No workspace root path found, cannot create config');
-    return null;
+    console.log(`[Skoop Continue Sync] Will use config path: ${configPath}`);
+    return configPath;
 }
 // Ensure Chromium is available for docs crawling
 async function ensureChromiumAvailable() {
@@ -462,6 +439,32 @@ async function configureContinueSettingsFromConfig(settings) {
                             console.log(`[Skoop Continue Sync] ${settingKey} already set to ${desiredValue}`);
                         }
                     }
+                }
+            }
+            // Handle continueignore section
+            if (setting.name === 'continueignore') {
+                console.log('[Skoop Continue Sync] Processing continueignore settings...');
+                // Get the global .continue directory path
+                const globalContinueDir = path.join(process.env.HOME || process.env.USERPROFILE || '', '.continue');
+                const continueIgnorePath = path.join(globalContinueDir, '.continueignore');
+                // Collect all ignore patterns from the setting
+                const ignorePatterns = [];
+                for (const [key, value] of Object.entries(setting)) {
+                    if (key === 'name')
+                        continue; // Skip the name field
+                    // Each value should be an ignore pattern (string)
+                    if (typeof value === 'string') {
+                        ignorePatterns.push(value);
+                    }
+                }
+                if (ignorePatterns.length > 0) {
+                    // Write the patterns to .continueignore file
+                    const ignoreContent = ignorePatterns.join('\n') + '\n';
+                    fs.writeFileSync(continueIgnorePath, ignoreContent, 'utf8');
+                    console.log(`[Skoop Continue Sync] Updated .continueignore file with ${ignorePatterns.length} patterns`);
+                }
+                else {
+                    console.log('[Skoop Continue Sync] No ignore patterns found in continueignore setting');
                 }
             }
         }
@@ -699,11 +702,12 @@ async function clearAllContinueConfigs() {
         const emptyConfig = `name: "Empty Config"\nversion: "1.0.0"\nschema: "v1"\n\nmodels: []\nrules: []\nprompts: []\ndocs: []\n`;
         fs.writeFileSync(configPath, emptyConfig, 'utf8');
         console.log('[Skoop Continue Sync] Cleared main config file content');
-        // Also create empty config.json if it exists
-        const jsonConfigPath = configPath.replace('.yaml', '.json');
+        // Also clear any existing config.json file in the global directory
+        const continueDir = path.dirname(configPath);
+        const jsonConfigPath = path.join(continueDir, 'config.json');
         if (fs.existsSync(jsonConfigPath)) {
-            fs.writeFileSync(jsonConfigPath, '{}', 'utf8');
-            console.log('[Skoop Continue Sync] Cleared config.json content');
+            fs.unlinkSync(jsonConfigPath);
+            console.log('[Skoop Continue Sync] Removed legacy config.json file');
         }
     }
     // Clear all subdirectories
@@ -733,18 +737,20 @@ function setupConfigurationListeners(context) {
         if (event.affectsConfiguration('skoop-continue-sync.applyConfig')) {
             const applyConfig = vscode.workspace.getConfiguration('skoop-continue-sync').get('applyConfig', false);
             if (applyConfig) {
-                console.log('[Skoop Continue Sync] Apply config trigger detected');
+                console.log('[Skoop Continue Sync] Apply config trigger detected via settings');
+                // Execute the same command as the command palette
                 try {
-                    await applyTeamSettings();
-                    // Reset the trigger back to false
-                    await vscode.workspace.getConfiguration('skoop-continue-sync').update('applyConfig', false, vscode.ConfigurationTarget.Global);
-                    vscode.window.showInformationMessage('Team configuration applied successfully!');
+                    await vscode.commands.executeCommand('skoop-continue-sync.applyTeamSettings');
                 }
                 catch (error) {
-                    console.error('[Skoop Continue Sync] Error applying config:', error);
-                    vscode.window.showErrorMessage(`Failed to apply configuration: ${error}`);
-                    // Reset the trigger back to false even on error
+                    console.error('[Skoop Continue Sync] Error executing apply command:', error);
+                }
+                // Reset the trigger back to false
+                try {
                     await vscode.workspace.getConfiguration('skoop-continue-sync').update('applyConfig', false, vscode.ConfigurationTarget.Global);
+                }
+                catch (resetError) {
+                    console.error('[Skoop Continue Sync] Error resetting applyConfig setting:', resetError);
                 }
             }
         }
@@ -752,18 +758,20 @@ function setupConfigurationListeners(context) {
         if (event.affectsConfiguration('skoop-continue-sync.clearConfig')) {
             const clearConfig = vscode.workspace.getConfiguration('skoop-continue-sync').get('clearConfig', false);
             if (clearConfig) {
-                console.log('[Skoop Continue Sync] Clear config trigger detected');
+                console.log('[Skoop Continue Sync] Clear config trigger detected via settings');
+                // Execute the same command as the command palette
                 try {
-                    await clearAllContinueConfigs();
-                    // Reset the trigger back to false
-                    await vscode.workspace.getConfiguration('skoop-continue-sync').update('clearConfig', false, vscode.ConfigurationTarget.Global);
-                    vscode.window.showInformationMessage('All Continue configurations cleared successfully!');
+                    await vscode.commands.executeCommand('skoop-continue-sync.clearAllConfigs');
                 }
                 catch (error) {
-                    console.error('[Skoop Continue Sync] Error clearing config:', error);
-                    vscode.window.showErrorMessage(`Failed to clear configurations: ${error}`);
-                    // Reset the trigger back to false even on error
+                    console.error('[Skoop Continue Sync] Error executing clear command:', error);
+                }
+                // Reset the trigger back to false
+                try {
                     await vscode.workspace.getConfiguration('skoop-continue-sync').update('clearConfig', false, vscode.ConfigurationTarget.Global);
+                }
+                catch (resetError) {
+                    console.error('[Skoop Continue Sync] Error resetting clearConfig setting:', resetError);
                 }
             }
         }
