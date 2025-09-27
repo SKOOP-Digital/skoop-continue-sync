@@ -1,0 +1,225 @@
+settings:
+
+    Agents:
+      - agent: "Local Agent"
+        name: "Local Agent"
+        version: "1.0.0"
+        schema: "v1"
+        description: "Default agent"
+    
+        # Models section - using LiteLLM models
+        models:
+          - name: "codestral"
+            provider: mistral
+            model: codestral-latest
+            apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+            apiBase: https://litellm.skoop.digital/mistral/v1/
+            roles:
+              - autocomplete
+            autocompleteOptions:
+              debounceDelay: 500
+              modelTimeout: 150
+              multilineCompletions: always
+          - name: Mercury Coder
+            provider: inception
+            model: mercury-coder
+            apiKey: sk_7bcf94d7caf478cacfb9651eeb022ff7
+            roles:
+              - autocomplete
+            capabilities:
+              - next_edit
+            defaultCompletionOptions:
+              temperature: 0
+              stop:
+                - <|endoftext|>
+                - <|/code_to_edit|>
+            promptTemplates:
+              apply: |-
+                <|original_code|>
+                {{{ original_code }}}
+                <|/original_code|>
+
+                <|update_snippet|>
+                {{{ new_code }}}
+                <|/update_snippet|>
+          - name: "Morph Fast Apply"
+            provider: openai
+            model: morph-v3-large
+            apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+            apiBase: https://litellm.skoop.digital/
+            roles:
+              - apply
+            promptTemplates:
+              apply: |-
+                <code>{{{ original_code }}}</code>
+                <update>{{{ new_code }}}</update>
+              defaultCompletionOptions:
+                maxTokens: 38000
+                temperature: 0
+          - name: "gpt-5-mini"
+            provider: openai
+            model: gpt-5-mini
+            apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+            apiBase: https://litellm.skoop.digital/
+            roles:
+              - chat
+              - edit
+            capabilities:
+              - tool_use
+              - image_input
+          - name: "gemini-2.5-flash"
+            provider: gemini
+            model: gemini-2.5-flash
+            apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+            apiBase: https://litellm.skoop.digital/
+            roles:
+              - chat
+            capabilities:
+              - tool_use
+              - image_input
+          - name: "claude-4-sonnet-20250514"
+            provider: openai
+            model: anthropic/claude-4-sonnet-20250514
+            apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+            apiBase: https://litellm.skoop.digital/
+            roles:
+              - chat
+            defaultCompletionOptions:
+              promptCaching: true
+    
+        # Rules section - mix of hub and local rules
+        rules:
+          - name: "Security Best Practices"
+            rule: "Never commit API keys or sensitive data. Use environment variables for secrets."
+    
+        # Prompts section - mix of hub and local prompts
+        prompts:
+          - name: "Code Review Helper"
+            description: "Assist with code review tasks"
+            prompt: "Help review this code for quality, security, and best practices."
+    
+        # Context providers section
+        context:
+          - uses: continuedev/code-context
+          - uses: continuedev/diff-context
+          - uses: continuedev/folder-context
+          - provider: file
+          - provider: terminal
+          - provider: problems
+          - provider: tree
+    
+        # Documentation sources
+        docs:
+          - name: "Skoop Documentation"
+            startUrl: https://www.skoopsignage.com/
+            favicon: https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://www.skoopsignage.com/&size=16
+    
+      - agent: "Agent 2"
+        name: "Agent 2"
+        version: "1.0.0"
+        schema: "v1"
+        description: "Continue agent with comprehensive development capabilities"
+    
+        # Models section - using LiteLLM models
+        models:
+          - name: "GPT-4 (Team)"
+            provider: openai
+            model: gpt-4
+            apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+            apiBase: https://litellm.skoop.digital/
+            roles:
+              - chat
+              - edit
+              - apply
+              - summarize
+            capabilities:
+              - tool_use
+            defaultCompletionOptions:
+              temperature: 0.7
+              maxTokens: 2000
+          - name: "GPT-3.5 Turbo (Team)"
+            provider: openai
+            model: gpt-3.5-turbo
+            apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+            apiBase: https://litellm.skoop.digital/
+            roles:
+              - chat
+              - autocomplete
+              - summarize
+            capabilities:
+              - tool_use
+            defaultCompletionOptions:
+              temperature: 0.7
+              maxTokens: 2000
+          - name: "GPT-4o (Team)"
+            provider: openai
+            model: gpt-4o
+            apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+            apiBase: https://litellm.skoop.digital/
+            roles:
+              - chat
+              - edit
+              - apply
+              - summarize
+            capabilities:
+              - tool_use
+            defaultCompletionOptions:
+              temperature: 0.7
+              maxTokens: 2000
+    
+        # Rules section - mix of hub and local rules
+        rules:
+          - uses: starter/javascript-rules
+          - name: "Security Best Practices"
+            rule: "Never commit API keys or sensitive data. Use environment variables for secrets."
+            globs: "**/*.{ts,js,json}"
+    
+        # Prompts section - mix of hub and local prompts
+        prompts:
+          - uses: starter/test-prompt
+          - name: "test multiline"
+            description: "test multiline"
+            prompt: |
+              Please create a training loop following these guidelines:
+              - Include validation step
+              - Add proper device handling (CPU/GPU)
+              - Implement gradient clipping
+              - Add learning rate scheduling
+              - Include early stopping
+              - Add progress bars using tqdm
+              - Implement checkpointing
+          - name: "Code Review Helper"
+            description: "Assist with code review tasks"
+            prompt: "Help review this code for quality, security, and best practices."
+    
+        # Context providers section
+        context:
+          - uses: continuedev/code-context
+          - uses: continuedev/diff-context
+          - uses: continuedev/folder-context
+          - provider: file
+          - provider: terminal
+          - provider: problems
+          - provider: tree
+    
+        # Documentation sources
+        docs:
+          - name: "Skoop Documentation"
+            startUrl: https://www.skoopsignage.com/
+            favicon: https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://www.skoopsignage.com/&size=16
+    
+        # MCP Servers section - agent-specific tools
+        mcpServers:
+          - uses: continuedev/continue-docs-mcp
+          - name: Context7 MCP
+            type: streamable-http
+            url: https://mcp.context7.com/mcp
+          - name: Web Fetch
+            command: uvx
+            args:
+              - mcp-server-fetch
+          - name: Memory Store
+            command: npx
+            args:
+              - "-y"
+              - "@modelcontextprotocol/server-memory"
