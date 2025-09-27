@@ -775,7 +775,2144 @@ Lines added: 1, lines removed: undefined
 
 ---
 
+<think><details><summary>Thought Process</summary>Actually, I think the issue is that NodeJS.Timeout is part of the Node.js types. Let me try a different approach - instead of importing Timer, let me just use the NodeJS global type directly. Or better yet, let me check what the actual error is - it might be that I need to reference it differently.
+</details></think>
 
+---
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+undefined
+
+**Chunk 1**
+Lines added: 1, lines removed: 2
+
+```diff
+@@ -3,9 +3,8 @@
+  import * as path from 'path';
+  import * as https from 'https';
+- import { Timer } from 'timers';
+  
+  // Global state for automatic refresh
+  let lastConfigRefresh = 0;
+- let refreshTimer: NodeJS.Timeout | null = null;
++ let refreshTimer: ReturnType<typeof setInterval> | null = null;
+  let isOnline = true;
+  
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Good, that should fix the NodeJS.Timeout issue. Now let me check what functions are unused and need to be removed. From the error output, these functions are unused:
+</details></think>
+
+---
+
+Read file: undefined
+
+---
+
+<think><details><summary>Thought Process</summary>I see - there's a local fs variable being declared inside the function. But since fs is already imported at the top, this local declaration is shadowing it and is unused. Let me remove this unused local declaration.
+</details></think>
+
+---
+
+## Todo List
+
+- [x] Fix 'NodeJS' is not defined error by importing proper types
+- [-] Remove unused function definitions or add eslint-disable comments
+- [ ] Fix the regex with multiple spaces on line 316
+- [ ] Remove unused fs import on line 517
+
+---
+
+<think><details><summary>Thought Process</summary>Let me find the regex spaces issue first.</details></think>
+
+---
+
+Read file: undefined
+
+---
+
+<think><details><summary>Thought Process</summary>I see the issue. The regex `/settings:\s*\n((?:  - .*\n?)*)/` has multiple spaces in the `(?:  - .*\n?)*` part. The linter is complaining about the two spaces after `(?:`. Let me fix this by using a more explicit character class or by escaping the spaces.
+</details></think>
+
+---
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+undefined
+
+**Chunk 1**
+Lines added: 1, lines removed: 1
+
+```diff
+@@ -314,5 +314,5 @@
+      try {
+          // Simple parsing to extract settings
+-         const settingsMatch = yamlContent.match(/settings:\s*\n((?:  - .*\n?)*)/);
++         const settingsMatch = yamlContent.match(/settings:\s*\n((?:[ ]{2}- .*\n?)*)/);
+          if (settingsMatch) {
+              const settingsBlock = settingsMatch[1];
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Good, that should fix the regex spaces issue. Now let me remove the unused fs import inside the function.</details></think>
+
+---
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+undefined
+
+**Chunk 1**
+Lines added: undefined, lines removed: 1
+
+```diff
+@@ -515,5 +515,4 @@
+      const os = require('os');
+      const path = require('path');
+-     const fs = require('fs');
+  
+      // Check common Chromium installation locations
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Now I need to remove the unused functions. Let me check each one and decide whether to remove them or add eslint-disable comments. Since these seem like they might be legacy functions that were used before but are no longer needed, I'll remove them to clean up the code.
+</details></think>
+
+---
+
+
+
+---
+
+<think><details><summary>Thought Process</summary>Let me find where this function ends so I can remove it completely.</details></think>
+
+---
+
+Read file: undefined
+
+---
+
+<think><details><summary>Thought Process</summary>I can see that forceDocsRetryForAgents ends at line 645. Now let me check where generateAgentYaml ends. Let me look for the next function.</details></think>
+
+---
+
+Read file: undefined
+
+---
+
+<think><details><summary>Thought Process</summary>I can see that generateAgentYaml ends at line 779. applyModelSettings starts at line 782 and ends at line 787. Let me continue to find where applyRulesAndPrompts ends.</details></think>
+
+---
+
+Read file: undefined
+
+---
+
+<think><details><summary>Thought Process</summary>So applyRulesAndPrompts ends at line 843. Now let me find configToYaml.</details></think>
+
+---
+
+
+
+---
+
+<think><details><summary>Thought Process</summary>Let me check where configToYaml ends.</details></think>
+
+---
+
+Read file: undefined
+
+---
+
+<think><details><summary>Thought Process</summary>configToYaml ends at line 1136. Now let me find parseYamlToConfig.</details></think>
+
+---
+
+
+
+---
+
+<think><details><summary>Thought Process</summary>Let me find where parseYamlToConfig ends.</details></think>
+
+---
+
+Read file: undefined
+
+---
+
+<think><details><summary>Thought Process</summary>Let me see the end of the file to find where parseYamlToConfig ends.</details></think>
+
+---
+
+Read file: undefined
+
+---
+
+<think><details><summary>Thought Process</summary>Perfect. So parseYamlToConfig ends at line 1300. Now I need to remove all these unused functions. Let me remove them one by one. I'll start with forceDocsRetryForAgents.</details></think>
+
+---
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+undefined
+
+**Chunk 1**
+Lines added: undefined, lines removed: 17
+
+```diff
+@@ -627,21 +627,4 @@
+  }
+  
+- // Force retry docs indexing by updating timestamp for agents
+- function forceDocsRetryForAgents(agents: AgentDefinition[]) {
+-     console.log('[Skoop Continue Sync] Forcing docs retry by updating agent configurations...');
+- 
+-     for (const agent of agents) {
+-         if (agent.docs && Array.isArray(agent.docs) && agent.docs.length > 0) {
+-             agent.docs.forEach((doc: DocConfig) => {
+-                 if (doc.startUrl) {
+-                     // Add a cache-busting parameter
+-                     const separator = doc.startUrl.includes('?') ? '&' : '?';
+-                     doc.startUrl = `${doc.startUrl}${separator}retry=${Date.now()}`;
+-                     console.log(`[Skoop Continue Sync] Updated docs URL to force retry: ${doc.startUrl}`);
+-                 }
+-             });
+-         }
+-     }
+- }
+  
+  // Generate YAML for an agent
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Good. Now let me remove generateAgentYaml. This is a long function, so let me find the exact text to remove.</details></think>
+
+---
+
+Read file: undefined
+
+---
+
+<think><details><summary>Thought Process</summary>I need to remove the generateAgentYaml function. Let me get the exact text from line 630 to line 762.</details></think>
+
+---
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+undefined
+
+**Chunk 1**
+Lines added: 1, lines removed: 134
+
+```diff
+@@ -628,138 +628,5 @@
+  
+  
+- // Generate YAML for an agent
+- function generateAgentYaml(agent: AgentDefinition): string {
+-     let yaml = '';
+- 
+-     yaml += `name: "${agent.name}"\n`;
+-     yaml += `version: "${agent.version}"\n`;
+-     yaml += `schema: "${agent.schema}"\n`;
+-     yaml += `description: "${agent.description}"\n\n`;
+- 
+-     // Add models section
+-     if (agent.models && agent.models.length > 0) {
+-         yaml += '# Models section - using LiteLLM models\n';
+-         yaml += 'models:\n';
+-         for (const model of agent.models) {
+-             yaml += `  - name: "${model.name || model.model}"\n`;
+-             if (model.provider) yaml += `    provider: ${model.provider}\n`;
+-             if (model.model) yaml += `    model: ${model.model}\n`;
+-             if (model.apiKey) yaml += `    apiKey: "${model.apiKey}"\n`;
+-             if (model.apiBase) yaml += `    apiBase: ${model.apiBase}\n`;
+-             if (model.roles && model.roles.length > 0) {
+-                 yaml += '    roles:\n';
+-                 for (const role of model.roles) {
+-                     yaml += `      - ${role}\n`;
+-                 }
+-             }
+-             if (model.capabilities && model.capabilities.length > 0) {
+-                 yaml += '    capabilities:\n';
+-                 for (const capability of model.capabilities) {
+-                     yaml += `      - ${capability}\n`;
+-                 }
+-             }
+-             if (model.defaultCompletionOptions) {
+-                 yaml += '    defaultCompletionOptions:\n';
+-                 const opts = model.defaultCompletionOptions;
+-                 if (opts.temperature !== undefined) yaml += `      temperature: ${opts.temperature}\n`;
+-                 if (opts.maxTokens) yaml += `      maxTokens: ${opts.maxTokens}\n`;
+-             }
+-         }
+-         yaml += '\n';
+-     }
+- 
+-     // Add rules section
+-     if (agent.rules && agent.rules.length > 0) {
+-         yaml += '# Rules section\n';
+-         yaml += 'rules:\n';
+-         for (const rule of agent.rules) {
+-             if ((rule as any).uses) {
+-                 yaml += `  - uses: ${(rule as any).uses}\n`;
+-             } else {
+-                 yaml += `  - name: "${rule.name}"\n`;
+-                 if (rule.rule) yaml += `    rule: "${rule.rule}"\n`;
+-                 if ((rule as any).globs) yaml += `    globs: "${(rule as any).globs}"\n`;
+-             }
+-         }
+-         yaml += '\n';
+-     }
+- 
+-     // Add prompts section
+-     if (agent.prompts && agent.prompts.length > 0) {
+-         yaml += '# Prompts section\n';
+-         yaml += 'prompts:\n';
+-         for (const prompt of agent.prompts) {
+-             if ((prompt as any).uses) {
+-                 yaml += `  - uses: ${(prompt as any).uses}\n`;
+-             } else {
+-                 yaml += `  - name: "${prompt.name}"\n`;
+-                 if (prompt.description) yaml += `    description: "${prompt.description}"\n`;
+-                 if (prompt.prompt) {
+-                     if (prompt.prompt.includes('\n')) {
+-                         yaml += '    prompt: |\n';
+-                         const lines = prompt.prompt.split('\n');
+-                         for (const line of lines) {
+-                             yaml += `      ${line}\n`;
+-                         }
+-                     } else {
+-                         yaml += `    prompt: "${prompt.prompt}"\n`;
+-                     }
+-                 }
+-             }
+-         }
+-         yaml += '\n';
+-     }
+- 
+-     // Add context section
+-     if (agent.context && agent.context.length > 0) {
+-         yaml += '# Context providers section\n';
+-         yaml += 'context:\n';
+-         for (const contextItem of agent.context) {
+-             if ((contextItem as any).uses) {
+-                 yaml += `  - uses: ${(contextItem as any).uses}\n`;
+-             } else if ((contextItem as any).provider) {
+-                 yaml += `  - provider: ${(contextItem as any).provider}\n`;
+-             }
+-         }
+-         yaml += '\n';
+-     }
+- 
+-     // Add docs section
+-     if (agent.docs && agent.docs.length > 0) {
+-         yaml += '# Documentation sources\n';
+-         yaml += 'docs:\n';
+-         for (const doc of agent.docs) {
+-             yaml += `  - name: "${doc.name}"\n`;
+-             yaml += `    startUrl: ${doc.startUrl}\n`;
+-             if (doc.favicon) yaml += `    favicon: ${doc.favicon}\n`;
+-         }
+-         yaml += '\n';
+-     }
+- 
+-     // Add MCP Servers section
+-     if (agent.mcpServers && agent.mcpServers.length > 0) {
+-         yaml += '# MCP Servers section\n';
+-         yaml += 'mcpServers:\n';
+-         for (const mcpServer of agent.mcpServers) {
+-             if ((mcpServer as any).uses) {
+-                 yaml += `  - uses: ${(mcpServer as any).uses}\n`;
+-             } else {
+-                 yaml += `  - name: "${(mcpServer as any).name}"\n`;
+-                 if ((mcpServer as any).type) yaml += `    type: ${(mcpServer as any).type}\n`;
+-                 if ((mcpServer as any).url) yaml += `    url: ${(mcpServer as any).url}\n`;
+-                 if ((mcpServer as any).command) yaml += `    command: ${(mcpServer as any).command}\n`;
+-                 if ((mcpServer as any).args) {
+-                     yaml += '    args:\n';
+-                     for (const arg of (mcpServer as any).args) {
+-                         yaml += `      - "${arg}"\n`;
+-                     }
+-                 }
+-             }
+-         }
+-     }
+- 
+-     return yaml;
+- }
+- 
++ 
+  
+  function applyModelSettings(config: ContinueConfig): ContinueConfig {
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Good. Now let me remove the applyModelSettings function.</details></think>
+
+---
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+undefined
+
+**Chunk 1**
+Lines added: undefined, lines removed: 6
+
+```diff
+@@ -630,11 +630,5 @@
+  
+  
+- function applyModelSettings(config: ContinueConfig): ContinueConfig {
+-     console.log('[Skoop Continue Sync] Setting default models...');
+-     console.log('[Skoop Continue Sync] Models before setting defaults:', config.models!.length);
+  
+-     return config;
+- }
+- 
+  
+  function applyRulesAndPrompts(config: ContinueConfig, teamConfig: any): ContinueConfig {
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Now I need to remove the applyRulesAndPrompts function. Let me find its end. From what I saw earlier, it ends around line 843. Let me get the exact text.</details></think>
+
+---
+
+Read file: undefined
+
+---
+
+<think><details><summary>Thought Process</summary>Let me continue reading to find the end of applyRulesAndPrompts.</details></think>
+
+---
+
+Read file: undefined
+
+---
+
+<think><details><summary>Thought Process</summary>Perfect. So applyRulesAndPrompts ends at line 687. Let me remove it.</details></think>
+
+---
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+undefined
+
+**Chunk 1**
+Lines added: undefined, lines removed: 54
+
+```diff
+@@ -632,58 +632,4 @@
+  
+  
+- function applyRulesAndPrompts(config: ContinueConfig, teamConfig: any): ContinueConfig {
+-     console.log('[Skoop Continue Sync] Applying rules and prompts...');
+-     console.log('[Skoop Continue Sync] Existing rules count:', config.rules!.length);
+- 
+-     const teamRules = teamConfig.rules || [];
+- 
+-     // Add rules if they don't exist
+-     for (const rule of teamRules) {
+-         // Handle hub blocks (uses syntax)
+-         if (rule.uses) {
+-             const existingRuleIndex = config.rules!.findIndex((r: any) => r.uses === rule.uses);
+-             if (existingRuleIndex === -1) {
+-                 config.rules!.push(rule);
+-             } else {
+-                 config.rules![existingRuleIndex] = rule;
+-             }
+-         } else {
+-             // Handle local blocks
+-             const existingRuleIndex = config.rules!.findIndex((r: RuleConfig) => r.name === rule.name);
+-             if (existingRuleIndex === -1) {
+-                 config.rules!.push(rule);
+-             } else {
+-                 config.rules![existingRuleIndex] = rule;
+-             }
+-         }
+-     }
+- 
+-     // Apply global prompts (already initialized as empty array)
+- 
+-     const teamPrompts = teamConfig.prompts || [];
+- 
+-     // Add prompts if they don't exist
+-     for (const prompt of teamPrompts) {
+-         // Handle hub blocks (uses syntax)
+-         if (prompt.uses) {
+-             const existingPromptIndex = config.prompts!.findIndex((p: any) => p.uses === prompt.uses);
+-             if (existingPromptIndex === -1) {
+-                 config.prompts!.push(prompt);
+-             } else {
+-                 config.prompts![existingPromptIndex] = prompt;
+-             }
+-         } else {
+-             // Handle local blocks
+-             const existingPromptIndex = config.prompts!.findIndex((p: PromptConfig) => p.name === prompt.name);
+-             if (existingPromptIndex === -1) {
+-                 config.prompts!.push(prompt);
+-             } else {
+-                 config.prompts![existingPromptIndex] = prompt;
+-             }
+-         }
+-     }
+- 
+-     return config;
+- }
+  
+  // Clear all Continue.dev configurations
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Good. Now I need to remove configToYaml. Let me find its location and remove it. From what I remember, it starts around line 1023. Let me check the current line numbers since I've removed some functions.</details></think>
+
+---
+
+
+
+---
+
+<think><details><summary>Thought Process</summary>Let me find where configToYaml ends now. Since I've removed functions, the line numbers have shifted.</details></think>
+
+---
+
+Read file: undefined
+
+---
+
+<think><details><summary>Thought Process</summary>I can see that configToYaml ends at line 926. Let me remove it.</details></think>
+
+---
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+undefined
+
+**Chunk 1**
+Lines added: 1, lines removed: 116
+
+```diff
+@@ -810,120 +810,5 @@
+  }
+  
+- // Simple YAML serializer for basic structures with hub support
+- function configToYaml(config: ContinueConfig): string {
+-     let yaml = '';
+- 
+-     // Add basic fields
+-     if (config.name) yaml += `name: "${config.name}"\n`;
+-     if (config.version) yaml += `version: "${config.version}"\n`;
+-     if (config.schema) yaml += `schema: "${config.schema}"\n`;
+- 
+-     // Add models - support both hub and local formats
+-     if (config.models && config.models.length > 0) {
+-         yaml += '\nmodels:\n';
+-         for (const model of config.models) {
+-             if ((model as any).uses) {
+-                 // Hub reference format
+-                 yaml += `  - uses: ${(model as any).uses}\n`;
+-                 if ((model as any).with) {
+-                     yaml += '    with:\n';
+-                     for (const [key, value] of Object.entries((model as any).with)) {
+-                         yaml += `      ${key}: "${value}"\n`;
+-                     }
+-                 }
+-                 if ((model as any).override) {
+-                     yaml += '    override:\n';
+-                     if ((model as any).override.roles) {
+-                         yaml += '      roles:\n';
+-                         for (const role of (model as any).override.roles) {
+-                             yaml += `        - ${role}\n`;
+-                         }
+-                     }
+-                 }
+-             } else {
+-                 // Local model format
+-                 yaml += '  - name: "' + (model.title || model.name || model.model) + '"\n';
+-                 yaml += '    provider: ' + model.provider + '\n';
+-                 yaml += '    model: ' + model.model + '\n';
+-                 if (model.apiKey) yaml += '    apiKey: "' + model.apiKey + '"\n';
+-                 if (model.apiBase) yaml += '    apiBase: ' + model.apiBase + '\n';
+-                 if (model.roles && model.roles.length > 0) {
+-                     yaml += '    roles:\n';
+-                     for (const role of model.roles) {
+-                         yaml += '      - ' + role + '\n';
+-                     }
+-                 }
+-                 if ((model as any).defaultCompletionOptions) {
+-                     yaml += '    defaultCompletionOptions:\n';
+-                     const opts = (model as any).defaultCompletionOptions;
+-                     if (opts.contextLength) yaml += `      contextLength: ${opts.contextLength}\n`;
+-                     if (opts.maxTokens) yaml += `      maxTokens: ${opts.maxTokens}\n`;
+-                 }
+-             }
+-         }
+-     }
+- 
+-     // Add agents
+-     if (config.agents && config.agents.length > 0) {
+-         yaml += '\nagents:\n';
+-         for (const agent of config.agents) {
+-             yaml += '  - name: "' + agent.name + '"\n';
+-             if (agent.description) yaml += '    description: "' + agent.description + '"\n';
+-             yaml += '    model: ' + agent.model + '\n';
+-             if (agent.tools && agent.tools.length > 0) {
+-                 yaml += '    tools:\n';
+-                 for (const tool of agent.tools) {
+-                     yaml += '      - ' + tool + '\n';
+-                 }
+-             }
+-             if (agent.prompt) yaml += '    prompt: "' + agent.prompt.replace(/"/g, '\\"') + '"\n';
+-         }
+-     }
+- 
+-     // Add rules - support both hub and local formats
+-     if (config.rules && config.rules.length > 0) {
+-         yaml += '\nrules:\n';
+-         for (const rule of config.rules) {
+-             if ((rule as any).uses) {
+-                 // Hub reference format
+-                 yaml += `  - uses: ${(rule as any).uses}\n`;
+-             } else {
+-                 // Local rule format
+-                 if (rule.name) yaml += '  - name: "' + rule.name + '"\n';
+-                 if (rule.description) yaml += '    description: "' + rule.description + '"\n';
+-                 if (rule.rule) yaml += '    rule: "' + rule.rule.replace(/"/g, '\\"') + '"\n';
+-             }
+-         }
+-     }
+- 
+-     // Add prompts - support both hub and local formats
+-     if (config.prompts && config.prompts.length > 0) {
+-         yaml += '\nprompts:\n';
+-         for (const prompt of config.prompts) {
+-             if ((prompt as any).uses) {
+-                 // Hub reference format
+-                 yaml += `  - uses: ${(prompt as any).uses}\n`;
+-             } else {
+-                 // Local prompt format
+-                 if (prompt.name) yaml += '  - name: "' + prompt.name + '"\n';
+-                 if (prompt.description) yaml += '    description: "' + prompt.description + '"\n';
+-                 if (prompt.prompt) yaml += '    prompt: "' + prompt.prompt.replace(/"/g, '\\"').replace(/\n/g, '\\n') + '"\n';
+-             }
+-         }
+-     }
+- 
+-     // Add docs
+-     if (config.docs && config.docs.length > 0) {
+-         yaml += '\ndocs:\n';
+-         for (const doc of config.docs) {
+-             yaml += '  - name: "' + doc.name + '"\n';
+-             yaml += '    startUrl: ' + doc.startUrl + '\n';
+-             if (doc.favicon) yaml += '    favicon: ' + doc.favicon + '\n';
+-         }
+-     }
+- 
+-     return yaml;
+- }
+- 
++ 
+  
+  // Install agent files from raw YAML config
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Good. Now I need to remove the last unused function, parseYamlToConfig. Let me find it.</details></think>
+
+---
+
+
+
+---
+
+<think><details><summary>Thought Process</summary>Let me find where it ends. Since I've removed functions, the line numbers have shifted again. Let me read around that area.</details></think>
+
+---
+
+Read file: undefined
+
+---
+
+<think><details><summary>Thought Process</summary>Perfect. parseYamlToConfig ends at line 975. Let me remove it.</details></think>
+
+---
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+undefined
+
+**Chunk 1**
+Lines added: undefined, lines removed: 45
+
+```diff
+@@ -929,47 +929,2 @@
+  }
+  
+- // Simple YAML parser to extract docs section for retry logic
+- function parseYamlToConfig(yamlContent: string): ContinueConfig {
+-     const config: ContinueConfig = {
+-         docs: []
+-     };
+- 
+-     // Simple parsing to extract docs section
+-     const lines = yamlContent.split('\n');
+-     let inDocsSection = false;
+- 
+-     for (const line of lines) {
+-         if (line.trim() === 'docs:') {
+-             inDocsSection = true;
+-             continue;
+-         }
+- 
+-         if (inDocsSection) {
+-             if (line.startsWith('  - name:')) {
+-                 // Extract doc name
+-                 const nameMatch = line.match(/name:\s*"([^"]+)"/);
+-                 if (nameMatch) {
+-                     config.docs!.push({
+-                         name: nameMatch[1],
+-                         startUrl: '',
+-                         favicon: ''
+-                     });
+-                 }
+-             } else if (line.startsWith('    startUrl:')) {
+-                 // Extract startUrl
+-                 const urlMatch = line.match(/startUrl:\s*(.+)/);
+-                 if (urlMatch && config.docs!.length > 0) {
+-                     config.docs![config.docs!.length - 1].startUrl = urlMatch[1];
+-                 }
+-             } else if (line.startsWith('    favicon:')) {
+-                 // Extract favicon
+-                 const faviconMatch = line.match(/favicon:\s*(.+)/);
+-                 if (faviconMatch && config.docs!.length > 0) {
+-                     config.docs![config.docs!.length - 1].favicon = faviconMatch[1];
+-                 }
+-             }
+-         }
+-     }
+- 
+-     return config;
+- }
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Great! Now let me update my todo status and run the linter again to see if I've fixed all the critical errors.</details></think>
+
+---
+
+## Todo List
+
+- [x] Fix 'NodeJS' is not defined error by importing proper types
+- [x] Remove unused function definitions or add eslint-disable comments
+- [x] Fix the regex with multiple spaces on line 316
+- [x] Remove unused fs import on line 517
+
+---
+
+<think><details><summary>Thought Process</summary>Now let me run the linter again to see if I've fixed the critical errors.</details></think>
+
+---
+
+```bash
+npm run lint
+```
+
+```
+PS C:\Users\JoshS\Documents\GitHub\skoop-continue-sync> npm run lint
+
+> skoop-continue-sync@0.0.1 lint
+> eslint src --ext ts
+
+
+C:\Users\JoshS\Documents\GitHub\skoop-continue-sync\src\extension.ts
+  123:24  warning  Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any                                                               
+  128:24  warning  Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any                                                               
+  141:24  warning  Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any                                                               
+  146:24  warning  Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any                                                               
+  148:20  warning  Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any                                                               
+  184:20  warning  Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any                                                               
+  196:15  warning  Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any                                                               
+  198:18  warning  Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any                                                               
+  199:20  warning  Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any                                                               
+  207:11  error    'ContinueConfig' is defined but never used  @typescript-eslint/no-unused-vars                                                                
+  219:20  warning  Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any                                                               
+  321:33  warning  Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any                                                               
+  325:25  warning  Forbidden non-null assertion                @typescript-eslint/no-non-null-assertion                                                         
+  340:17  warning  Forbidden non-null assertion                @typescript-eslint/no-non-null-assertion                                                         
+  385:21  warning  Forbidden non-null assertion                @typescript-eslint/no-non-null-assertion                                                         
+
+✖ 15 problems (1 error, 14 warnings)
+```
+
+---
+
+<think><details><summary>Thought Process</summary>Great progress! I've fixed most of the critical errors. Now there's only one error left: `'ContinueConfig' is defined but never used`. This is because I removed the functions that used it. Let me check where ContinueConfig is defined and remove it if it's not used elsewhere.</details></think>
+
+---
+
+
+
+---
+
+<think><details><summary>Thought Process</summary>Let me check if ContinueConfig is used anywhere else in the code.</details></think>
+
+---
+
+
+
+---
+
+<think><details><summary>Thought Process</summary>I see that `ContinueConfig` is only defined as an interface but never used as a type. Let me check what this interface looks like and remove it since it's not being used.</details></think>
+
+---
+
+Read file: undefined
+
+---
+
+<think><details><summary>Thought Process</summary>Since ContinueConfig is not used anywhere in the code anymore (I removed all the functions that used it), I can safely remove this interface. Let me remove it.</details></think>
+
+---
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+undefined
+
+**Chunk 1**
+Lines added: undefined, lines removed: 14
+
+```diff
+@@ -205,18 +205,4 @@
+  }
+  
+- interface ContinueConfig {
+-     name?: string;
+-     version?: string;
+-     schema?: string;
+-     experimental?: {
+-         useChromiumForDocsCrawling?: boolean;
+-     };
+-     models?: ModelConfig[];
+-     agents?: AgentConfig[];
+-     rules?: RuleConfig[];
+-     prompts?: PromptConfig[];
+-     docs?: DocConfig[];
+-     [key: string]: any;
+- }
+  
+  // Fetch configuration from HTTP endpoint
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Perfect! Now let me run the linter one more time to see if all the critical errors are fixed. The warnings are not blocking, so they can stay for now.</details></think>
+
+---
+
+```bash
+npm run lint
+```
+
+```
+PS C:\Users\JoshS\Documents\GitHub\skoop-continue-sync> npm run lint
+
+> skoop-continue-sync@0.0.1 lint
+> eslint src --ext ts
+
+
+C:\Users\JoshS\Documents\GitHub\skoop-continue-sync\src\extension.ts
+  123:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  128:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  141:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  146:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  148:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  151:11  error    'AgentConfig' is defined but never used   @typescript-eslint/no-unused-vars                                                                  
+  184:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  196:15  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  198:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  199:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  307:33  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  311:25  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion                                                           
+  326:17  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion                                                           
+  371:21  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion                                                           
+
+✖ 14 problems (1 error, 13 warnings)
+```
+
+---
+
+<think><details><summary>Thought Process</summary>There's still one error: `'AgentConfig' is defined but never used`. Let me find and remove the AgentConfig interface as well.</details></think>
+
+---
+
+
+
+---
+
+<think><details><summary>Thought Process</summary>Let me check if AgentConfig is used anywhere.</details></think>
+
+---
+
+
+
+---
+
+<think><details><summary>Thought Process</summary>It's only defined but never used. Let me remove it.</details></think>
+
+---
+
+Read file: undefined
+
+---
+
+<think><details><summary>Thought Process</summary>Let me remove the AgentConfig interface.</details></think>
+
+---
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+undefined
+
+**Chunk 1**
+Lines added: undefined, lines removed: 8
+
+```diff
+@@ -149,12 +149,4 @@
+  }
+  
+- interface AgentConfig {
+-     name: string;
+-     description?: string;
+-     model: string;
+-     tools?: string[];
+-     prompt?: string;
+-     [key: string]: string | string[] | undefined;
+- }
+  
+  interface RuleConfig {
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Now let me run the linter one final time to confirm all errors are fixed.</details></think>
+
+---
+
+```bash
+npm run lint
+```
+
+```
+> skoop-continue-sync@0.0.1 lint
+> eslint src --ext ts
+
+
+C:\Users\JoshS\Documents\GitHub\skoop-continue-sync\src\extension.ts
+  123:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  128:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  141:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  146:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  148:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  176:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  188:15  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  190:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  191:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  299:33  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  303:25  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion                                                           
+  318:17  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion                                                           
+  363:21  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion                                                           
+
+✖ 13 problems (0 errors, 13 warnings)
+```
+
+---
+
+<think><details><summary>Thought Process</summary>Perfect! All the critical errors are now fixed. The linter now passes with exit code 0, meaning there are no more errors - only warnings remain. The warnings are about using `any` types and non-null assertions, but these are not blocking issues.
+</details></think>
+
+---
+
+```bash
+npm run compile
+```
+
+```
+PS C:\Users\JoshS\Documents\GitHub\skoop-continue-sync> npm run compile
+
+> skoop-continue-sync@0.0.1 compile
+> tsc -p ./
+```
+
+---
+
+<think><details><summary>Thought Process</summary>Excellent! Everything compiles successfully. Let me summarize what I've fixed.</details></think>
+
+---
+
+Perfect! I've successfully fixed all the ESLint errors in your GitHub Actions. Here's a summary of what was resolved:
+
+## Fixed Critical Errors ✅
+
+### 1. **'NodeJS' is not defined** 
+- **Issue**: Used `NodeJS.Timeout` type without proper imports
+- **Fix**: Changed `NodeJS.Timeout` to `ReturnType<typeof setInterval>` to use built-in Node.js types
+
+### 2. **Unused Functions Removed**
+Removed the following unused functions that were causing `@typescript-eslint/no-unused-vars` errors:
+- `forceDocsRetryForAgents`
+- `generateAgentYaml` 
+- `applyModelSettings`
+- `applyRulesAndPrompts`
+- `configToYaml`
+- `parseYamlToConfig`
+
+### 3. **Unused Interfaces Removed**
+- `ContinueConfig` interface (no longer used after removing functions)
+- `AgentConfig` interface (never used)
+
+### 4. **Regex Spaces Issue**
+- **Issue**: `no-regex-spaces` error for ambiguous spaces in regex `/settings:\s*\n((?:  - .*\n?)*)/`
+- **Fix**: Changed to `/settings:\s*\n((?:[ ]{2}- .*\n?)*)/` for clearer character class
+
+### 5. **Unused Local Variable**
+- **Issue**: Local `fs` variable declared in `ensureChromiumAvailable()` but never used
+- **Fix**: Removed the unused local declaration
+
+## Results
+
+- **Before**: 81 problems (9 errors, 72 warnings)
+- **After**: 13 problems (0 errors, 13 warnings) ✅
+
+The linter now passes successfully with exit code 0! The remaining 13 warnings are non-critical issues about using `any` types and non-null assertions, which don't block the build but could be addressed in future improvements.
+
+Your GitHub Actions should now pass without ESLint errors. The extension functionality remains unchanged - I only removed dead code that wasn't being used.
+
+---
+
+_**User (2025-09-24 05:13Z)**_
+
+the items aren't getting added to the continueignore file
+
+---
+
+_**Assistant**_
+
+<think><details><summary>Thought Process</summary>The user is saying that items aren't getting added to the .continueignore file. Let me check the current implementation of the continueignore functionality in the extension.
+</details></think>
+
+---
+
+Read file: undefined
+
+---
+
+<think><details><summary>Thought Process</summary>Ah, I see the issue! The YAML structure is different than what I expected. In the test-config-v3.yaml file, the continueignore section is structured as:
+</details></think>
+
+---
+
+Read file: undefined
+
+---
+
+<think><details><summary>Thought Process</summary>I see the issue. The parsing logic in `processRawYamlConfig` is quite simplistic and doesn't properly handle the continueignore section structure. Let me look at how the settings parsing works:
+</details></think>
+
+---
+
+Read file: undefined
+
+---
+
+<think><details><summary>Thought Process</summary>I need to see the full continueignore handling code. Let me look at a wider range.</details></think>
+
+---
+
+Read file: undefined
+
+---
+
+<think><details><summary>Thought Process</summary>The issue is in the parsing logic. The `processRawYamlConfig` function is not correctly parsing the continueignore section. Let me look at how the settings are parsed in that function to understand the structure.
+</details></think>
+
+---
+
+Read file: undefined
+
+---
+
+<think><details><summary>Thought Process</summary>I see the problem now. The current parsing logic in `processRawYamlConfig` only handles key-value pairs (lines with `:`) for settings. But for continueignore, the patterns are direct values without keys.
+</details></think>
+
+---
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+undefined
+
+**Chunk 1**
+Lines added: 8, lines removed: 1
+
+```diff
+@@ -313,5 +313,12 @@
+                          currentSetting[key.trim()] = value;
+                      }
+-                 }
++                 } else if (currentSetting && currentSetting.name === 'continueignore' && line.trim() && !line.includes(':') && !line.startsWith('  -')) {
++                     // Handle direct values for continueignore (patterns without keys)
++                     const pattern = line.trim();
++                     if (!currentSetting.patterns) {
++                         currentSetting.patterns = [];
++                     }
++                     currentSetting.patterns.push(pattern);
++                 }
+              }
+              if (currentSetting) {
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Now I need to update the continueignore handling code to work with the new parsed structure. Instead of looking for key-value pairs in `Object.entries(setting)`, I need to check if there's a `patterns` array.</details></think>
+
+---
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+undefined
+
+**Chunk 1**
+Lines added: 7, lines removed: 1
+
+```diff
+@@ -586,6 +586,12 @@
+                  const ignorePatterns: string[] = [];
+  
++                 // Check if patterns were parsed as an array
++                 if (setting.patterns && Array.isArray(setting.patterns)) {
++                     ignorePatterns.push(...setting.patterns);
++                 }
++ 
++                 // Also check for any direct string values (fallback for other formats)
+                  for (const [key, value] of Object.entries(setting)) {
+-                     if (key === 'name') continue; // Skip the name field
++                     if (key === 'name' || key === 'patterns') continue; // Skip the name field and patterns array
+  
+                      // Each value should be an ignore pattern (string)
+```
+
+**Chunk 2**
+Lines added: 1, lines removed: 1
+
+```diff
+@@ -599,5 +605,5 @@
+                      const ignoreContent = ignorePatterns.join('\n') + '\n';
+                      fs.writeFileSync(continueIgnorePath, ignoreContent, 'utf8');
+-                     console.log(`[Skoop Continue Sync] Updated .continueignore file with ${ignorePatterns.length} patterns`);
++                     console.log(`[Skoop Continue Sync] Updated .continueignore file with ${ignorePatterns.length} patterns:`, ignorePatterns);
+                  } else {
+                      console.log('[Skoop Continue Sync] No ignore patterns found in continueignore setting');
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Now let me test this by running the compilation and checking if the linting still passes.</details></think>
+
+---
+
+```bash
+npm run compile
+```
+
+```
+PS C:\Users\JoshS\Documents\GitHub\skoop-continue-sync> npm run compile
+
+> skoop-continue-sync@0.0.1 compile
+> tsc -p ./
+```
+
+---
+
+<think><details><summary>Thought Process</summary>Good, it compiles. Let me also run the linter to make sure I didn't introduce any new issues.</details></think>
+
+---
+
+```bash
+npm run lint
+```
+
+```
+PS C:\Users\JoshS\Documents\GitHub\skoop-continue-sync> npm run lint
+
+> skoop-continue-sync@0.0.1 lint
+> eslint src --ext ts
+
+
+C:\Users\JoshS\Documents\GitHub\skoop-continue-sync\src\extension.ts
+  123:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  128:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  141:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  146:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  148:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  176:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  188:15  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  190:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  191:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  299:33  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  303:25  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion                                                           
+  325:17  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion                                                           
+  370:21  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion                                                           
+
+✖ 13 problems (0 errors, 13 warnings)
+```
+
+---
+
+<think><details><summary>Thought Process</summary>Good, the linting still passes with just warnings (no errors). Now let me test the functionality by checking if the continueignore file gets updated. Let me also check what the current content of the .continueignore file is to see if it gets updated.</details></think>
+
+---
+
+Read file: undefined
+
+---
+
+<think><details><summary>Thought Process</summary>Interesting! The .continueignore file already contains the patterns from the test-config-v3.yaml file. This suggests that the continueignore functionality was working at some point, or this file was created manually.
+</details></think>
+
+---
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+undefined
+
+**Chunk 1**
+Lines added: 8, lines removed: undefined
+
+```diff
+@@ -378,4 +378,12 @@
+          });
+  
++         // Debug: Log parsed settings
++         if (config.settings && config.settings.length > 0) {
++             console.log('[Skoop Continue Sync] Parsed settings:');
++             config.settings.forEach((setting, index) => {
++                 console.log(`[Skoop Continue Sync] Setting ${index}:`, setting);
++             });
++         }
++ 
+      } catch (error) {
+          console.error('[Skoop Continue Sync] Error processing YAML config:', error);
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Now let me also add some debug logging to the continueignore processing to see if it's being triggered and what data it's receiving.</details></think>
+
+---
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+undefined
+
+**Chunk 1**
+Lines added: 1, lines removed: undefined
+
+```diff
+@@ -586,4 +586,5 @@
+              if (setting.name === 'continueignore') {
+                  console.log('[Skoop Continue Sync] Processing continueignore settings...');
++                 console.log('[Skoop Continue Sync] Continueignore setting data:', setting);
+  
+                  // Get the global .continue directory path
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Now let me test this by running the apply team settings command to see what the debug output shows. But first, let me compile the code.</details></think>
+
+---
+
+```bash
+npm run compile
+```
+
+```
+PS C:\Users\JoshS\Documents\GitHub\skoop-continue-sync> npm run compile
+
+> skoop-continue-sync@0.0.1 compile
+> tsc -p ./
+```
+
+---
+
+<think><details><summary>Thought Process</summary>Now let me create a simple test to see if the parsing is working. Instead of running the full extension, let me create a small test script to check the YAML parsing logic.
+</details></think>
+
+---
+
+Read file: undefined
+
+---
+
+<think><details><summary>Thought Process</summary>The YAML structure looks correct. Let me check if the issue is that the user might be using a different config file or the settings aren't being applied. Let me check what config files exist in the project.</details></think>
+
+---
+
+<details>
+            <summary>Listed directory undefined • **0** results</summary>
+        
+No results found
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>There are multiple test config files. Let me check if the extension is configured to use a specific one, or if there's an issue with the endpoint configuration.
+</details></think>
+
+---
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+undefined
+
+**Chunk 1**
+Lines added: 3, lines removed: undefined
+
+```diff
+@@ -430,5 +430,8 @@
+      if (teamConfig.settings && teamConfig.settings.length > 0) {
+          console.log('[Skoop Continue Sync] Applying settings from config...');
++         console.log('[Skoop Continue Sync] Number of settings to apply:', teamConfig.settings.length);
+          await configureContinueSettingsFromConfig(teamConfig.settings);
++     } else {
++         console.log('[Skoop Continue Sync] No settings found in team config');
+      }
+  
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Now let me compile and test this. But first, let me check if the user has configured the extension settings properly. The extension needs userEmail and userPassword to be set.
+</details></think>
+
+---
+
+Read file: undefined
+
+---
+
+<think><details><summary>Thought Process</summary>The test-config.yaml doesn't have continueignore settings, but test-config-v3.yaml does. The user has test-config-v3.yaml open, so they're probably expecting that to work.
+</details></think>
+
+---
+
+```bash
+node -e "
+const fs = require('fs');
+const content = fs.readFileSync('test-config-v3.yaml', 'utf8');
+console.log('First 500 chars of config:');
+console.log(content.substring(0, 500));
+console.log('\\n---\\n');
+
+// Test the regex
+const settingsMatch = content.match(/settings:\s*\n((?:[ ]{2}- .*\n?)*)/);
+if (settingsMatch) {
+  console.log('Settings match found');
+  const settingsBlock = settingsMatch[1];
+  console.log('Settings block:');
+  console.log(settingsBlock);
+  console.log('\\n---\\n');
+  
+  const settingsLines = settingsBlock.split('\\n').filter(line => line.trim());
+  console.log('Settings lines:');
+  settingsLines.forEach((line, i) => console.log(\`\${i}: '\${line}'\`));
+} else {
+  console.log('No settings match found');
+}
+"
+```
+
+```
+[eval]:19
+  settingsLines.forEach((line, i) => console.log(\\: '\'\));
+                                                 ^
+
+SyntaxError: Invalid or unexpected token
+    at makeContextifyScript (node:internal/vm:185:14)
+    at compileScript (node:internal/process/execution:386:10)
+    at node:internal/process/execution:450:25
+    at [eval]-wrapper:6:24
+    at runScriptInContext (node:internal/process/execution:447:60)
+    at evalFunction (node:internal/process/execution:87:30)
+    at evalScript (node:internal/process/execution:99:3)
+    at node:internal/main/eval_string:74:3
+
+Node.js v22.17.0
+```
+
+---
+
+<think><details><summary>Thought Process</summary>The command had a syntax error. Let me fix it and run it again.</details></think>
+
+---
+
+```bash
+node -e "
+const fs = require('fs');
+const content = fs.readFileSync('test-config-v3.yaml', 'utf8');
+console.log('First 500 chars of config:');
+console.log(content.substring(0, 500));
+console.log('\n---\n');
+
+// Test the regex
+const settingsMatch = content.match(/settings:\s*\n((?:[ ]{2}- .*\n?)*)/);
+if (settingsMatch) {
+  console.log('Settings match found');
+  const settingsBlock = settingsMatch[1];
+  console.log('Settings block:');
+  console.log(settingsBlock);
+  console.log('\n---\n');
+  
+  const settingsLines = settingsBlock.split('\n').filter(line => line.trim());
+  console.log('Settings lines:');
+  settingsLines.forEach((line, i) => console.log(\`\${i}: '\${line}'\`));
+} else {
+  console.log('No settings match found');
+}
+"
+```
+
+```
+[eval]:19
+  settingsLines.forEach((line, i) => console.log(\\: '\'\));
+                                                 ^
+
+SyntaxError: Invalid or unexpected token
+    at makeContextifyScript (node:internal/vm:185:14)
+    at compileScript (node:internal/process/execution:386:10)
+    at node:internal/process/execution:450:25
+    at [eval]-wrapper:6:24
+    at runScriptInContext (node:internal/process/execution:447:60)
+    at evalFunction (node:internal/process/execution:87:30)
+    at evalScript (node:internal/process/execution:99:3)
+    at node:internal/main/eval_string:74:3
+
+Node.js v22.17.0
+```
+
+---
+
+<think><details><summary>Thought Process</summary>There's still a syntax issue with the template literal. Let me create a simple test file instead.</details></think>
+
+---
+
+
+
+---
+
+<think><details><summary>Thought Process</summary>Now let me run this test script.</details></think>
+
+---
+
+```bash
+node test-parsing.js
+```
+
+```
+PS C:\Users\JoshS\Documents\GitHub\skoop-continue-sync> node test-parsing.js
+First 500 chars of config:
+settings:
+  - name: "continueignore"
+    .specstory/
+    .gitignore
+    node_modules/
+    *.specstory
+    .git/
+
+Agents:
+  - agent: "Local Agent"
+    name: "Local Agent"
+    version: "1.0.0"
+    schema: "v1"
+    description: "Default agent"
+
+    # Models section - using LiteLLM models
+    models:
+      - name: "codestral"
+        provider: mistral
+        model: codestral-latest
+        apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+        apiBase: https://litellm.skoop.digital/mistra
+
+---
+
+Settings match found
+Settings block:
+  - name: "continueignore"
+
+---
+
+Settings lines:
+0: '  - name: "continueignore"'
+C:\Users\JoshS\Documents\GitHub\skoop-continue-sync\test-parsing.js:28
+for (const line of settingsLines) {
+                   ^
+
+ReferenceError: settingsLines is not defined
+    at Object.<anonymous> (C:\Users\JoshS\Documents\GitHub\skoop-continue-sync\test-parsing.js:28:20)                                                           
+    at Module._compile (node:internal/modules/cjs/loader:1730:14)
+    at Object..js (node:internal/modules/cjs/loader:1895:10)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:235:24)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)                                                                       
+    at node:internal/main/run_main_module:36:49
+
+Node.js v22.17.0
+```
+
+---
+
+<think><details><summary>Thought Process</summary>I see the issue! The regex is only matching the first setting line `- name: "continueignore"` but not the subsequent lines with the patterns. The regex `((?:[ ]{2}- .*\n?)*)` is looking for lines that start with exactly 2 spaces, a dash, and a space, but the pattern lines like `.specstory/` have 4 spaces of indentation.
+</details></think>
+
+---
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+undefined
+
+**Chunk 1**
+Lines added: 1, lines removed: 1
+
+```diff
+@@ -292,5 +292,5 @@
+      try {
+          // Simple parsing to extract settings
+-         const settingsMatch = yamlContent.match(/settings:\s*\n((?:[ ]{2}- .*\n?)*)/);
++         const settingsMatch = yamlContent.match(/settings:\s*\n((?:[ ]{2}- .*\n?)*)/s);
+          if (settingsMatch) {
+              const settingsBlock = settingsMatch[1];
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Wait, I added the `s` flag but the issue is that the regex is only looking for lines that start with `  - ` (2 spaces + dash + space). But the continueignore patterns don't start with dashes - they start with 4 spaces.
+</details></think>
+
+---
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+undefined
+
+**Chunk 1**
+Lines added: 1, lines removed: 1
+
+```diff
+@@ -292,5 +292,5 @@
+      try {
+          // Simple parsing to extract settings
+-         const settingsMatch = yamlContent.match(/settings:\s*\n((?:[ ]{2}- .*\n?)*)/s);
++         const settingsMatch = yamlContent.match(/settings:\s*\n(.*?)(?=\n\w|$)/s);
+          if (settingsMatch) {
+              const settingsBlock = settingsMatch[1];
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Now let me update the test script to use the same regex and test it.</details></think>
+
+---
+
+<details><summary>Edit file: test-parsing.js</summary>
+
+undefined
+
+**Chunk 1**
+Lines added: 1, lines removed: 1
+
+```diff
+@@ -7,5 +7,5 @@
+  
+  // Test the regex
+- const settingsMatch = content.match(/settings:\s*\n((?:[ ]{2}- .*\n?)*)/);
++ const settingsMatch = content.match(/settings:\s*\n(.*?)(?=\n\w|$)/s);
+  if (settingsMatch) {
+    console.log('Settings match found');
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Now let me run the test again.</details></think>
+
+---
+
+```bash
+node test-parsing.js
+```
+
+```
+PS C:\Users\JoshS\Documents\GitHub\skoop-continue-sync> node test-parsing.js
+First 500 chars of config:
+settings:
+  - name: "continueignore"
+    .specstory/
+    .gitignore
+    node_modules/
+    *.specstory
+    .git/
+
+Agents:
+  - agent: "Local Agent"
+    name: "Local Agent"
+    version: "1.0.0"
+    schema: "v1"
+    description: "Default agent"
+
+    # Models section - using LiteLLM models
+    models:
+      - name: "codestral"
+        provider: mistral
+        model: codestral-latest
+        apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+        apiBase: https://litellm.skoop.digital/mistra
+
+---
+
+Settings match found
+Settings block:
+  - name: "continueignore"
+    .specstory/
+    .gitignore
+    node_modules/
+    *.specstory
+    .git/
+
+
+---
+
+Settings lines:
+': '  - name: "continueignore"
+': '    .specstory/
+': '    .gitignore
+': '    node_modules/
+': '    *.specstory
+': '    .git/
+C:\Users\JoshS\Documents\GitHub\skoop-continue-sync\test-parsing.js:28
+for (const line of settingsLines) {
+                   ^
+
+ReferenceError: settingsLines is not defined
+    at Object.<anonymous> (C:\Users\JoshS\Documents\GitHub\skoop-continue-sync\test-parsing.js:28:20)                                                           
+    at Module._compile (node:internal/modules/cjs/loader:1730:14)
+    at Object..js (node:internal/modules/cjs/loader:1895:10)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:235:24)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)                                                                       
+    at node:internal/main/run_main_module:36:49
+
+Node.js v22.17.0
+```
+
+---
+
+<think><details><summary>Thought Process</summary>Great! Now the regex is capturing all the settings content, including the continueignore patterns. I can see:
+</details></think>
+
+---
+
+<details><summary>Edit file: test-parsing.js</summary>
+
+undefined
+
+**Chunk 1**
+Lines added: 35, lines removed: 2
+
+```diff
+@@ -18,9 +18,42 @@
+    console.log('Settings lines:');
+    settingsLines.forEach((line, i) => console.log(`${i}: '${line}'`));
++ 
++   // Test parsing logic
++   let currentSetting = null;
++   const config = { settings: [] };
++ 
++   for (const line of settingsLines) {
++       if (line.startsWith('  - name:')) {
++           if (currentSetting) {
++               config.settings.push(currentSetting);
++           }
++           const name = line.match(/name:\s*"([^"]+)"/)?.[1] || '';
++           currentSetting = { name };
++           console.log(`\nStarted parsing setting: ${name}`);
++       } else if (currentSetting && line.includes(':')) {
++           const [key, ...valueParts] = line.trim().split(':');
++           const value = valueParts.join(':').trim();
++           currentSetting[key.trim()] = value.startsWith('"') && value.endsWith('"') ? value.slice(1, -1) : value;
++           console.log(`  Added key-value: ${key.trim()} = ${currentSetting[key.trim()]}`);
++       } else if (currentSetting && currentSetting.name === 'continueignore' && line.trim() && !line.includes(':') && !line.startsWith('  -')) {
++           // Handle direct values for continueignore (patterns without keys)
++           const pattern = line.trim();
++           if (!currentSetting.patterns) {
++               currentSetting.patterns = [];
++           }
++           currentSetting.patterns.push(pattern);
++           console.log(`  Added pattern: ${pattern}`);
++       }
++   }
++ 
++   if (currentSetting) {
++       config.settings.push(currentSetting);
++   }
++ 
++   console.log('\n---\nFinal parsed settings:');
++   console.log(JSON.stringify(config.settings, null, 2));
+  } else {
+    console.log('No settings match found');
+  }
+- 
+- // Test parsing logic
+  let currentSetting = null;
+  const config = { settings: [] };
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>I see there's duplicate code. Let me clean up the test file.</details></think>
+
+---
+
+<details><summary>Edit file: test-parsing.js</summary>
+
+undefined
+
+**Chunk 1**
+Lines added: undefined, lines removed: 33
+
+```diff
+@@ -56,36 +56,3 @@
+    console.log('No settings match found');
+  }
+- let currentSetting = null;
+- const config = { settings: [] };
+- 
+- for (const line of settingsLines) {
+-     if (line.startsWith('  - name:')) {
+-         if (currentSetting) {
+-             config.settings.push(currentSetting);
+-         }
+-         const name = line.match(/name:\s*"([^"]+)"/)?.[1] || '';
+-         currentSetting = { name };
+-         console.log(`\nStarted parsing setting: ${name}`);
+-     } else if (currentSetting && line.includes(':')) {
+-         const [key, ...valueParts] = line.trim().split(':');
+-         const value = valueParts.join(':').trim();
+-         currentSetting[key.trim()] = value.startsWith('"') && value.endsWith('"') ? value.slice(1, -1) : value;
+-         console.log(`  Added key-value: ${key.trim()} = ${currentSetting[key.trim()]}`);
+-     } else if (currentSetting && currentSetting.name === 'continueignore' && line.trim() && !line.includes(':') && !line.startsWith('  -')) {
+-         // Handle direct values for continueignore (patterns without keys)
+-         const pattern = line.trim();
+-         if (!currentSetting.patterns) {
+-             currentSetting.patterns = [];
+-         }
+-         currentSetting.patterns.push(pattern);
+-         console.log(`  Added pattern: ${pattern}`);
+-     }
+- }
+- 
+- if (currentSetting) {
+-     config.settings.push(currentSetting);
+- }
+- 
+- console.log('\n---\nFinal parsed settings:');
+- console.log(JSON.stringify(config.settings, null, 2));
+  
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Now let me run the test again.</details></think>
+
+---
+
+```bash
+node test-parsing.js
+```
+
+```
+PS C:\Users\JoshS\Documents\GitHub\skoop-continue-sync> node test-parsing.js
+First 500 chars of config:
+settings:
+  - name: "continueignore"
+    .specstory/
+    .gitignore
+    node_modules/
+    *.specstory
+    .git/
+
+Agents:
+  - agent: "Local Agent"
+    name: "Local Agent"
+    version: "1.0.0"
+    schema: "v1"
+    description: "Default agent"
+
+    # Models section - using LiteLLM models
+    models:
+      - name: "codestral"
+        provider: mistral
+        model: codestral-latest
+        apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+        apiBase: https://litellm.skoop.digital/mistra
+
+---
+
+Settings match found
+Settings block:
+  - name: "continueignore"
+    .specstory/
+    .gitignore
+    node_modules/
+    *.specstory
+    .git/
+
+
+---
+
+Settings lines:
+': '  - name: "continueignore"
+': '    .specstory/
+': '    .gitignore
+': '    node_modules/
+': '    *.specstory
+': '    .git/
+
+Started parsing setting: continueignore
+  Added pattern: .specstory/
+  Added pattern: .gitignore
+  Added pattern: node_modules/
+  Added pattern: *.specstory
+  Added pattern: .git/
+
+---
+Final parsed settings:
+[
+  {
+    "name": "continueignore",
+    "patterns": [
+      ".specstory/",
+      ".gitignore",
+      "node_modules/",
+      "*.specstory",
+      ".git/"
+    ]
+  }
+]
+```
+
+---
+
+<think><details><summary>Thought Process</summary>Perfect! The parsing is working correctly now. The test shows that the continueignore patterns are being properly parsed into a `patterns` array. Now let me clean up by removing the debug logging and test file, and compile the final version.</details></think>
+
+---
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+undefined
+
+**Chunk 1**
+Lines added: undefined, lines removed: 7
+
+```diff
+@@ -378,11 +378,4 @@
+          });
+  
+-         // Debug: Log parsed settings
+-         if (config.settings && config.settings.length > 0) {
+-             console.log('[Skoop Continue Sync] Parsed settings:');
+-             config.settings.forEach((setting, index) => {
+-                 console.log(`[Skoop Continue Sync] Setting ${index}:`, setting);
+-             });
+-         }
+  
+      } catch (error) {
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Let me also remove the extra debug logging from the continueignore processing.</details></think>
+
+---
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+undefined
+
+**Chunk 1**
+Lines added: undefined, lines removed: 1
+
+```diff
+@@ -582,5 +582,4 @@
+              if (setting.name === 'continueignore') {
+                  console.log('[Skoop Continue Sync] Processing continueignore settings...');
+-                 console.log('[Skoop Continue Sync] Continueignore setting data:', setting);
+  
+                  // Get the global .continue directory path
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Let me also remove the extra debug logging from the settings application.</details></think>
+
+---
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+undefined
+
+**Chunk 1**
+Lines added: undefined, lines removed: 3
+
+```diff
+@@ -423,8 +423,5 @@
+      if (teamConfig.settings && teamConfig.settings.length > 0) {
+          console.log('[Skoop Continue Sync] Applying settings from config...');
+-         console.log('[Skoop Continue Sync] Number of settings to apply:', teamConfig.settings.length);
+          await configureContinueSettingsFromConfig(teamConfig.settings);
+-     } else {
+-         console.log('[Skoop Continue Sync] No settings found in team config');
+      }
+  
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Now let me remove the test file and compile the final version.</details></think>
+
+---
+
+```bash
+rm test-parsing.js
+```
+
+```
+PS C:\Users\JoshS\Documents\GitHub\skoop-continue-sync> rm test-parsing.js
+```
+
+---
+
+<think><details><summary>Thought Process</summary>Now let me compile and run the linter to make sure everything is still working.</details></think>
+
+---
+
+```bash
+npm run compile && npm run lint
+```
+
+```
+un lint                                                                         
+At line:1 char:17
++ npm run compile && npm run lint
++                 ~~
+The token '&&' is not a valid statement separator in this version.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordEx  
+   ception
+    + FullyQualifiedErrorId : InvalidEndOfLine
+```
+
+---
+
+<think><details><summary>Thought Process</summary>The command failed due to PowerShell syntax. Let me run them separately.</details></think>
+
+---
+
+```bash
+npm run compile
+```
+
+```
+> skoop-continue-sync@0.0.1 compile
+> tsc -p ./
+```
+
+---
+
+<think><details><summary>Thought Process</summary>Good, now let me run the linter.</details></think>
+
+---
+
+```bash
+npm run lint
+```
+
+```
+PS C:\Users\JoshS\Documents\GitHub\skoop-continue-sync> npm run lint
+
+> skoop-continue-sync@0.0.1 lint
+> eslint src --ext ts
+
+
+C:\Users\JoshS\Documents\GitHub\skoop-continue-sync\src\extension.ts
+  123:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  128:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  141:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  146:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  148:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  176:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  188:15  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  190:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  191:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  299:33  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any                                                                 
+  303:25  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion                                                           
+  325:17  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion                                                           
+  370:21  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion                                                           
+
+✖ 13 problems (0 errors, 13 warnings)
+```
+
+---
+
+<think><details><summary>Thought Process</summary>Perfect! The linter passes with 0 errors and only warnings (which are acceptable). 
+</details></think>
+
+---
+
+Perfect! I've fixed the issue with the continueignore functionality. Here's what was wrong and how I fixed it:
+
+## The Problem
+The YAML parsing logic in `processRawYamlConfig()` was not correctly handling the continueignore section structure. The continueignore patterns are indented values without keys:
+
+```yaml
+settings:
+  - name: "continueignore"
+    .specstory/        # These lines weren't being captured
+    .gitignore         # by the original parsing logic
+    node_modules/
+    *.specstory
+    .git/
+```
+
+## The Fix
+
+### 1. **Updated the Settings Regex**
+Changed the regex from:
+```javascript
+/settings:\s*\n((?:[ ]{2}- .*\n?)*)/
+```
+To:
+```javascript
+/settings:\s*\n(.*?)(?=\n\w|$)/s
+```
+
+This now captures all content under the settings section until the next top-level section (like `Agents:`).
+
+### 2. **Added Special Parsing for Continueignore Patterns**
+Added logic to handle direct values (not key-value pairs) for the continueignore setting:
+
+```typescript
+} else if (currentSetting && currentSetting.name === 'continueignore' && line.trim() && !line.includes(':') && !line.startsWith('  -')) {
+    // Handle direct values for continueignore (patterns without keys)
+    const pattern = line.trim();
+    if (!currentSetting.patterns) {
+        currentSetting.patterns = [];
+    }
+    currentSetting.patterns.push(pattern);
+}
+```
+
+### 3. **Updated Continueignore Processing**
+Modified the continueignore handler to properly extract patterns from the parsed `patterns` array:
+
+```typescript
+// Check if patterns were parsed as an array
+if (setting.patterns && Array.isArray(setting.patterns)) {
+    ignorePatterns.push(...setting.patterns);
+}
+```
+
+## Verification
+I created and ran a test script that confirmed the parsing now works correctly:
+
+```
+Final parsed settings:
+[
+  {
+    "name": "continueignore",
+    "patterns": [
+      ".specstory/",
+      ".gitignore", 
+      "node_modules/",
+      "*.specstory",
+      ".git/"
+    ]
+  }
+]
+```
+
+The extension now properly parses continueignore patterns from the team configuration and writes them to the global `.continue/.continueignore` file. The functionality should work correctly when you run "Apply Team Settings" or use the settings checkboxes.
 
 ---
 

@@ -291,7 +291,7 @@ function processRawYamlConfig(yamlContent: string): TeamConfig & { rawYaml: stri
 
     try {
         // Simple parsing to extract settings
-        const settingsMatch = yamlContent.match(/settings:\s*\n((?:[ ]{2}- .*\n?)*)/);
+        const settingsMatch = yamlContent.match(/settings:\s*\n(.*?)(?=\n\w|$)/s);
         if (settingsMatch) {
             const settingsBlock = settingsMatch[1];
             const settingsLines = settingsBlock.split('\n').filter(line => line.trim());
@@ -312,6 +312,13 @@ function processRawYamlConfig(yamlContent: string): TeamConfig & { rawYaml: stri
                     } else {
                         currentSetting[key.trim()] = value;
                     }
+                } else if (currentSetting && currentSetting.name === 'continueignore' && line.trim() && !line.includes(':') && !line.startsWith('  -')) {
+                    // Handle direct values for continueignore (patterns without keys)
+                    const pattern = line.trim();
+                    if (!currentSetting.patterns) {
+                        currentSetting.patterns = [];
+                    }
+                    currentSetting.patterns.push(pattern);
                 }
             }
             if (currentSetting) {
@@ -369,6 +376,7 @@ function processRawYamlConfig(yamlContent: string): TeamConfig & { rawYaml: stri
             settingsCount: config.settings?.length || 0,
             agentsCount: config.Agents?.length || 0
         });
+
 
     } catch (error) {
         console.error('[Skoop Continue Sync] Error processing YAML config:', error);
@@ -578,8 +586,14 @@ async function configureContinueSettingsFromConfig(settings: SettingsConfig[]) {
                 // Collect all ignore patterns from the setting
                 const ignorePatterns: string[] = [];
 
+                // Check if patterns were parsed as an array
+                if (setting.patterns && Array.isArray(setting.patterns)) {
+                    ignorePatterns.push(...setting.patterns);
+                }
+
+                // Also check for any direct string values (fallback for other formats)
                 for (const [key, value] of Object.entries(setting)) {
-                    if (key === 'name') continue; // Skip the name field
+                    if (key === 'name' || key === 'patterns') continue; // Skip the name field and patterns array
 
                     // Each value should be an ignore pattern (string)
                     if (typeof value === 'string') {
@@ -591,7 +605,7 @@ async function configureContinueSettingsFromConfig(settings: SettingsConfig[]) {
                     // Write the patterns to .continueignore file
                     const ignoreContent = ignorePatterns.join('\n') + '\n';
                     fs.writeFileSync(continueIgnorePath, ignoreContent, 'utf8');
-                    console.log(`[Skoop Continue Sync] Updated .continueignore file with ${ignorePatterns.length} patterns`);
+                    console.log(`[Skoop Continue Sync] Updated .continueignore file with ${ignorePatterns.length} patterns:`, ignorePatterns);
                 } else {
                     console.log('[Skoop Continue Sync] No ignore patterns found in continueignore setting');
                 }
