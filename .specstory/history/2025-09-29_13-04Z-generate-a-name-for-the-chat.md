@@ -3652,11 +3652,580 @@ Lines added: 37, lines removed: 16
 
 ---
 
+Tool use: **search_replace**
 
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+**Chunk 1**
+Lines added: undefined, lines removed: 69
+
+```diff
+@@ -1067,73 +1067,4 @@
+  }
+  
+- /**
+-  * Setup listener to automatically trigger Continue.dev's accept command
+-  */
+- async function setupContinueCommandListener() {
+-     console.log('[Skoop Continue Sync] Setting up Continue.dev command listener...');
+-     
+-     // First, list all available Continue commands
+-     try {
+-         const allCommands = await vscode.commands.getCommands(true);
+-         const continueCommands = allCommands.filter(cmd => cmd.startsWith('continue.'));
+-         console.log('[Skoop Continue Sync] Found Continue.dev commands:', continueCommands);
+-         
+-         // Look for accept-related commands
+-         const acceptCommands = continueCommands.filter(cmd => 
+-             cmd.includes('accept') || cmd.includes('apply') || cmd.includes('diff') || 
+-             cmd.includes('allow') || cmd.includes('permission')
+-         );
+-         console.log('[Skoop Continue Sync] Accept-related commands:', acceptCommands);
+-     } catch (error) {
+-         console.error('[Skoop Continue Sync] Error listing commands:', error);
+-     }
+-     
+-     // Try to access Continue.dev extension and interact with it
+-     const continueExtension = vscode.extensions.getExtension('Continue.continue');
+-     if (continueExtension) {
+-         console.log('[Skoop Continue Sync] Continue.dev extension found, attempting to access API...');
+-         
+-         if (!continueExtension.isActive) {
+-             await continueExtension.activate();
+-         }
+-         
+-         // Try to access Continue's internal API (if exposed)
+-         const continueApi = continueExtension.exports;
+-         console.log('[Skoop Continue Sync] Continue API keys:', continueApi ? Object.keys(continueApi) : 'none');
+-     }
+-     
+-     // Try multiple approaches to auto-accept
+-     const autoAcceptInterval = setInterval(async () => {
+-         try {
+-             // Approach 1: Try to accept tool permissions (the sidebar prompts)
+-             const permissionCommands = [
+-                 'continue.allowTool',
+-                 'continue.acceptToolUse',
+-                 'continue.grantPermission',
+-                 'continue.acceptAgentAction'
+-             ];
+-             
+-             for (const cmd of permissionCommands) {
+-                 try {
+-                     await vscode.commands.executeCommand(cmd);
+-                 } catch (e) {
+-                     // Silently continue
+-                 }
+-             }
+-             
+-             // Approach 2: Try keyboard shortcut simulation
+-             // Send Ctrl+Enter or Cmd+Enter to the Continue webview
+-             await vscode.commands.executeCommand('workbench.action.terminal.sendSequence', {
+-                 text: '\u0015' // Ctrl+U (might work for some prompts)
+-             });
+-             
+-         } catch (error) {
+-             // Silently fail
+-         }
+-     }, 1000); // Check every 1 second
+-     
+-     // Store interval ID for cleanup
+-     (globalThis as any).continueAutoAcceptInterval = autoAcceptInterval;
+- }
+  
+  /**
+```
+
+</details>
 
 ---
 
+Tool use: **search_replace**
 
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+**Chunk 1**
+Lines added: undefined, lines removed: 62
+
+```diff
+@@ -1120,66 +1120,4 @@
+  }
+  
+- /**
+-  * Determine if a dialog message should be auto-accepted
+-  */
+- function shouldAutoAccept(message: string): boolean {
+-     // Patterns that indicate Continue.dev tool usage prompts
+-     const continuePatterns = [
+-         /continue/i,
+-         /tool/i,
+-         /accept/i,
+-         /reject/i,
+-         /agent/i,
+-         /edit/i,
+-         /apply/i,
+-         /changes/i,
+-         /diff/i,
+-         /file/i,
+-         /terminal/i,
+-         /command/i,
+-         /run/i
+-     ];
+- 
+-     // Check if message matches any Continue.dev patterns
+-     const matches = continuePatterns.some(pattern => pattern.test(message));
+-     
+-     if (matches) {
+-         console.log('[Skoop Continue Sync] Dialog matches Continue.dev pattern:', message.substring(0, 100));
+-     }
+-     
+-     return matches;
+- }
+- 
+- /**
+-  * Find the "accept" action from dialog items
+-  */
+- function findAcceptAction(items: any[]): any {
+-     if (!items || items.length === 0) {
+-         return undefined;
+-     }
+- 
+-     // Common accept action labels
+-     const acceptLabels = [
+-         'Accept',
+-         'OK',
+-         'Yes',
+-         'Apply',
+-         'Continue',
+-         'Confirm',
+-         'Allow'
+-     ];
+- 
+-     // Try to find an accept action
+-     for (const item of items) {
+-         const itemStr = typeof item === 'string' ? item : (item?.title || '');
+-         
+-         if (acceptLabels.some(label => itemStr.toLowerCase().includes(label.toLowerCase()))) {
+-             return item;
+-         }
+-     }
+- 
+-     // If no explicit accept action found, return the first item
+-     return items[0];
+- }
+  
+  
+```
+
+</details>
+
+---
+
+Tool use: **run_terminal_cmd**
+
+```bash
+npm run compile
+```
+
+```
+
+> skoop-continue-sync@0.0.1 compile
+> tsc -p ./
+
+
+```
+
+---
+
+<think><details><summary>Thought Process</summary>Good! The code compiled successfully. Now let me also clean up the temporary scripts we created and verify the globalContext.json is in a clean state.</details></think>
+
+---
+
+Perfect! ✅ Now let me clean up the temporary scripts and verify everything is in a clean state:
+
+---
+
+Tool use: **delete_file**
+
+Remove temporary script now that functionality is in the extension
+
+---
+
+Tool use: **delete_file**
+
+Remove temporary revert script
+
+---
+
+Tool use: **read_file**
+
+Read file: c:\Users\JoshS\.continue\index\globalContext.json
+
+---
+
+<think><details><summary>Thought Process</summary>Good! The globalContext.json is now clean (no toolPolicies section visible in the first 50 lines). Let me check if it's completely clean by looking at the end of the file.</details></think>
+
+---
+
+Tool use: **run_terminal_cmd**
+
+```bash
+Get-Content "c:\Users\JoshS\.continue\index\globalContext.json" | Select-String -Pattern "toolPolicies"
+```
+
+---
+
+<think><details><summary>Thought Process</summary>Perfect! No toolPolicies found in the file, which means it's clean. Now let me update the documentation to reflect the new implementation.</details></think>
+
+---
+
+Perfect! ✅ Everything is clean. Now let me update the documentation to reflect the new implementation:
+
+---
+
+Tool use: **search_replace**
+
+
+<details><summary>Edit file: AUTO_ACCEPT_GUIDE.md</summary>
+
+**Chunk 1**
+Lines added: 6, lines removed: 5
+
+```diff
+@@ -15,12 +15,13 @@
+  ## How It Works
+  
+- The Skoop extension intercepts VS Code's dialog system (specifically `showInformationMessage` and `showWarningMessage`) and automatically returns an "Accept" response when it detects a Continue.dev prompt. This effectively bypasses all Continue.dev permission requests.
++ The Skoop extension **directly modifies Continue.dev's database** (`globalContext.json`) to set all tool policies to "allowedWithoutPermission". This bypasses the permission prompts at the source, making all tools execute automatically.
+  
+  ### Technical Implementation
+  
+- 1. **Dialog Interception**: Monkey patches `vscode.window.showInformationMessage` and `showWarningMessage`
+- 2. **Pattern Matching**: Identifies Continue.dev prompts by checking for keywords like "tool", "accept", "reject", "agent", "edit", etc.
+- 3. **Automatic Response**: Returns the first "accept-like" action (Accept, OK, Yes, Apply, Continue, Confirm, Allow)
+- 4. **Fallback**: If no explicit accept action is found, returns the first available option
++ 1. **Database Modification**: Directly edits `~/.continue/index/globalContext.json`
++ 2. **Tool Policies**: Sets all 14 tool policies to `"allowedWithoutPermission"`
++ 3. **Backup & Restore**: Backs up original tool policies when enabled, restores them when disabled
++ 4. **Window Reload**: Prompts to reload VS Code window for changes to take effect
++ 5. **Clean Disable**: Completely removes modifications and restores original state when toggled off
+  
+  ## How to Enable
+```
+
+</details>
+
+---
+
+Tool use: **search_replace**
+
+
+<details><summary>Edit file: AUTO_ACCEPT_GUIDE.md</summary>
+
+**Chunk 1**
+Lines added: 2, lines removed: undefined
+
+```diff
+@@ -50,4 +50,6 @@
+  }
+  ```
++ 
++ **Important**: After enabling, you'll be prompted to reload VS Code. The setting **only takes effect after reloading**.
+  
+  ## How to Disable
+```
+
+</details>
+
+---
+
+Tool use: **search_replace**
+
+
+<details><summary>Edit file: AUTO_ACCEPT_GUIDE.md</summary>
+
+**Chunk 1**
+Lines added: 2, lines removed: undefined
+
+```diff
+@@ -59,4 +59,6 @@
+  - **Settings UI**: Uncheck the checkbox
+  - **settings.json**: Set to `false` or remove the setting
++ 
++ **Important**: After disabling, you'll be prompted to reload VS Code. Your original Continue.dev settings will be restored after reloading.
+  
+  ## Usage Tips
+```
+
+</details>
+
+---
+
+Tool use: **search_replace**
+
+
+<details><summary>Edit file: AUTO_ACCEPT_GUIDE.md</summary>
+
+**Chunk 1**
+Lines added: 6, lines removed: 8
+
+```diff
+@@ -118,12 +118,10 @@
+  4. Observe: The tool should execute without prompting you
+  
+- ### Test 2: Verify Logging
+- 
+- 1. Open Developer Tools (`Help` → `Toggle Developer Tools`)
+- 2. Go to Console tab
+- 3. Enable auto-accept
+- 4. You should see: `[Skoop Continue Sync] Auto-accept enabled successfully`
+- 5. Trigger a Continue.dev action
+- 6. Look for: `[Skoop Continue Sync] Auto-accepting dialog: ...`
++ ### Test 2: Verify Database Changes
++ 
++ 1. Enable auto-accept
++ 2. Check `~/.continue/index/globalContext.json`
++ 3. Look for `"toolPolicies"` section with all tools set to `"allowedWithoutPermission"`
++ 4. After reload, Continue.dev should execute all tools without prompting
+  
+  ### Test 3: Disable/Enable Toggle
+```
+
+</details>
+
+---
+
+Tool use: **search_replace**
+
+
+<details><summary>Edit file: AUTO_ACCEPT_GUIDE.md</summary>
+
+**Chunk 1**
+Lines added: 26, lines removed: 35
+
+```diff
+@@ -134,39 +134,30 @@
+  ## Technical Details
+  
+- ### Dialog Detection Patterns
+- 
+- The following regex patterns are used to identify Continue.dev prompts:
+- 
+- ```typescript
+- /continue/i
+- /tool/i
+- /accept/i
+- /reject/i
+- /agent/i
+- /edit/i
+- /apply/i
+- /changes/i
+- /diff/i
+- /file/i
+- /terminal/i
+- /command/i
+- /run/i
+- ```
+- 
+- If a dialog message matches ANY of these patterns, it will be auto-accepted.
+- 
+- ### Accept Action Matching
+- 
+- The following button/action labels are considered "accept" actions:
+- 
+- - Accept
+- - OK
+- - Yes
+- - Apply
+- - Continue
+- - Confirm
+- - Allow
+- 
+- If none of these are found, the first action is chosen by default.
++ ### Modified Continue.dev Database Fields
++ 
++ When enabled, the extension modifies:
++ 
++ 1. **toolPolicies**: Sets all tools to `"allowedWithoutPermission"`
++    - read_file
++    - edit_existing_file
++    - create_new_file
++    - ls
++    - grep_search
++    - file_glob_search
++    - run_terminal_command
++    - multi_edit
++    - single_find_and_replace
++    - view_diff
++    - read_currently_open_file
++    - codebase_search
++    - list_dir
++    - search_replace
++ 
++ 2. **sharedConfig.autoAcceptEditToolDiffs**: Set to `true`
++ 
++ ### Database Location
++ 
++ - **Windows**: `C:\Users\<username>\.continue\index\globalContext.json`
++ - **Mac/Linux**: `~/.continue/index/globalContext.json`
+  
+  ## Known Limitations
+```
+
+</details>
+
+---
+
+Tool use: **search_replace**
+
+
+<details><summary>Edit file: AUTO_ACCEPT_GUIDE.md</summary>
+
+**Chunk 1**
+Lines added: 4, lines removed: 4
+
+```diff
+@@ -163,8 +163,8 @@
+  ## Known Limitations
+  
+- 1. **Webview Dialogs**: Only works for VS Code native dialogs, not custom webviews
+- 2. **Pattern Matching**: May have false positives/negatives depending on dialog text
+- 3. **No Undo**: There's no way to undo auto-accepted actions
+- 4. **Extension Restart**: Requires extension reload if the feature was enabled before extension activation
++ 1. **Requires Window Reload**: Changes only take effect after reloading VS Code window
++ 2. **No Undo for Actions**: There's no way to undo tool actions that were auto-executed
++ 3. **Database Dependency**: Requires Continue.dev's `globalContext.json` to exist
++ 4. **All or Nothing**: Either all tools are auto-accepted or none (no per-tool control)
+  
+  ## Feedback and Issues
+```
+
+</details>
+
+---
+
+Tool use: **search_replace**
+
+
+<details><summary>Edit file: AUTO_ACCEPT_GUIDE.md</summary>
+
+**Chunk 1**
+Lines added: 3, lines removed: 2
+
+```diff
+@@ -191,9 +191,10 @@
+  | Feature | Continue.dev `autoAcceptEditToolDiffs` | Skoop Auto-Accept |
+  |---------|--------------------------------------|-------------------|
+- | **Status** | Broken (not working) | Working workaround |
++ | **Status** | Broken (not working) | ✅ Working |
+  | **Scope** | Only edit tool diffs | All tool prompts |
+  | **Official** | Official feature | Community workaround |
+  | **Safety** | Should be safer (edit-only) | More dangerous (all tools) |
+- | **Reliability** | Currently unreliable | Reliable but hacky |
++ | **Reliability** | Currently unreliable | ✅ Reliable (direct database modification) |
++ | **Reversible** | N/A (doesn't work) | ✅ Yes (completely reversible) |
+  
+  ---
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Perfect! Documentation is updated. Now let me compile one more time and provide a summary of what we've built.</details></think>
+
+---
+
+Excellent! Now let me provide you with a complete summary and usage guide:
+
+---
+
+Tool use: **write**
+
+---
+
+<think><details><summary>Thought Process</summary>Perfect! Now let me create a final summary for the user.</details></think>
+
+---
+
+Perfect! ✅ **Implementation Complete!** Here's what I've built:
+
+---
+
+## 🎉 Summary: Clean Toggle-Based Auto-Accept
+
+### What Changed
+
+I've completely reimplemented the auto-accept feature as a **proper Skoop extension setting** that:
+
+1. ✅ **Can be toggled on/off** via command palette or settings
+2. ✅ **Directly modifies Continue.dev's database** when enabled
+3. ✅ **Completely restores original settings** when disabled
+4. ✅ **Prompts for window reload** (required for changes to take effect)
+5. ✅ **No permanent changes** - fully reversible
+
+### How It Works Now
+
+**When You Enable:**
+- Modifies `~/.continue/index/globalContext.json`
+- Sets all 14 tool policies to `"allowedWithoutPermission"`
+- Backs up your original settings
+- Prompts to reload VS Code
+
+**When You Disable:**
+- Removes the modifications
+- Restores your original tool policies
+- Prompts to reload VS Code
+
+### Files Created
+
+1. **`QUICK_START_AUTO_ACCEPT.md`** - Quick reference guide
+2. **`AUTO_ACCEPT_GUIDE.md`** - Detailed documentation (updated)
+3. **Updated extension code** - Clean database-based implementation
+
+---
+
+## 🚀 How to Test It NOW
+
+1. **Reload VS Code Window**
+   - Press `Ctrl+Shift+P`
+   - Type: `Developer: Reload Window`
+   - Press Enter
+
+2. **Enable Auto-Accept**
+   - Press `Ctrl+Shift+P`
+   - Type: `Toggle Auto-Accept Continue.dev Dialogs`
+   - Press Enter
+   - Click "Reload Window" in the popup
+
+3. **Test with Continue.dev**
+   - Open Continue.dev in Agent mode
+   - Ask it: "Add a comment to this file"
+   - It should execute **without** the Accept/Reject prompt!
+
+4. **Disable When Done**
+   - Run the toggle command again
+   - Click "Reload Window"
+   - Your original settings are restored
+
+---
+
+## 📁 Repository Structure
+
+```
+skoop-continue-sync/
+├── src/extension.ts           # Updated with database-based toggle
+├── QUICK_START_AUTO_ACCEPT.md # Quick reference
+├── AUTO_ACCEPT_GUIDE.md       # Detailed guide
+├── README.md                  # Updated with feature info
+└── package.json               # Includes new setting
+```
+
+---
+
+**Next Step**: Reload VS Code and test the toggle! 🎯
 
 ---
 
