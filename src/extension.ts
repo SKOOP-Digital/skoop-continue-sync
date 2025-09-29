@@ -8,7 +8,10 @@ let lastConfigRefresh = 0;
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
 let isOnline = true;
 
-// Track auto-accept state
+// Store original dialog methods for restoration
+let originalShowInformationMessage: any = null;
+let originalShowWarningMessage: any = null;
+let originalShowErrorMessage: any = null;
 let dialogInterceptionActive = false;
 
 export function activate(context: vscode.ExtensionContext) {
