@@ -1,441 +1,100 @@
 # Skoop Continue Sync
 
-A VS Code extension that synchronizes Continue.dev settings for team members, allowing centralized management of models, agents, rules, and prompts.
+A VS Code extension that synchronizes Continue.dev settings for team members by fetching a centralized configuration from a secure endpoint. This allows for consistent management of models, agents, rules, and prompts across the entire team.
 
 ## Features
 
-- **External Configuration**: All settings loaded from `team-config.json` file
-- **LiteLLM Integration**: Automatically configures models from your LiteLLM server
-- **Team Model Management**: Sets up standardized models with role-based assignments
-- **Agent Configuration**: Deploys predefined agents for common development tasks
-- **Global Rules**: Applies team-wide coding standards and best practices
-- **Custom Prompts**: Provides standardized prompts for code review and bug analysis
-- **Documentation Setup**: Configures team documentation sources in main config
-- **Future MCP Support**: Ready for Model Context Protocol servers
-- **Future Analytics**: Ready for data collection and team insights
+- **Centralized Configuration**: All settings are loaded from a secure n8n webhook.
+- **Automatic Refresh**: Configuration is automatically refreshed every 24 hours to ensure settings are always up-to-date.
+- **Manual Sync**: A command is available to manually trigger a configuration refresh at any time.
+- **Team-Managed Agents**: Pre-defined agents for tasks like code review, bug fixing, and documentation are deployed to all team members.
+- **Standardized Models**: Ensures all team members use the same models with consistent settings and roles.
+- **Global Rules & Prompts**: Enforces team-wide coding standards and provides standardized prompts.
 
+## Prerequisites
+
+- [Visual Studio Code](https://code.visualstudio.com/)
+- [Continue.dev VS Code Extension](https://marketplace.visualstudio.com/items?itemName=Continue.continue)
+
+## Installation
+
+1.  **Download the Extension**:
+    *   [Download the latest `.vsix` file here](PLACEHOLDER_FOR_DOWNLOAD_URL).
+2.  **Install in VS Code**:
+    *   Open VS Code.
+    *   Go to the Extensions view (`Ctrl+Shift+X`).
+    *   Click the "..." menu in the top-right corner and select "Install from VSIX...".
+    *   Select the downloaded `.vsix` file.
 ## Configuration
 
-### Packaged Configuration Files
+After installation, you need to configure your team API key in VS Code settings:
 
-The extension includes comprehensive configuration files demonstrating Continue.dev best practices:
+1.  Open VS Code Settings (`Ctrl+,`).
+2.  Search for `Skoop Continue Sync`.
+3.  In the `Skoop-continue-sync: Api Key` field, enter the key provided to you.
+4.  Run the "Apply Team Continue Settings" command from the Command Palette (`Ctrl+Shift+P`).
 
-#### **team-config.json** - Main Configuration
-Contains team-specific settings with LiteLLM models and local customizations.
+### Team Keys
 
-#### **pr-mode.md** - Markdown Prompt Example
-Demonstrates Continue.dev's markdown prompt format with frontmatter metadata.
+For now, you can use one of the following keys:
 
-#### **Features Demonstrated**
-- **Hub Block References**: Using `uses:` to reference pre-built configurations from Continue Hub
-- **Mixed Configurations**: Combining hub blocks (`starter/java-rules`) with local custom rules
-- **LiteLLM Integration**: All models configured through team's LiteLLM server
-- **Agent Architecture**: Agents using only LiteLLM models with specific role assignments
-- **Standard Schemas**: Following Continue.dev's official configuration standards
+-   `josh_m:sk-Xko8_N_iN3Q_Mrda5imWQw`
+-   `shahzad_h:sk-fzTwcJQwGcWbvKmb0-7-Iw`
 
-### Customizing Configuration
-
-**For Team Administrators:**
-1. Download and install the extension
-2. Locate the installed extension directory (usually `~/.vscode/extensions/*/skoop-continue-sync-*/`)
-3. Edit the `team-config.json` file with your team's settings
-4. Restart VS Code to apply changes
-
-**For Individual Developers:**
-- The extension will use the packaged default configuration
-- Team administrators can provide updated `team-config.json` files for team members to use
-
-### VS Code Settings (Optional)
-
-The extension also supports VS Code configuration overrides:
-
-- `skoop-continue-sync.litellmUrl`: Override the LiteLLM server URL from `team-config.json`
-- `skoop-continue-sync.litellmApiKey`: Override the LiteLLM API key from `team-config.json`
-
+The configuration is fetched from the following n8n workflow:
+[https://n8n.skoopsignage.dev/webhook/4cf533b9-7da1-483d-b6a0-98155fe715ca](https://n8n.skoopsignage.dev/webhook/4cf533b9-7da1-483d-b6a0-98155fe715ca)
 ## Usage
 
-1. Install the extension (includes default `team-config.json`)
-2. **Optional:** Customize `team-config.json` in the extension directory for team-specific settings
-3. **Optional:** Override LiteLLM credentials in VS Code settings
-4. Run the "Apply Team Continue Settings" command from the Command Palette
-5. The extension loads configuration and applies settings to Continue.dev
-
-## Team Configuration
-
-The extension loads all team settings from `team-config.json`. By default, it configures:
-
-- **GPT-4 (Team)**: For chat, edit, and apply operations
-- **GPT-3.5 Turbo (Team)**: For chat, autocomplete, and summarize operations (prioritized for autocomplete)
-
-### Generated Configuration Example
-
-The extension generates a `config.yaml` file like this:
-
-```yaml
-name: "Skoop Team Config"
-version: "1.0.0"
-schema: "v1"
-experimental:
-  useChromiumForDocsCrawling: true
-
-models:
-  - name: "GPT-4 (Team)"
-    provider: openai
-    model: gpt-4
-    apiBase: https://litellm.skoop.digital/
-    apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
-    roles:
-      - chat
-      - edit
-      - apply
-    defaultCompletionOptions:
-      contextLength: 128000
-      maxTokens: 4096
-
-rules:
-  - uses: starter/java-rules
-  - name: "Team CodeStyle"
-    description: "Enforce team coding standards"
-    rule: "Always use TypeScript with strict type checking..."
-
-prompts:
-  - uses: starter/test-prompt
-  - name: "CodeReview"
-    description: "Standard code review prompt"
-    prompt: "Please review this code for:..."
-```
-
-## Team Agents
-
-- **CodeReviewer**: Reviews code for quality, security, and best practices
-- **BugFixer**: Analyzes bugs and provides fixes with explanations
-- **DocumentationWriter**: Creates comprehensive documentation
-
-## Team Rules
-
-- **CodeStyle**: Enforces TypeScript standards and ESLint compliance
-- **Security**: Implements security best practices and input validation
-- **Documentation**: Requires JSDoc comments and README updates
-
-## Sample Configurations
-
-The extension also creates sample configurations for:
-
-### Documentation (`.continue/docs/`)
-- **Skoop Team Documentation**: Configures documentation crawling from your team docs site
-
-### MCP Tools (`.continue/mcpServers/`)
-- **Skoop Database MCP**: SQLite database integration for team data access
-
-### Analytics & Data (`.continue/data/`)
-- **Skoop Team Analytics**: Data collection for team insights and usage tracking
-
-## 📁 **Generated Sample Configurations**
-
-The extension creates sample block files in separate directories:
-
-**📚 Sample Docs Configuration:**
-```yaml
-# .continue/docs/skoop-docs.yaml
-name: "Skoop Team Documentation"
-version: "1.0.0"
-schema: "v1"
-docs:
-  - name: "Skoop Documentation"
-    startUrl: https://docs.skoop.digital/
-    favicon: https://docs.skoop.digital/favicon.ico
-```
-
-**🔌 Sample MCP Configuration:**
-```yaml
-# .continue/mcpServers/skoop-mcp-demo.yaml
-name: "Skoop MCP Demo"
-version: "1.0.0"
-schema: "v1"
-mcpServers:
-  - name: "Simple Demo Server"
-    command: node
-    args: ["-e", "/* Simple inline MCP server with demo_echo tool */"]
-    env: {}
-```
-
-**Available MCP Tools:**
-- ✅ **`demo_echo`**: Echo back a message you provide
-- ✅ **Full MCP Protocol Support**: tools/list, tools/call, error handling
-- ✅ **No External Dependencies**: Uses only Node.js built-in modules
-
-**📊 Sample Data Configuration:**
-```yaml
-# .continue/data/analytics.yaml
-name: "Skoop Team Analytics"
-version: "1.0.0"
-schema: "v1"
-data:
-  - name: "Team Usage Analytics"
-    destination: file:///%USERPROFILE%/.continue/analytics
-    schema: "0.2.0"
-    level: "noCode"
-    events:
-      - autocomplete
-      - chatInteraction
-      - agentAction
-    apiKey: "skoop-analytics-key"
-```
-
-## 🆕 **New Features**
-
-### **Model Role & Performance Configuration**
-The extension now provides detailed control over:
-- ✅ **Model Roles Assignment**: Specify which models handle `chat`, `edit`, `autocomplete`, etc.
-- ✅ **Performance Settings**: Configure context length, token limits, temperature, and more
-- ✅ **Autocomplete Optimization**: Fine-tune context size, debounce delay, caching
-- ✅ **Multi-Model Support**: Different models for different roles with prioritized selection
-
-### **VS Code Extension Settings Integration**
-- ✅ **Automatic Configuration** of Continue.dev VS Code extension settings
-- ✅ **Enables Console Logging** (`continue.enableConsole`)
-- ✅ **Optimizes Performance** with recommended settings
-- ✅ **Configures Tab Autocomplete** and other productivity features
-
-### **Advanced Agent Management**
-- ✅ **Multiple Agents**: CodeReviewer, BugFixer, DocumentationWriter, CodeAssistant
-- ✅ **Role-Specific Models**: Each agent uses the most appropriate model
-- ✅ **Custom Tools**: Tailored tool sets for different agent purposes
-- ✅ **Specialized Prompts**: Context-aware system prompts per agent
-
-### **Chromium Auto-Detection & Installation**
-The extension automatically:
-- ✅ **Checks for Chromium availability** before running
-- ✅ **Enables `useChromiumForDocsCrawling`** in the config
-- ✅ **Forces retry** of failed documentation crawls
-- ✅ **Logs detailed status** of Chromium availability
-
-### **Force Retry Mechanism**
-- ✅ **Clears cached failures** by adding timestamp parameters
-- ✅ **Forces re-indexing** of documentation sites
-- ✅ **Handles JavaScript-heavy sites** like https://www.skoopsignage.com/
-
-### **Updated Documentation Site**
-- ✅ **Uses https://www.skoopsignage.com/** as the primary docs site
-- ✅ **Automatic favicon detection** and configuration
-- ✅ **Chromium-based crawling** for JavaScript content
-- ✅ **Force retry mechanism** to clear cached failures
-- ✅ **Enhanced Chromium detection** with multiple path checking
-
-### **Documentation Scraping Details**
-- ✅ **JavaScript-heavy sites supported** via Chromium
-- ✅ **Automatic retry** with timestamp cache-busting
-- ✅ **Comprehensive logging** of scraping process
-- ✅ **Fallback to standard crawling** if Chromium unavailable
-
-## ⚙️ **Model Configuration Guide**
-
-### **How Model Roles Work**
-Each model can be assigned multiple roles that determine when Continue.dev uses it:
-
-- **`chat`**: Used for general conversation and Agent mode
-- **`edit`**: Used for applying code changes and edits
-- **`apply`**: Used for applying code changes (similar to edit)
-- **`autocomplete`**: Used for tab autocompletion in editors
-- **`summarize`**: Used for summarizing content
-- **`embed`**: Used for generating text embeddings
-- **`rerank`**: Used for re-ranking search results
-
-**Role Priority**: When multiple models support the same role, Continue.dev prioritizes by **order in the config** (first model wins).
-
-### **✅ Proper Folder Structure (Per Continue.dev Docs)**
-
-The extension creates the **correct folder structure** following Continue.dev specifications:
-
-```
-.continue/
-├── config.yaml              # Main config (experimental settings only)
-├── models/                  # ✅ Individual model files
-│   ├── gpt-4--team-.yaml
-│   └── gpt-3-5-turbo--team-.yaml
-├── agents/                  # ✅ Individual agent files
-│   ├── codereviewer.yaml
-│   ├── bugfixer.yaml
-│   ├── documentationwriter.yaml
-│   └── codeassistant.yaml
-├── rules/                   # ✅ Individual rules files
-│   ├── codestyle.yaml
-│   ├── security.yaml
-│   └── documentation.yaml
-├── prompts/                 # ✅ Individual prompt files
-│   ├── codereview.yaml
-│   └── bugreport.yaml
-├── docs/                    # ✅ Documentation sources
-│   └── skoop-docs.yaml
-├── mcpServers/              # ✅ MCP server configurations
-│   └── skoop-mcp-demo.yaml
-└── data/                    # ✅ Analytics configurations
-    └── analytics.yaml
-```
-
-### **✅ Main Config Structure**
-**`.continue/config.yaml`** (contains all configuration):
-```yaml
-name: "Skoop Team Config"
-version: "1.0.0"
-schema: "v1"
-experimental:
-  useChromiumForDocsCrawling: true
-
-models:
-  - name: "GPT-4 (Team)"
-    provider: openai
-    model: gpt-4
-    apiBase: https://litellm.skoop.digital/
-    apiKey: sk-Phkcy9C76yAAc2rNAAsnlg
-    roles: [chat, edit, apply]
-  - name: "GPT-3.5 Turbo (Team)"
-    provider: openai
-    model: gpt-3.5-turbo
-    apiBase: https://litellm.skoop.digital/
-    apiKey: sk-Phkcy9C76yAAc2rNAAsnlg
-    roles: [chat, autocomplete, summarize]
-
-rules:
-  - name: CodeStyle
-    rule: Always use TypeScript with strict type checking...
-  - name: Security
-    rule: Never commit API keys or sensitive data...
-
-prompts:
-  - name: CodeReview
-    description: Standard code review prompt
-    prompt: |
-      Please review this code for:
-      1. Code quality and readability
-      2. Security vulnerabilities...
-  - name: BugReport
-    description: Bug report analysis prompt
-    prompt: |
-      Analyze this bug report:
-      1. Reproduce the issue...
-
-docs:
-  - name: "Skoop Documentation"
-    startUrl: https://www.skoopsignage.com/
-  - name: "Skoop Documentation -2"
-    startUrl: https://www.skoopsignage.com/industry/sports-entertainment
-```
-
-**`.continue/agents/`** (separate agent files):
-- `codereviewer.yaml`
-- `bugfixer.yaml`
-- `documentationwriter.yaml`
-- `codeassistant.yaml`
-
-### **Performance & Token Usage Settings**
-
-| Setting | GPT-4 | GPT-3.5 | Purpose |
-|---------|-------|---------|---------|
-| `contextLength` | 128,000 | 16,385 | Max conversation history |
-| `maxTokens` | 4,096 | 2,048 | Max response length |
-| `temperature` | 0.7 | 0.3 | Creativity (0.0=deterministic, 1.0=random) |
-| `topP` | 1.0 | 0.9 | Token diversity (0.1=focused, 1.0=diverse) |
-| `debounceDelay` | - | 150ms | Autocomplete delay |
-| `maxPromptTokens` | - | 1,024 | Autocomplete context size |
-
-### **How to Modify Settings**
-1. **Edit the extension code** in `src/extension.ts` (lines 328-384)
-2. **Rebuild and reinstall** the extension
-3. **Restart VS Code** after applying settings
-
-### **VS Code Extension Settings**
-The extension automatically configures these Continue.dev settings:
-
-```json
-{
-  "continue.enableConsole": true,        // ✅ Enable console logging
-  "continue.enableTabAutocomplete": true, // ✅ Enable tab autocomplete
-  "continue.enableQuickActions": true,    // ✅ Enable quick actions
-  "continue.enableBetaFeatures": true     // ✅ Enable beta features
-}
-```
-
-**To manually change these:**
-1. Open VS Code Settings (Ctrl+,)
-2. Search for "continue"
-3. Modify any Continue.dev extension settings
-
-## 🐛 **Troubleshooting**
-
-### **Chromium Detection Issues**
-If you see "Chromium not found" repeatedly:
-- ✅ **Extension checks multiple locations** automatically
-- ✅ **Continue.dev installs Chromium** to `~/.continue/.utils/chromium/`
-- ✅ **Wait for download to complete** after first run
-- ✅ **Check logs** for detailed path checking information
-
-### **MCP Server Connection Issues**
-If MCP servers fail to connect:
-- ✅ **Extension automatically cleans up old MCP configs** before creating new ones
-- ✅ **Creates working demo server** with `demo_echo` tool
-- ✅ **Simple Node.js inline server** (no external dependencies)
-- ✅ **Check VS Code output** for detailed error messages
-- ✅ **Verify Node.js installation** is available in PATH
-- ✅ **Wait a few seconds** for MCP server initialization
-- ✅ **Look for "demo_echo" tool** in Continue.dev after connection
-
-**If you see "Team Database" errors:**
-- ✅ **Old configurations are automatically removed**
-- ✅ **Restart VS Code** after running the extension
-- ✅ **Clear Continue.dev cache** if issues persist
-
-### **✅ YAML Parsing Errors Fixed**
-If you see "Missing closing quote" or "Invalid input" errors:
-- ✅ **YAML block scalar syntax** (`|` and `|-`) used for multiline content
-- ✅ **Proper indentation** for all YAML structures
-- ✅ **Quote escaping** handled correctly
-- ✅ **Separate files** for complex configurations to avoid parsing conflicts
-- ✅ **Simplified model configs** in individual files for reliability
-
-### **Analytics Data Not Showing**
-If Skoop Team Analytics doesn't appear:
-- ✅ **File destination uses correct format** (`file:///${USERPROFILE}/.continue/analytics.jsonl`)
-- ✅ **Schema version 0.2.0** with proper event configuration
-- ✅ **Data written to JSONL format** for easy processing
-- ✅ **Check file permissions** for the analytics directory
-
-## Development
-
-### Prerequisites
-
-- Node.js 18+
-- VS Code
-- Continue.dev extension
-
-### Building
-
-```bash
-npm install
-npm run compile
-```
-
-### Testing
-
-```bash
-npm test
-```
-
-### Packaging
-
-```bash
-npx vsce package
-```
-
-## GitHub Actions
-
-The repository includes a GitHub Actions workflow that:
-
-- Builds and compiles the extension on every push/PR
-- Runs linting and tests
-- Packages the extension into a .vsix file
-- Uploads the package as an artifact
-
-## License
-
-This project is licensed under the MIT License.
+Once the extension is installed and configured, it will automatically sync the team's `continue.dev` settings. You can also manually trigger a sync:
+
+1.  Open the Command Palette (`Ctrl+Shift+P`).
+2.  Type `Skoop Continue Sync` and select `Apply Team Continue Settings`.
+3.  The extension will fetch the latest configuration and apply it.
+
+You can also clear all configurations by running the `Clear All Continue Configurations` command.
+
+## How It Works: The Configuration File
+
+The extension fetches a single YAML file from the n8n webhook. This file contains all the necessary configurations for `continue.dev` across the team. Here’s a breakdown of its structure.
+
+### Top-Level Structure
+
+The YAML file is expected to have two main sections: `settings` and `Agents`.
+
+---
+
+## Appendix: Setting Up LM Studio with the Instinct Model
+
+For optimal performance, especially on hardware with Intel GPUs, we recommend running the Instinct model locally using LM Studio. This guide provides a comprehensive walkthrough for setting up LM Studio and integrating it with `continue.dev`.
+
+### Why Use LM Studio?
+
+-   **GPU Acceleration**: LM Studio provides excellent support for GPU acceleration on a wide range of hardware, including Intel GPUs, which significantly speeds up model inference.
+-   **Low CPU Usage**: By offloading the model to the GPU, your CPU remains free for other tasks.
+-   **Better Performance**: For local models, LM Studio generally offers better performance and stability than other solutions like Ollama, especially on non-NVIDIA hardware.
+
+### Step 1: Install and Configure LM Studio
+
+1.  **Download LM Studio**: Visit the [LM Studio website](https://lmstudio.ai/) and download the application for your operating system.
+2.  **Install LM Studio**: Follow the installation instructions.
+3.  **Configure Hardware Settings**:
+    *   Open LM Studio and navigate to the **Settings** (the gear icon on the left).
+    *   Under the **Hardware** section, ensure that **GPU Acceleration** is enabled. For most non-NVIDIA GPUs, the `OpenCL` or `Vulkan` backend should be used.
+    *   It is recommended to offload as many layers as possible to the GPU.
+
+### Step 2: Download the Instinct Model
+
+1.  **Search for the Model**: In LM Studio, click on the **Discover** tab (the magnifying glass icon).
+2.  **Find Instinct**: In the search bar, type `nate/instinct`.
+3.  **Download the GGUF Version**: From the search results, select the `nate/instinct` model. On the right side of the screen, you will see a list of available files. Download one of the `GGUF` format models. The `Q4_K_M` version is often a good balance of performance and quality.
+
+### Step 3: Load the Model and Start the Server
+
+1.  **Load the Model**:
+    *   Navigate to the **My Models** tab (the folder icon).
+    *   You should see the `nate/instinct` model you just downloaded. Click on it to load it.
+2.  **Start the Local Server**:
+    *   Go to the **Local Server** tab (the `<->` icon).
+    *   Click the **Start Server** button.
+    *   The server will start, typically on port `1234`.
+3.  **Now you can select the instinct model**

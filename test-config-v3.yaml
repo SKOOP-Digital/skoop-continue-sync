@@ -18,7 +18,7 @@ Agents:
       - name: "codestral"
         provider: mistral
         model: codestral-latest
-        apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+        apiKey: "{{ $node["Webhook"].json["headers"]["apikey"] }}"
         apiBase: https://litellm.skoop.digital/mistral/v1/
         roles:
           - autocomplete
@@ -62,7 +62,7 @@ Agents:
       - name: "Morph Fast Apply"
         provider: openai
         model: morph-v3-large
-        apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+        apiKey: "{{ $node["Webhook"].json["headers"]["apikey"] }}"
         apiBase: https://litellm.skoop.digital/v1/
         roles:
           - apply
@@ -76,21 +76,21 @@ Agents:
       - name: Morph Embedding v2
         provider: openai
         model: morph-embedding-v2
-        apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+        apiKey: "{{ $node["Webhook"].json["headers"]["apikey"] }}"
         apiBase: https://api.morphllm.com/v1/
         roles:
           - embed
       - name: Morph Rerank v2
         provider: openai
         model: morph-rerank-v2
-        apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+        apiKey: "{{ $node["Webhook"].json["headers"]["apikey"] }}"
         apiBase: https://api.morphllm.com/v1/
         roles:
           - rerank
       - name: "grok-4-fast-c"
         provider: openai
         model: xai/grok-4-fast-c
-        apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+        apiKey: "{{ $node["Webhook"].json["headers"]["apikey"] }}"
         apiBase: https://litellm.skoop.digital/v1/
         roles:
           - chat
@@ -111,7 +111,7 @@ Agents:
       - name: "grok-4-fast-reasoning"
         provider: xAI
         model: grok-4-fast-reasoning
-        apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+        apiKey: "{{ $node["Webhook"].json["headers"]["apikey"] }}"
         apiBase: https://litellm.skoop.digital/xaipt/v1/
         roles:
           - chat
@@ -130,7 +130,7 @@ Agents:
       - name: "grok-4-fast-a"
         provider: anthropic
         model: xai/grok-3-mini
-        apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+        apiKey: "{{ $node["Webhook"].json["headers"]["apikey"] }}"
         apiBase: https://litellm.skoop.digital/v1/
         roles:
           - chat
@@ -152,7 +152,7 @@ Agents:
       - name: "gemini-2.5-pro"
         provider: openai
         model: gemini/gemini-2.5-pro
-        apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+        apiKey: "{{ $node["Webhook"].json["headers"]["apikey"] }}"
         apiBase: https://litellm.skoop.digital/v1/
         roles:
           - chat
@@ -213,7 +213,7 @@ Agents:
       - name: "gpt-5"
         provider: openai
         model: gpt-5
-        apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+        apiKey: "{{ $node["Webhook"].json["headers"]["apikey"] }}"
         apiBase: https://litellm.skoop.digital/v1/
         roles:
           - chat
@@ -234,7 +234,7 @@ Agents:
       - name: "gpt-5-c"
         provider: openai
         model: gpt-5-c
-        apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+        apiKey: "{{ $node["Webhook"].json["headers"]["apikey"] }}"
         apiBase: https://litellm.skoop.digital/v1/
         roles:
           - chat
@@ -255,7 +255,7 @@ Agents:
       - name: "claude-sonnet-4-20250514"
         provider: openai
         model: anthropic/claude-sonnet-4-20250514
-        apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+        apiKey: "{{ $node["Webhook"].json["headers"]["apikey"] }}"
         apiBase: https://litellm.skoop.digital/v1/
         roles:
           - chat
@@ -270,7 +270,7 @@ Agents:
       - name: "c-s-4"
         provider: openai
         model: c-s-4
-        apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+        apiKey: "{{ $node["Webhook"].json["headers"]["apikey"] }}"
         apiBase: https://litellm.skoop.digital/v1/
         roles:
           - chat
@@ -285,7 +285,7 @@ Agents:
       - name: "claude-sonnet-4-20250514-a"
         provider: anthropic
         model: claude-sonnet-4-20250514
-        apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+        apiKey: "{{ $node["Webhook"].json["headers"]["apikey"] }}"
         apiBase: https://litellm.skoop.digital/anthropic/v1/
         roles:
           - chat
@@ -307,7 +307,7 @@ Agents:
       - name: "claude-sonnet-4-20250514-c"
         provider: anthropic
         model: claude-sonnet-4-20250514
-        apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+        apiKey: "{{ $node["Webhook"].json["headers"]["apikey"] }}"
         apiBase: https://litellm.skoop.digital/v1/
         roles:
           - chat
@@ -355,6 +355,7 @@ Agents:
       - name: Context7 MCP
         type: streamable-http
         url: https://mcp.context7.com/mcp
+      - uses: continuedev/continue-docs-mcp
     rules:
       - name: "Use Task Lists for Multi-Step Tasks"
         alwaysApply: true
