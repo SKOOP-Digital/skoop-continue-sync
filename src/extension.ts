@@ -932,28 +932,27 @@ function forceDocsRetryForRawYaml(rawYaml: string) {
 /**
  * Setup automatic acceptance of Continue.dev dialogs
  */
-async function setupAutoAcceptDialogs(context: vscode.ExtensionContext) {
+function setupAutoAcceptDialogs(context: vscode.ExtensionContext) {
     console.log('[Skoop Continue Sync] Setting up auto-accept dialogs...');
 
-    // Check if auto-accept is enabled on startup
+    // Check if auto-accept is enabled
     const autoAcceptEnabled = vscode.workspace.getConfiguration('skoop-continue-sync').get('autoAcceptContinueDialogs', false);
 
     if (autoAcceptEnabled) {
-        console.log('[Skoop Continue Sync] Auto-accept is enabled, ensuring database is configured...');
-        await enableAutoAccept();
+        enableAutoAccept();
     }
 
     // Listen for configuration changes
-    const configListener = vscode.workspace.onDidChangeConfiguration(async (event) => {
+    const configListener = vscode.workspace.onDidChangeConfiguration((event) => {
         if (event.affectsConfiguration('skoop-continue-sync.autoAcceptContinueDialogs')) {
             const enabled = vscode.workspace.getConfiguration('skoop-continue-sync').get('autoAcceptContinueDialogs', false);
             
             if (enabled) {
                 console.log('[Skoop Continue Sync] Auto-accept enabled via settings');
-                await enableAutoAccept();
+                enableAutoAccept();
             } else {
                 console.log('[Skoop Continue Sync] Auto-accept disabled via settings');
-                await disableAutoAccept();
+                disableAutoAccept();
             }
         }
     });
@@ -980,9 +979,13 @@ async function setupAutoAcceptDialogs(context: vscode.ExtensionContext) {
 
 /**
  * Enable automatic acceptance of Continue.dev dialogs by modifying its database
- * AND by automatically triggering the accept keyboard shortcut
  */
 async function enableAutoAccept() {
+    if (dialogInterceptionActive) {
+        console.log('[Skoop Continue Sync] Auto-accept already active');
+        return;
+    }
+
     console.log('[Skoop Continue Sync] Enabling auto-accept for Continue.dev...');
 
     try {
@@ -996,7 +999,12 @@ async function enableAutoAccept() {
         // Read current config
         const globalContext = JSON.parse(fs.readFileSync(globalContextPath, 'utf8'));
         
-        // Check if already configured
+        // Backup original tool policies
+        if (globalContext.toolPolicies) {
+            (globalThis as any).originalToolPolicies = JSON.parse(JSON.stringify(globalContext.toolPolicies));
+        }
+        
+        // Set all tool policies to allowedWithoutPermission
         const allTools = [
             'read_file',
             'edit_existing_file',
@@ -1014,20 +1022,6 @@ async function enableAutoAccept() {
             'search_replace'
         ];
         
-        const alreadyConfigured = globalContext.toolPolicies && 
-            allTools.every(tool => globalContext.toolPolicies[tool] === 'allowedWithoutPermission');
-        
-        if (alreadyConfigured && dialogInterceptionActive) {
-            console.log('[Skoop Continue Sync] Auto-accept already configured and active');
-            return;
-        }
-        
-        // Backup original tool policies
-        if (globalContext.toolPolicies && !dialogInterceptionActive) {
-            (globalThis as any).originalToolPolicies = JSON.parse(JSON.stringify(globalContext.toolPolicies));
-        }
-        
-        // Set all tool policies to allowedWithoutPermission
         globalContext.toolPolicies = {};
         allTools.forEach(tool => {
             globalContext.toolPolicies[tool] = 'allowedWithoutPermission';
@@ -1044,23 +1038,17 @@ async function enableAutoAccept() {
         
         dialogInterceptionActive = true;
         
-        // START KEYBOARD SHORTCUT AUTO-PRESSER (THE HACK!)
-        startKeyboardShortcutHack();
-        
-        console.log('[Skoop Continue Sync] ✅ Auto-accept enabled successfully (database + keyboard hack)');
+        console.log('[Skoop Continue Sync] ✅ Auto-accept enabled successfully');
         console.log('[Skoop Continue Sync] Set', allTools.length, 'tool policies to allowedWithoutPermission');
         
-        // Only show notification if this was a manual trigger (not on startup)
-        if (!alreadyConfigured) {
-            vscode.window.showWarningMessage(
-                '⚠️ Skoop Auto-Accept ENABLED: Automatically pressing Accept shortcuts! Reload window for database changes to take effect.',
-                'Reload Window'
-            ).then(selection => {
-                if (selection === 'Reload Window') {
-                    vscode.commands.executeCommand('workbench.action.reloadWindow');
-                }
-            });
-        }
+        vscode.window.showWarningMessage(
+            '⚠️ Skoop Auto-Accept ENABLED: All Continue.dev tools will execute without permission! Reload window for changes to take effect.',
+            'Reload Window'
+        ).then(selection => {
+            if (selection === 'Reload Window') {
+                vscode.commands.executeCommand('workbench.action.reloadWindow');
+            }
+        });
         
     } catch (error) {
         console.error('[Skoop Continue Sync] Failed to enable auto-accept:', error);
@@ -1075,42 +1063,6 @@ async function enableAutoAccept() {
     }
 }
 
-/**
- * THE NUCLEAR HACK: Automatically trigger Continue.dev's accept shortcuts
- */
-function startKeyboardShortcutHack() {
-    console.log('[Skoop Continue Sync] 🔥 NUCLEAR HACK: Starting keyboard shortcut auto-presser...');
-    
-    // Try to trigger Continue's accept command every 2 seconds
-    const hackInterval = setInterval(async () => {
-        try {
-            // Try all possible Continue.dev accept commands
-            const commands = [
-                'continue.acceptDiff',
-                'continue.acceptVerticalDiffBlock',
-                'continue.applyCodeBlock',
-                'continue.acceptToolCall',
-                'continue.acceptAgentAction'
-            ];
-            
-            for (const cmd of commands) {
-                try {
-                    await vscode.commands.executeCommand(cmd);
-                } catch (e) {
-                    // Silently fail
-                }
-            }
-        } catch (error) {
-            // Silently fail
-        }
-    }, 2000); // Every 2 seconds
-    
-    // Store interval for cleanup
-    (globalThis as any).continueAutoAcceptHackInterval = hackInterval;
-    
-    console.log('[Skoop Continue Sync] 🔥 Keyboard hack active: Will attempt to auto-accept every 2 seconds');
-}
-
 
 /**
  * Disable automatic acceptance and restore original Continue.dev configuration
@@ -1123,13 +1075,6 @@ async function disableAutoAccept() {
     console.log('[Skoop Continue Sync] Disabling auto-accept...');
 
     try {
-        // Stop the keyboard shortcut hack
-        if ((globalThis as any).continueAutoAcceptHackInterval) {
-            clearInterval((globalThis as any).continueAutoAcceptHackInterval);
-            (globalThis as any).continueAutoAcceptHackInterval = null;
-            console.log('[Skoop Continue Sync] 🔥 Keyboard hack stopped');
-        }
-        
         // Restore Continue.dev's globalContext.json
         const globalContextPath = path.join(process.env.HOME || process.env.USERPROFILE || '', '.continue', 'index', 'globalContext.json');
         
