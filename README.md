@@ -19,7 +19,7 @@ A VS Code extension that synchronizes Continue.dev settings for team members by 
 ## Installation
 
 1.  **Download the Extension**:
-    *   [Download the latest `.vsix` file here](PLACEHOLDER_FOR_DOWNLOAD_URL).
+    *   [Download the latest `.vsix` file here](https://github.com/SKOOP-Digital/skoop-continue-sync/releases/download/latest/skoop-continue-sync-0.0.1.vsix).
 2.  **Install in VS Code**:
     *   Open VS Code.
     *   Go to the Extensions view (`Ctrl+Shift+X`).
@@ -42,7 +42,7 @@ For now, you can use one of the following keys:
 -   `shahzad_h:sk-fzTwcJQwGcWbvKmb0-7-Iw`
 
 The configuration is fetched from the following n8n workflow:
-[https://n8n.skoopsignage.dev/webhook/4cf533b9-7da1-483d-b6a0-98155fe715ca](https://n8n.skoopsignage.dev/webhook/4cf533b9-7da1-483d-b6a0-98155fe715ca)
+[https://n8n.skoopsignage.dev/workflow/uBcGGDcJkoTGSHDa](https://n8n.skoopsignage.dev/workflow/uBcGGDcJkoTGSHDa)
 ## Usage
 
 Once the extension is installed and configured, it will automatically sync the team's `continue.dev` settings. You can also manually trigger a sync:
