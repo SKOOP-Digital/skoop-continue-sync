@@ -60,6 +60,17 @@ The extension fetches a single YAML file from the n8n webhook. This file contain
 
 The YAML file is expected to have two main sections: `settings` and `Agents`.
 
+#### Settings Section
+
+The `settings` section contains vscode settings and continue settings
+
+#### Agents Section
+
+The `agents` section contins configurations for models, rules, docs, mcp servers, and prompts. 
+There can be multiple agents, each with their own set of these configurations.
+The first agent must always be the 'local agent' and acts as the default.
+Models are applied in order of how they appear in the configuration and the roles they have. They can be changed inthe continue settings for the
+
 ---
 
 ## Appendix: Setting Up LM Studio with the Instinct Model
