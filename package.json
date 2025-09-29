@@ -40,6 +40,10 @@
             {
                 "command": "skoop-continue-sync.clearAllConfigs",
                 "title": "Clear All Continue Configurations"
+            },
+            {
+                "command": "skoop-continue-sync.toggleAutoAccept",
+                "title": "Toggle Auto-Accept Continue.dev Dialogs"
             }
         ],
         "keybindings": [
@@ -74,6 +78,11 @@
           "type": "boolean",
           "default": false,
           "description": "Set to true to clear all Continue configurations (will reset to false after clearing)"
+        },
+        "skoop-continue-sync.autoAcceptContinueDialogs": {
+          "type": "boolean",
+          "default": false,
+          "description": "⚠️ DANGEROUS: Automatically accept all Continue.dev tool actions without prompting. Use with extreme caution!"
         }
       }
     }

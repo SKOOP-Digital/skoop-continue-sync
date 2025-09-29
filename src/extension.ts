@@ -8,6 +8,12 @@ let lastConfigRefresh = 0;
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
 let isOnline = true;
 
+// Store original dialog methods for restoration
+let originalShowInformationMessage: any = null;
+let originalShowWarningMessage: any = null;
+let originalShowErrorMessage: any = null;
+let dialogInterceptionActive = false;
+
 export function activate(context: vscode.ExtensionContext) {
     console.log('[Skoop Continue Sync] Extension activated successfully!');
     console.log('[Skoop Continue Sync] Current workspace:', vscode.workspace.rootPath);
@@ -16,6 +22,9 @@ export function activate(context: vscode.ExtensionContext) {
         USERPROFILE: process.env.USERPROFILE,
         APPDATA: process.env.APPDATA
     });
+
+    // Setup auto-accept functionality
+    setupAutoAcceptDialogs(context);
 
     // Check for required extensions
     const requiredExtensions = [
@@ -795,6 +804,9 @@ export function deactivate() {
         clearInterval(refreshTimer);
         refreshTimer = null;
     }
+    
+    // Restore original dialog methods
+    disableAutoAccept();
 }
 
 
@@ -914,5 +926,201 @@ function forceDocsRetryForRawYaml(rawYaml: string) {
         // Note: This function modifies the rawYaml by reference, but since it's passed by value,
         // we'd need to return it or modify the calling code. For now, we'll just log.
     }
+}
+
+// ============================================================================
+// AUTO-ACCEPT DIALOG FUNCTIONALITY
+// ============================================================================
+
+/**
+ * Setup automatic acceptance of Continue.dev dialogs
+ */
+function setupAutoAcceptDialogs(context: vscode.ExtensionContext) {
+    console.log('[Skoop Continue Sync] Setting up auto-accept dialogs...');
+
+    // Check if auto-accept is enabled
+    const autoAcceptEnabled = vscode.workspace.getConfiguration('skoop-continue-sync').get('autoAcceptContinueDialogs', false);
+
+    if (autoAcceptEnabled) {
+        enableAutoAccept();
+    }
+
+    // Listen for configuration changes
+    const configListener = vscode.workspace.onDidChangeConfiguration((event) => {
+        if (event.affectsConfiguration('skoop-continue-sync.autoAcceptContinueDialogs')) {
+            const enabled = vscode.workspace.getConfiguration('skoop-continue-sync').get('autoAcceptContinueDialogs', false);
+            
+            if (enabled) {
+                console.log('[Skoop Continue Sync] Auto-accept enabled via settings');
+                enableAutoAccept();
+            } else {
+                console.log('[Skoop Continue Sync] Auto-accept disabled via settings');
+                disableAutoAccept();
+            }
+        }
+    });
+
+    context.subscriptions.push(configListener);
+
+    // Register toggle command
+    const toggleCommand = vscode.commands.registerCommand('skoop-continue-sync.toggleAutoAccept', async () => {
+        const currentValue = vscode.workspace.getConfiguration('skoop-continue-sync').get('autoAcceptContinueDialogs', false);
+        const newValue = !currentValue;
+        
+        await vscode.workspace.getConfiguration('skoop-continue-sync').update(
+            'autoAcceptContinueDialogs',
+            newValue,
+            vscode.ConfigurationTarget.Global
+        );
+        
+        const status = newValue ? 'enabled' : 'disabled';
+        vscode.window.showInformationMessage(`Continue.dev auto-accept ${status}`);
+    });
+
+    context.subscriptions.push(toggleCommand);
+}
+
+/**
+ * Enable automatic acceptance of Continue.dev dialogs
+ */
+function enableAutoAccept() {
+    if (dialogInterceptionActive) {
+        console.log('[Skoop Continue Sync] Auto-accept already active');
+        return;
+    }
+
+    console.log('[Skoop Continue Sync] Enabling auto-accept for Continue.dev dialogs...');
+
+    // Store original methods
+    originalShowInformationMessage = vscode.window.showInformationMessage;
+    originalShowWarningMessage = vscode.window.showWarningMessage;
+    originalShowErrorMessage = vscode.window.showErrorMessage;
+
+    // Monkey patch showInformationMessage
+    (vscode.window as any).showInformationMessage = function (message: string, ...items: any[]) {
+        if (shouldAutoAccept(message)) {
+            console.log('[Skoop Continue Sync] Auto-accepting dialog:', message.substring(0, 100));
+            
+            // Find the first acceptable action
+            const acceptAction = findAcceptAction(items);
+            if (acceptAction) {
+                console.log('[Skoop Continue Sync] Returning accept action:', acceptAction);
+                return Promise.resolve(acceptAction);
+            }
+        }
+        
+        // Fall through to original method
+        return originalShowInformationMessage.apply(vscode.window, [message, ...items]);
+    };
+
+    // Monkey patch showWarningMessage
+    (vscode.window as any).showWarningMessage = function (message: string, ...items: any[]) {
+        if (shouldAutoAccept(message)) {
+            console.log('[Skoop Continue Sync] Auto-accepting warning:', message.substring(0, 100));
+            
+            const acceptAction = findAcceptAction(items);
+            if (acceptAction) {
+                console.log('[Skoop Continue Sync] Returning accept action:', acceptAction);
+                return Promise.resolve(acceptAction);
+            }
+        }
+        
+        return originalShowWarningMessage.apply(vscode.window, [message, ...items]);
+    };
+
+    dialogInterceptionActive = true;
+    console.log('[Skoop Continue Sync] Auto-accept enabled successfully');
+    
+    vscode.window.showInformationMessage(
+        '⚠️ Skoop Auto-Accept Active: All Continue.dev tool actions will be automatically accepted without prompts. Use with caution!'
+    );
+}
+
+/**
+ * Disable automatic acceptance and restore original dialog methods
+ */
+function disableAutoAccept() {
+    if (!dialogInterceptionActive) {
+        return;
+    }
+
+    console.log('[Skoop Continue Sync] Disabling auto-accept...');
+
+    // Restore original methods
+    if (originalShowInformationMessage) {
+        (vscode.window as any).showInformationMessage = originalShowInformationMessage;
+    }
+    if (originalShowWarningMessage) {
+        (vscode.window as any).showWarningMessage = originalShowWarningMessage;
+    }
+    if (originalShowErrorMessage) {
+        (vscode.window as any).showErrorMessage = originalShowErrorMessage;
+    }
+
+    dialogInterceptionActive = false;
+    console.log('[Skoop Continue Sync] Auto-accept disabled');
+}
+
+/**
+ * Determine if a dialog message should be auto-accepted
+ */
+function shouldAutoAccept(message: string): boolean {
+    // Patterns that indicate Continue.dev tool usage prompts
+    const continuePatterns = [
+        /continue/i,
+        /tool/i,
+        /accept/i,
+        /reject/i,
+        /agent/i,
+        /edit/i,
+        /apply/i,
+        /changes/i,
+        /diff/i,
+        /file/i,
+        /terminal/i,
+        /command/i,
+        /run/i
+    ];
+
+    // Check if message matches any Continue.dev patterns
+    const matches = continuePatterns.some(pattern => pattern.test(message));
+    
+    if (matches) {
+        console.log('[Skoop Continue Sync] Dialog matches Continue.dev pattern:', message.substring(0, 100));
+    }
+    
+    return matches;
+}
+
+/**
+ * Find the "accept" action from dialog items
+ */
+function findAcceptAction(items: any[]): any {
+    if (!items || items.length === 0) {
+        return undefined;
+    }
+
+    // Common accept action labels
+    const acceptLabels = [
+        'Accept',
+        'OK',
+        'Yes',
+        'Apply',
+        'Continue',
+        'Confirm',
+        'Allow'
+    ];
+
+    // Try to find an accept action
+    for (const item of items) {
+        const itemStr = typeof item === 'string' ? item : (item?.title || '');
+        
+        if (acceptLabels.some(label => itemStr.toLowerCase().includes(label.toLowerCase()))) {
+            return item;
+        }
+    }
+
+    // If no explicit accept action found, return the first item
+    return items[0];
 }
 
