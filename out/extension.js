@@ -748,24 +748,25 @@ function forceDocsRetryForRawYaml(rawYaml) {
 /**
  * Setup automatic acceptance of Continue.dev dialogs
  */
-function setupAutoAcceptDialogs(context) {
+async function setupAutoAcceptDialogs(context) {
     console.log('[Skoop Continue Sync] Setting up auto-accept dialogs...');
-    // Check if auto-accept is enabled
+    // Check if auto-accept is enabled on startup
     const autoAcceptEnabled = vscode.workspace.getConfiguration('skoop-continue-sync').get('autoAcceptContinueDialogs', false);
     if (autoAcceptEnabled) {
-        enableAutoAccept();
+        console.log('[Skoop Continue Sync] Auto-accept is enabled, ensuring database is configured...');
+        await enableAutoAccept();
     }
     // Listen for configuration changes
-    const configListener = vscode.workspace.onDidChangeConfiguration((event) => {
+    const configListener = vscode.workspace.onDidChangeConfiguration(async (event) => {
         if (event.affectsConfiguration('skoop-continue-sync.autoAcceptContinueDialogs')) {
             const enabled = vscode.workspace.getConfiguration('skoop-continue-sync').get('autoAcceptContinueDialogs', false);
             if (enabled) {
                 console.log('[Skoop Continue Sync] Auto-accept enabled via settings');
-                enableAutoAccept();
+                await enableAutoAccept();
             }
             else {
                 console.log('[Skoop Continue Sync] Auto-accept disabled via settings');
-                disableAutoAccept();
+                await disableAutoAccept();
             }
         }
     });
@@ -784,10 +785,6 @@ function setupAutoAcceptDialogs(context) {
  * Enable automatic acceptance of Continue.dev dialogs by modifying its database
  */
 async function enableAutoAccept() {
-    if (dialogInterceptionActive) {
-        console.log('[Skoop Continue Sync] Auto-accept already active');
-        return;
-    }
     console.log('[Skoop Continue Sync] Enabling auto-accept for Continue.dev...');
     try {
         // Modify Continue.dev's globalContext.json directly
@@ -797,11 +794,7 @@ async function enableAutoAccept() {
         }
         // Read current config
         const globalContext = JSON.parse(fs.readFileSync(globalContextPath, 'utf8'));
-        // Backup original tool policies
-        if (globalContext.toolPolicies) {
-            globalThis.originalToolPolicies = JSON.parse(JSON.stringify(globalContext.toolPolicies));
-        }
-        // Set all tool policies to allowedWithoutPermission
+        // Check if already configured
         const allTools = [
             'read_file',
             'edit_existing_file',
@@ -818,6 +811,17 @@ async function enableAutoAccept() {
             'list_dir',
             'search_replace'
         ];
+        const alreadyConfigured = globalContext.toolPolicies &&
+            allTools.every(tool => globalContext.toolPolicies[tool] === 'allowedWithoutPermission');
+        if (alreadyConfigured && dialogInterceptionActive) {
+            console.log('[Skoop Continue Sync] Auto-accept already configured and active');
+            return;
+        }
+        // Backup original tool policies
+        if (globalContext.toolPolicies && !dialogInterceptionActive) {
+            globalThis.originalToolPolicies = JSON.parse(JSON.stringify(globalContext.toolPolicies));
+        }
+        // Set all tool policies to allowedWithoutPermission
         globalContext.toolPolicies = {};
         allTools.forEach(tool => {
             globalContext.toolPolicies[tool] = 'allowedWithoutPermission';
@@ -832,11 +836,14 @@ async function enableAutoAccept() {
         dialogInterceptionActive = true;
         console.log('[Skoop Continue Sync] ✅ Auto-accept enabled successfully');
         console.log('[Skoop Continue Sync] Set', allTools.length, 'tool policies to allowedWithoutPermission');
-        vscode.window.showWarningMessage('⚠️ Skoop Auto-Accept ENABLED: All Continue.dev tools will execute without permission! Reload window for changes to take effect.', 'Reload Window').then(selection => {
-            if (selection === 'Reload Window') {
-                vscode.commands.executeCommand('workbench.action.reloadWindow');
-            }
-        });
+        // Only show notification if this was a manual trigger (not on startup)
+        if (!alreadyConfigured) {
+            vscode.window.showWarningMessage('⚠️ Skoop Auto-Accept ENABLED: All Continue.dev tools will execute without permission! Reload window for changes to take effect.', 'Reload Window').then(selection => {
+                if (selection === 'Reload Window') {
+                    vscode.commands.executeCommand('workbench.action.reloadWindow');
+                }
+            });
+        }
     }
     catch (error) {
         console.error('[Skoop Continue Sync] Failed to enable auto-accept:', error);
