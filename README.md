@@ -10,7 +10,6 @@ A VS Code extension that synchronizes Continue.dev settings for team members by 
 - **Team-Managed Agents**: Pre-defined agents for tasks like code review, bug fixing, and documentation are deployed to all team members.
 - **Standardized Models**: Ensures all team members use the same models with consistent settings and roles.
 - **Global Rules & Prompts**: Enforces team-wide coding standards and provides standardized prompts.
-- **⚠️ Auto-Accept Continue.dev Dialogs**: Automatically accept all Continue.dev tool prompts without manual intervention (use with caution!)
 
 ## Prerequisites
 
@@ -52,16 +51,6 @@ Once the extension is installed and configured, it will automatically sync the t
 3.  The extension will fetch the latest configuration and apply it.
 
 You can also clear all configurations by running the `Clear All Continue Configurations` command.
-
-## Auto-Accept Continue.dev Dialogs (YOLO Mode)
-
-If Continue.dev's built-in `autoAcceptEditToolDiffs` setting isn't working, you can enable a workaround in Skoop:
-
-1. Open Command Palette (`Ctrl+Shift+P`)
-2. Run: `Toggle Auto-Accept Continue.dev Dialogs`
-3. All Continue.dev tool actions will now execute automatically without prompts
-
-**⚠️ WARNING**: This is dangerous! Use only on non-critical code. See [AUTO_ACCEPT_GUIDE.md](./AUTO_ACCEPT_GUIDE.md) for details.
 
 ## How It Works: The Configuration File
 
