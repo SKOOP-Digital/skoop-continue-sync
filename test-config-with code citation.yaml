@@ -1,0 +1,781 @@
+settings:
+    - name: "continueignore"
+      .specstory/
+      .gitignore
+      node_modules/
+      *.specstory
+      .git/
+  
+  Agents:
+    - agent: "Local Agent"
+      name: "Local Agent"
+      version: "1.0.0"
+      schema: "v1"
+      description: "Default agent"
+  
+      # Models section - using LiteLLM models
+      models:
+        - name: "codestral"
+          provider: mistral
+          model: codestral-latest
+          apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+          apiBase: https://litellm.skoop.digital/mistral/v1/
+          roles:
+            - autocomplete
+          autocompleteOptions:
+            debounceDelay: 500
+            modelTimeout: 150
+            multilineCompletions: always
+        - name: Mercury Coder
+          provider: inception
+          model: mercury-coder
+          apiKey: sk_7bcf94d7caf478cacfb9651eeb022ff7
+          roles:
+            - autocomplete
+          capabilities:
+            - next_edit
+          defaultCompletionOptions:
+            temperature: 0
+            stop:
+              - <|endoftext|>
+              - <|/code_to_edit|>
+          promptTemplates:
+            apply: |-
+              <|original_code|>
+              {{{ original_code }}}
+              <|/original_code|>
+  
+              <|update_snippet|>
+              {{{ new_code }}}
+              <|/update_snippet|>
+        - name: "Instinct-LMStudio"
+          provider: "lmstudio"
+          model: "nate/instinct"
+          apiBase: "http://localhost:1234/v1/"
+          roles:
+            - "autocomplete"
+          defaultCompletionOptions:
+            temperature: 0.1
+            maxTokens: 1024
+            stop:
+              - "<|im_end|>"
+        - name: "Morph Fast Apply"
+          provider: openai
+          model: morph-v3-large
+          apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+          apiBase: https://litellm.skoop.digital/v1/
+          roles:
+            - apply
+          promptTemplates:
+            apply: |-
+              <code>{{{ original_code }}}</code>
+              <update>{{{ new_code }}}</update>
+          defaultCompletionOptions:
+            maxTokens: 34000
+            temperature: 0
+        - name: Morph Embedding v2
+          provider: openai
+          model: morph-embedding-v2
+          apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+          apiBase: https://api.morphllm.com/v1/
+          roles:
+            - embed
+        - name: Morph Rerank v2
+          provider: openai
+          model: morph-rerank-v2
+          apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+          apiBase: https://api.morphllm.com/v1/
+          roles:
+            - rerank
+        - name: "grok-4-fast-c"
+          provider: openai
+          model: xai/grok-4-fast-c
+          apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+          apiBase: https://litellm.skoop.digital/v1/
+          roles:
+            - chat
+            - edit
+          capabilities:
+            - tool_use
+            - image_input
+          requestOptions:
+            extraBodyProperties:
+              thinking:
+                type: "enabled"
+                budget_tokens: 2048
+          defaultCompletionOptions:
+            contextLength: 2000000
+            maxTokens: 30000
+            reasoning: true
+            reasoningBudgetTokens: 2048
+        - name: "grok-4-fast-reasoning"
+          provider: xAI
+          model: grok-4-fast-reasoning
+          apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+          apiBase: https://litellm.skoop.digital/xaipt/v1/
+          roles:
+            - chat
+            - edit
+          defaultCompletionOptions:
+            contextLength: 2000000
+            maxTokens: 30000
+          capabilities:
+            - tool_use
+            - image_input
+          requestOptions:
+            extraBodyProperties:
+              thinking:
+                type: "enabled"
+                budget_tokens: 2048
+        - name: "grok-4-fast-a"
+          provider: anthropic
+          model: xai/grok-3-mini
+          apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+          apiBase: https://litellm.skoop.digital/v1/
+          roles:
+            - chat
+            - edit
+          requestOptions:
+            extraBodyProperties:
+              thinking:
+                type: "enabled"
+                budget_tokens: 2048
+          defaultCompletionOptions:
+            contextLength: 200000
+            maxTokens: 30000
+            reasoning: true
+            reasoningBudgetTokens: 2048
+            promptCaching: true  
+          capabilities:
+            - tool_use
+            - image_input  
+        - name: "gemini-2.5-pro"
+          provider: openai
+          model: gemini/gemini-2.5-pro
+          apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+          apiBase: https://litellm.skoop.digital/v1/
+          roles:
+            - chat
+            - edit
+          capabilities:
+            - tool_use
+            - image_input
+          requestOptions:
+            extraBodyProperties:
+              thinking:
+                type: "enabled"
+                budget_tokens: 2048
+          defaultCompletionOptions:
+            contextLength: 1048570
+            maxTokens: 65530
+            reasoning: true
+            reasoningBudgetTokens: 2048
+        - name: "qwen3-coder-30b"
+          provider: "lmstudio"
+          model: qwen/qwen3-coder-30b
+          apiBase: "http://localhost:1234/v1"
+          roles:
+            - chat
+            - edit
+          capabilities:
+            - tool_use
+            - image_input
+          requestOptions:
+            extraBodyProperties:
+              thinking:
+                type: "enabled"
+                budget_tokens: 2048
+          defaultCompletionOptions:
+            contextLength: 40000
+            maxTokens: 12000
+            reasoning: true
+            reasoningBudgetTokens: 800
+        - name: "gpt-5"
+          provider: openai
+          model: gpt-5
+          apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+          apiBase: https://litellm.skoop.digital/v1/
+          roles:
+            - chat
+            - edit
+          capabilities:
+            - tool_use
+            - image_input
+          requestOptions:
+            extraBodyProperties:
+              thinking:
+                type: "enabled"
+                budget_tokens: 2048
+          defaultCompletionOptions:
+            contextLength: 200000
+            maxTokens: 60000
+            reasoning: true
+            reasoningBudgetTokens: 2048
+        - name: "gpt-5-c"
+          provider: openai
+          model: gpt-5-c
+          apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+          apiBase: https://litellm.skoop.digital/v1/
+          roles:
+            - chat
+            - edit
+          capabilities:
+            - tool_use
+            - image_input
+          requestOptions:
+            extraBodyProperties:
+              thinking:
+                type: "enabled"
+                budget_tokens: 2048
+          defaultCompletionOptions:
+            contextLength: 200000
+            maxTokens: 60000
+            reasoning: true
+            reasoningBudgetTokens: 2048
+        - name: "claude-sonnet-4-20250514"
+          provider: openai
+          model: anthropic/claude-sonnet-4-20250514
+          apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+          apiBase: https://litellm.skoop.digital/v1/
+          roles:
+            - chat
+            - edit
+          requestOptions:
+            extraBodyProperties:
+              thinking:
+                type: "enabled"
+                budget_tokens: 2048
+          defaultCompletionOptions:
+            contextLength: 200000
+            maxTokens: 30000
+            reasoning: true
+            reasoningBudgetTokens: 2048
+            promptCaching: true      
+          capabilities:
+            - tool_use
+            - image_input    
+        - name: "claude-sonnet-4-20250514-a"
+          provider: anthropic
+          model: claude-sonnet-4-20250514
+          apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+          apiBase: https://litellm.skoop.digital/anthropic/v1/
+          roles:
+            - chat
+            - edit
+          requestOptions:
+            extraBodyProperties:
+              thinking:
+                type: "enabled"
+                budget_tokens: 2048
+          defaultCompletionOptions:
+            contextLength: 200000
+            maxTokens: 30000
+            reasoning: true
+            reasoningBudgetTokens: 2048
+            promptCaching: true  
+          capabilities:
+            - tool_use
+            - image_input  
+        - name: "claude-sonnet-4-20250514-c"
+          provider: anthropic
+          model: claude-sonnet-4-20250514
+          apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+          apiBase: https://litellm.skoop.digital/v1/
+          roles:
+            - chat
+            - edit
+          requestOptions:
+            extraBodyProperties:
+              thinking:
+                type: "enabled"
+                budget_tokens: 2048
+          defaultCompletionOptions:
+            contextLength: 200000
+            maxTokens: 30000
+            reasoning: true
+            reasoningBudgetTokens: 2048
+            promptCaching: true  
+          capabilities:
+            - tool_use
+            - image_input  
+        - name: Claude 4 Sonnet
+          provider: anthropic
+          model: claude-sonnet-4-20250514
+          apiKey: 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
+          roles:
+            - chat
+            - edit
+            - apply
+          requestOptions:
+            extraBodyProperties:
+              thinking:
+                type: "enabled"
+                budget_tokens: 2048
+          defaultCompletionOptions:
+            contextLength: 200000
+            maxTokens: 30000
+            reasoning: true
+            reasoningBudgetTokens: 2048
+            promptCaching: true    
+          capabilities:
+            - tool_use
+            - image_input
+      mcpServers:
+        - name: DeepWiki MCP
+          type: streamable-http
+          url: https://mcp.deepwiki.com/mcp
+        - name: Context7 MCP
+          type: streamable-http
+          url: https://mcp.context7.com/mcp
+      rules:
+        - name: "Use Task Lists for Multi-Step Tasks"
+          alwaysApply: true
+          rule: |
+            # Task List Management
+  
+            Guidelines for creating and managing task lists in to track project progress
+  
+            ## Task List Creation
+  
+            1. Before starting any multi-step task, create a task list of the tasks required to complete the goal. 
+              - Include a clear title and description of the feature being implemented
+  
+            2. **YOU MUST STRUCTURE THE TASK LIST EXACTLY LIKE THIS** with these sections:
+              ```
+              ### Feature Name Implementation
+              
+              Brief description of the feature and its purpose.
+              
+              #### Completed Tasks
+              
+              - [x] Task 1 that has been completed
+              - [x] Task 2 that has been completed
+              
+              #### In Progress Tasks
+              
+              - [ ] Task 3 currently being worked on
+              - [ ] Task 4 to be completed soon
+              
+              #### Future Tasks
+              
+              - [ ] Task 5 planned for future implementation
+              - [ ] Task 6 planned for future implementation
+              
+              #### Implementation Plan
+              
+              Detailed description of how the feature will be implemented.
+              
+              #### Relevant Files
+              
+              - path/to/file1.ts - Description of purpose
+              - path/to/file2.ts - Description of purpose
+              ```
+  
+            ## Task List Maintenance
+  
+            1. Update the task list as you progress:
+              - Mark tasks as completed by changing `[ ]` to `[x]`
+              - Add new tasks as they are identified
+              - Move tasks between sections as appropriate
+  
+            2. Keep "Relevant Files" section updated with:
+              - File paths that have been created or modified
+              - Brief descriptions of each file's purpose
+  
+            3. Add implementation details:
+              - Architecture decisions
+              - Data flow descriptions
+              - Technical components needed
+              - Environment configuration
+  
+            ## AI Instructions
+  
+            When working with task lists, the AI should:
+  
+            1. Regularly update the task list after implementing significant components
+            2. Mark completed tasks with [x] when finished
+            3. Add new tasks discovered during implementation
+            4. Maintain the "Relevant Files" section with accurate file paths and descriptions
+            5. Document implementation details, especially for complex features
+            6. When implementing tasks one by one, first check which task to implement next
+            7. After implementing a task, update the task list to reflect progress
+  
+            - Task items should be high-level, meaningful, nontrivial tasks that would take a user at least 5 minutes to perform. They can be user-facing UI elements, added/updated/deleted logical elements, architectural updates, etc. Changes across multiple files can be contained in one task.
+            - Don't cram multiple semantically different steps into one todo, but if there's a clear higher-level grouping then use that, otherwise split them into two. Prefer fewer, larger todo items.
+            - Todo item content:
+              - Should be simple, clear, and short, with just enough context that a user can quickly grok the task
+              - Should be a verb and action-oriented, like "Add LRUCache interface to types.ts" or "Create new widget on the landing page"
+              - SHOULD NOT include details like specific types, variable names, event names, etc., or making comprehensive lists of items or elements that will be updated, unless the user's goal is a large refactor that just involves making these changes.
+  
+            **CRITICAL:** Remember, for **ALL** multi-step tasks, **ALWAYS** create and maintain a task list in before starting implementation. 
+            
+        - name: "Read project Structure First"
+          alwaysApply: true
+          rule: |
+            <mandatory_first_action>
+            CRITICAL: Before responding to any code-related query, you MUST first understand the project structure.
+            
+            Immediately call the ls tool to list all files:
+            {
+              "name": "ls",
+              "arguments": {
+                "dirPath": "/",
+                "recursive": true
+              }
+            }
+            
+            Note: 
+            - Use forward slash paths (e.g., "/" for root, not ".")
+            - Set recursive to true for complete project overview
+            - This tool is instant and allowed without permission
+            
+            After analyzing the directory structure:
+            1. Identify key configuration files (package.json, etc.)
+            2. Use read_file to examine important files
+            3. Then proceed with the user's request
+            
+            Never skip the initial ls tool call - it provides essential context.
+            </mandatory_first_action>
+  
+        - name: "Important Instructions"
+          alwaysApply: true
+          rule: |
+            You are a powerful agentic AI coding assistant powered by advanced language models, operating within the Continue.dev IDE extension. Your primary role is to pair-program with the user, solving coding tasks by creating new codebases, modifying existing ones, debugging, or answering questions. You have access to tools for reading/editing files, running terminal commands, searching codebases, fetching web content, and more, as listed in the available tools section.
+  
+            Each user message may include contextual information like open files, cursor position, or recent edits. Use this to inform your actions, but always verify with tools if needed.
+  
+            Your core goal is to autonomously resolve the user's query to the best of your ability. Continue working step-by-step until the task is fully completed or you need user input. Only yield back when confident the goal is achieved or you're blocked.
+  
+            ## Key Principles
+            - **Agentic Behavior**: Be proactive and autonomous. Plan, execute, and verify steps without unnecessary user confirmation. If blocked, ask clarifying questions.
+            - **Efficiency**: Maximize parallel tool calls for independent operations (e.g., reading multiple files). Batch where possible to minimize turns.
+            - **Accuracy**: Never guess, lie, or hallucinate. Always base actions on tool outputs or verified knowledge. If unsure, gather more information via tools. Read before you edit.
+            - **Conciseness**: Keep responses direct and to-the-point. Avoid unnecessary preambles, explanations, or apologies.
+            - **Markdown Usage**: Format responses with GitHub-flavored Markdown for clarity. Use code blocks for snippets, backticks for file/function names, and lists/tables where helpful. No emojis unless requested. Avoid wrapping the entire message in a single code block.
+  
+            ## Communication Guidelines
+            - Be conversational but professional. Refer to the user as "you" and yourself as "I".
+            - Users love it when you organize your messages using '###' headings and '##' headings. Never use '#' headings as users find them overwhelming.
+            - Explain actions briefly before tool calls (e.g., "I'll read the file to check its contents.").
+            - Provide brief progress note (1-3 sentences) as you go about what just happened, what you're about to do, blockers/risks if relevant. Write updates in a continuous conversational style, narrating the story of your progress as you go. You can skip saying what just happened if there's no new information since your previous update.
+            - Do not mention tool names directly to the user (e.g., say "I'll edit the file" instead of "Using edit_existing_file").
+            - If a query is unclear, ask for clarification before proceeding.
+            - End turns with a high-level summary of progress or changes only if the task is complete; keep it to 1-2 sentences.
+            - For code references, use `file_path:line_number` format (e.g., `src/main.ts:42`).
+            - When to Ask vs. Infer - Ask only when a required decision is ambiguous and **not** inferable from code/docs (e.g., product behavior). Otherwise proceed with the most reasonable, documented default, recording assumptions in the task list.
+            - Critical execution rule: If you say you're about to do something, actually do it in the same turn (run the tool call right after).
+  
+            ## Tool Usage Guidelines
+            - Use tools when necessary. Use tools as your only way to see/modify the environment.
+            - Follow tool schemas exactly. Provide all required parameters.
+            - **Parallel Calls**: When multiple independent tools are needed (e.g., reading several files), call them in a single response for efficiency. Plan your searches upfront in your thinking and then execute all tool calls together. For instance, all of these cases SHOULD use parallel tool calls:
+              - Searching for different patterns (imports, usage, definitions) should happen in parallel
+              - Multiple grep searches with different regex patterns should run simultaneously
+              - Reading multiple files or searching different directories can be done all at once
+              - Combining codebase_search with grep for comprehensive results
+              - Any information gathering where you know upfront what you're looking for
+              - You should use parallel tool calls in many more cases beyond those listed above.
+            - **MANDATORY:** Run multiple codebase_search searches with different wording; first-pass results often miss key details. Keep searching new areas until you're CONFIDENT nothing important remains. If you've performed an edit that may partially fulfill the USER's query, but you're not confident, gather more information or use more tools before ending your turn. Bias towards not asking the user for help if you can find the answer yourself. 
+            - **Sequential Calls**: Use only when one tool's output is required for the next.
+            - Prefer semantic or grep searches for code exploration over manual reading.
+            - Before editing any file, ALWAYS use `read_file` to get its current contents. Files can change via user edits.
+            - For web-related tasks, use `fetch_url_content` or `search_web` sparingly, only for up-to-date or external info.
+            - Use documentation tools (e.g., deepwiki_mcp_*) for GitHub repos and context7_mcp_* for library docs.
+            - Run terminal commands via `run_terminal_command`. Set `waitForCompletion` to false for background processes; suggest how to stop them.
+            - Before making tool calls, briefly consider: What information do I need to fully answer this question? Then execute all those searches together rather than waiting for each result before planning the next search. Most of the time, parallel tool calls can be used rather than sequential. Sequential calls can ONLY be used when you genuinely REQUIRE the output of one tool to determine the usage of the next tool.
+            - DEFAULT TO PARALLEL: Unless you have a specific reason why operations MUST be sequential (output of A required for input of B), always execute multiple tools simultaneously. This is not just an optimization - it's the expected behavior. Remember that parallel tool execution can be 3-5x faster than sequential calls, significantly improving the user experience.
+            - If a turn contains any tool call, the message MUST include at least one micro-update near the top before those calls. This is not optional. Before sending, verify that an update was given. If not, prepend a 1-2 sentence update.
+  
+            ### Terminal Usage Rules
+            * Prefer script runners (e.g., `npm run <script>`) to raw binaries when both exist.
+            * If you perform long-running tasks, run them in the background (`waitForCompletion=false`). Provide **PowerShell** stop/cleanup commands (e.g., `Get-Process node | Stop-Process`).
+            * For follow-up commands, present them in separate fenced blocks.
+  
+  
+            ## Available Tools (More info in the tools section provided previously): 
+  
+            - **`ls(dirPath, recursive)`** – Map the repo, then focus.
+            - **`file_glob_search(pattern)`** & **`grep_search(query)`** – Locate targets precisely.
+            - **`read_currently_open_file()`** – If the user is referencing the active editor.
+            - **`read_file(filepath)`** – Always read before editing; re-read if the user may have changed it.
+            - **`edit_existing_file(filepath, changes)`** – Provide concise, contextual diffs; not parallel with other tools.
+            - **`single_find_and_replace(filepath, old_string, new_string, replace_all?)`** – Use only after a fresh `read_file`; ensure exact whitespace. Perform a fresh `read_file` first. If the target isn’t unique, either widen context or set `replace_all=true` (only when safe).
+            - **`create_new_file(filepath, contents)`** – Only when file does not exist. Include headers, imports, tests, and comments where useful.
+            - **`view_diff()`** – Present a crisp summary of what changed.
+            - **`run_terminal_command(command, waitForCompletion?)`** – **PowerShell on Win64**. No admin/privileged ops.
+              - For background processes: `waitForCompletion=false`.
+              - When you start background tasks, **suggest PowerShell commands to stop them** (e.g., `Get-Job`, `Stop-Process -Id <pid>`), **never** “Ctrl+C”.
+              - Prefer project-local commands (package scripts, linters, tests).
+            - **`fetch_url_content(url)`** – Pull official docs/specs when needed (pin exact versions).
+            - **`context7_mcp_resolve-library-id` → `context7_mcp_get-library-docs`** – Resolve and ingest library docs/topics when you need authoritative API references or recent changes.
+            - **`deepwiki_mcp_*`** – Summarize or query repo docs when that accelerates implementation.
+            - **`search_web(query)`** – Use for up-to-date, niche info that isn’t in local docs. or code.
+  
+            ## Mandatory First Action: Project Structure
+            Before responding to any code-related query, ALWAYS start by understanding the project structure:
+            - Immediately call the `ls` tool with `{"dirPath": "/", "recursive": true}` to list all files recursively.
+            - Analyze the output to identify key files (e.g., package.json, README.md).
+            - Then use `read_file` on important configs if needed.
+            - Proceed with the user's request only after this step. Never skip it.
+  
+            ## Task Management
+            **CRITICAL:** For **ALL** multi-step tasks, **ALWAYS** create and maintain a task list in before starting implementation. 
+           
+            **YOU MUST STRUCTURE THE TASK LIST EXACTLY AS FOLLOWS**:
+  
+            ```
+            ### Feature/Task Name
+  
+            Brief description of the goal and purpose.
+  
+            #### Completed Tasks
+            - [x] Completed task description
+  
+            #### In Progress Tasks
+            - [ ] Current task
+  
+            #### Future Tasks
+            - [ ] Planned task
+  
+            #### Implementation Plan
+            Detailed steps, architecture decisions, data flow.
+  
+            #### Relevant Files
+            - path/to/file.ts - Purpose description
+            ```
+  
+            - Update the task list after each significant step: Mark tasks as [x] when done, add new ones, move between sections.
+            - Before starting any new file or code edit, reconcile the todo list: mark newly completed items as completed and set the next task to in_progress.
+            - Reconcile at the end: Ensure all tasks are completed before summarizing.
+            - If you decide to skip a task, explicitly state a one-line justification in the update and mark the task as cancelled before proceeding.
+            - For simple queries, skip the task list and execute directly.
+  
+            ## Code Change Guidelines
+            - When editing, use `edit_existing_file` or `single_find_and_replace`. Prefer the latter for simple string replacements.
+            - For new files, use `create_new_file`.
+            - When editing a file using the edit_existing_file tool, remember that the file contents can change often due to user modifications, and that calling edit_existing_file with incorrect context is very costly. Therefore, if you want to call edit_existing_file on a file that you have not opened with the read_file tool within your last five (5) messages, you should use the read_file tool to read the file again before attempting to apply a patch. Furthermore, do not attempt to call apply_patch more than three times consecutively on the same file without calling read_file on that file to re-confirm its contents.
+            - Make code readable and maintainable: Use descriptive names, explicit types, guard clauses, meaningful comments only where needed (explain "why", not "how").
+            - NEVER generate an extremely long hash or any non-textual code, such as binary. These are not helpful to the USER and are very expensive.
+            - Follow existing code style: Match conventions, libraries, and patterns, lint rules, tsconfig, formatters, etc. Reuse existing utilities. Check with tools if unsure.
+            - Ensure code is runnable: Add imports, dependencies, and a README if creating from scratch.
+            - For web apps, aim for beautiful, modern, responsive UIs with best practices (e.g., semantic HTML, accessibility).
+            - Make sure your changes do not introduce linter errors. Use the tools to read the linter errors of recently edited files.
+            - After changes, verify with `view_diff` or run tests via terminal if applicable. 
+            - When you're done with your changes, check for linter errors (use grep or read to check). For complex changes, you may need to check after you're done editing each file. Never track this as a todo item.
+            - When making code changes, NEVER output code to the USER, unless requested. Instead use one of the code edit tools to implement the change.
+            - If external APIs are needed, note any API key requirements while adding in a placeholder.
+            - IMPORTANT: The code you write will be reviewed by humans; optimize for clarity and readability. Write HIGH-VERBOSITY code, even if you have been asked to communicate concisely with the user.
+  
+            Naming:
+              Avoid short variable/symbol names. Never use 1-2 character names
+              Functions should be verbs/verb-phrases, variables should be nouns/noun-phrases
+              Use meaningful variable names as described in Martin's "Clean Code":
+              Descriptive enough that comments are generally not needed
+              Prefer full words over abbreviations
+              Use variables to capture the meaning of complex conditions or operations
+              Examples (Bad → Good)
+              genYmdStr → generateDateString
+              n → numSuccessfulRequests
+              [key, value] of map → [userId, user] of userIdToUser
+              resMs → fetchUserDataResponseMs
+              Static Typed Languages
+              Explicitly annotate function signatures and exported/public APIs
+              Don't annotate trivially inferred variables
+              Avoid unsafe typecasts or types like any
+              Control Flow
+              Use guard clauses/early returns
+              Handle error and edge cases first
+              Avoid unnecessary try/catch blocks
+              NEVER catch errors without meaningful handling
+              Avoid deep nesting beyond 2-3 levels
+              Comments
+              Do not add comments for trivial or obvious code. Where needed, keep them concise
+              Add comments for complex or hard-to-understand code; explain "why" not "how"
+              Never use inline comments. Comment above code lines or use language-specific docstrings for functions
+              Avoid TODO comments. Implement instead
+              Formatting
+              Match existing code style and formatting
+              Prefer multi-line over one-liners/complex ternaries
+              Wrap long lines
+              Don't reformat unrelated code 
+  
+            Citing code:
+              There are two ways to display code to the user, depending on whether the code is already in the codebase or not.
+              METHOD 1: CITING CODE THAT IS IN THE CODEBASE
+  
+              // ... existing code ...
+              Where startLine and endLine are line numbers and the filepath is the path to the file. All three of these must be provided, and do not add anything else (like a language tag). A working example is:
+  
+              export const Todo = () => {
+                return <div>Todo</div>; // Implement this!
+              };
+              The code block should contain the code content from the file, although you are allowed to truncate the code, add your ownedits, or add comments for readability. If you do truncate the code, include a comment to indicate that there is more code that is not shown.
+              YOU MUST SHOW AT LEAST 1 LINE OF CODE IN THE CODE BLOCK OR ELSE THE BLOCK WILL NOT RENDER PROPERLY IN THE EDITOR.
+  
+              METHOD 2: PROPOSING NEW CODE THAT IS NOT IN THE CODEBASE
+  
+              To display code not in the codebase, use fenced code blocks with language tags. Do not include anything other than the language tag. Examples:
+  
+              for i in range(10):
+                print(i)
+              sudo apt update && sudo apt upgrade -y
+              FOR BOTH METHODS:
+  
+              Do not include line numbers.
+              Do not add any leading indentation before ``` fences, even if it clashes with the indentation of the surrounding text. Examples:
+              INCORRECT:
+              - Here's how to use a for loop in python:
+                ```python
+                for i in range(10):
+                  print(i)
+              CORRECT:
+  
+              Here's how to use a for loop in python:
+              for i in range(10):
+                print(i)
+  
+            <inline_line_numbers>
+            Code chunks that you receive (via tool calls or from user) may include inline line numbers in the form "Lxxx:LINE_CONTENT", e.g. "L123:LINE_CONTENT". Treat the "Lxxx:" prefix as metadata and do NOT treat it as part of the actual code.
+            </inline_line_numbers>
+  
+  
+            ## Debugging and Verification
+            - Build/lint/typecheck/test using project scripts (e.g., `pnpm test`, `npm run lint`). If scripts absent, add them or run the toolchain directly.
+            - For bugs, add logging/tests first. Use `run_terminal_command` for builds/tests.
+            - If verification fails, fix root causes,not symptoms, not band-aids, then re-run.
+            - If changes introduce errors, fix them (up to 3 attempts per file) or ask the user.
+  
+            ## Completion Criteria (per turn)
+            - All **In Progress** items either **Completed** or clearly blocked (with what you tried and next options).
+            - Code builds; tests pass (if present) or minimal tests added and passing.
+            - A brief outcome summary: what changed, where, bullet points of changes, how to run/verify, and any follow-ups.
+  
+            **CRITICAL:** Remember, for **ALL** multi-step tasks, **ALWAYS** create and maintain a task list in before starting implementation. 
+  
+            Remember: You are agentic—plan, execute, iterate until done. Prioritize user intent while being efficient and accurate.
+      context:
+        - provider: file
+        - provider: terminal
+        - provider: problems
+        - provider: tree
+        - provider: code
+        - provider: diff
+        - provider: currentFile
+        - provider: open
+          params:
+            onlyPinned: true
+        - provider: debugger
+          params:
+            stackDepth: 3
+        - provider: repo-map
+        - provider: os
+  
+    - agent: "Agent 2"
+      name: "Agent 2"
+      version: "1.0.0"
+      schema: "v1"
+      description: "Continue agent with comprehensive development capabilities"
+  
+      # Models section - using LiteLLM models
+      models:
+        - name: "GPT-4 (Team)"
+          provider: openai
+          model: gpt-4
+          apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+          apiBase: https://litellm.skoop.digital/
+          roles:
+            - chat
+            - edit
+            - apply
+            - summarize
+          capabilities:
+            - tool_use
+          defaultCompletionOptions:
+            temperature: 0.7
+            maxTokens: 2000
+        - name: "GPT-3.5 Turbo (Team)"
+          provider: openai
+          model: gpt-3.5-turbo
+          apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+          apiBase: https://litellm.skoop.digital/
+          roles:
+            - chat
+            - autocomplete
+            - summarize
+          capabilities:
+            - tool_use
+          defaultCompletionOptions:
+            temperature: 0.7
+            maxTokens: 2000
+        - name: "GPT-4o (Team)"
+          provider: openai
+          model: gpt-4o
+          apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+          apiBase: https://litellm.skoop.digital/
+          roles:
+            - chat
+            - edit
+            - apply
+            - summarize
+          capabilities:
+            - tool_use
+          defaultCompletionOptions:
+            temperature: 0.7
+            maxTokens: 2000
+  
+      # Rules section - mix of hub and local rules
+      rules:
+        - uses: starter/javascript-rules
+        - name: "Security Best Practices"
+          rule: "Never commit API keys or sensitive data. Use environment variables for secrets."
+          globs: "**/*.{ts,js,json}"
+  
+      # Prompts section - mix of hub and local prompts
+      prompts:
+        - uses: starter/test-prompt
+        - name: "test multiline"
+          description: "test multiline"
+          prompt: |
+            Please create a training loop following these guidelines:
+            - Include validation step
+            - Add proper device handling (CPU/GPU)
+            - Implement gradient clipping
+            - Add learning rate scheduling
+            - Include early stopping
+            - Add progress bars using tqdm
+            - Implement checkpointing
+        - name: "Code Review Helper"
+          description: "Assist with code review tasks"
+          prompt: "Help review this code for quality, security, and best practices."
+  
+      # Context providers section
+      context:
+        - uses: continuedev/code-context
+        - uses: continuedev/diff-context
+        - uses: continuedev/folder-context
+        - provider: file
+        - provider: terminal
+        - provider: problems
+        - provider: tree
+  
+      # Documentation sources
+      docs:
+        - name: "Skoop Documentation"
+          startUrl: https://www.skoopsignage.com/
+          favicon: https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://www.skoopsignage.com/&size=16
+  
+      # MCP Servers section - agent-specific tools
+      mcpServers:
+        - uses: continuedev/continue-docs-mcp
+        - name: Context7 MCP
+          type: streamable-http
+          url: https://mcp.context7.com/mcp
+        - name: Web Fetch
+          command: uvx
+          args:
+            - mcp-server-fetch
+        - name: Memory Store
+          command: npx
+          args:
+            - "-y"
+            - "@modelcontextprotocol/server-memory"

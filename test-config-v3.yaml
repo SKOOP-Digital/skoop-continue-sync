@@ -42,11 +42,11 @@ Agents:
         promptTemplates:
           apply: |-
             <|original_code|>
-            {{{ original_code }}}
+            {{'{{{ original_code '+'}'+'}'+'}'}}
             <|/original_code|>
 
             <|update_snippet|>
-            {{{ new_code }}}
+            {{'{{{ new_code '+'}'+'}'+'}'}}
             <|/update_snippet|>
       - name: "Instinct-LMStudio"
         provider: "lmstudio"
@@ -68,8 +68,8 @@ Agents:
           - apply
         promptTemplates:
           apply: |-
-            <code>{{{ original_code }}}</code>
-            <update>{{{ new_code }}}</update>
+            <code>{{'{{{ original_code '+'}'+'}'+'}'}}</code>
+            <update>{{'{{{ new_code '+'}'+'}'+'}'}}</update>
         defaultCompletionOptions:
           maxTokens: 34000
           temperature: 0
@@ -190,6 +190,26 @@ Agents:
           maxTokens: 12000
           reasoning: true
           reasoningBudgetTokens: 800
+      - name: "deepseek-r1-0528-qwen3-8b"
+        provider: "lmstudio"
+        model: deepseek/deepseek-r1-0528-qwen3-8b
+        apiBase: "http://localhost:1234/v1"
+        roles:
+          - chat
+          - edit
+        capabilities:
+          - tool_use
+          - image_input
+        requestOptions:
+          extraBodyProperties:
+            thinking:
+              type: "enabled"
+              budget_tokens: 2048
+        defaultCompletionOptions:
+          contextLength: 40000
+          maxTokens: 12000
+          reasoning: true
+          reasoningBudgetTokens: 800
       - name: "gpt-5"
         provider: openai
         model: gpt-5
@@ -240,16 +260,24 @@ Agents:
         roles:
           - chat
           - edit
-        requestOptions:
-          extraBodyProperties:
-            thinking:
-              type: "enabled"
-              budget_tokens: 2048
         defaultCompletionOptions:
           contextLength: 200000
           maxTokens: 30000
-          reasoning: true
-          reasoningBudgetTokens: 2048
+          promptCaching: true      
+        capabilities:
+          - tool_use
+          - image_input    
+      - name: "c-s-4"
+        provider: openai
+        model: c-s-4
+        apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
+        apiBase: https://litellm.skoop.digital/v1/
+        roles:
+          - chat
+          - edit
+        defaultCompletionOptions:
+          contextLength: 200000
+          maxTokens: 30000
           promptCaching: true      
         capabilities:
           - tool_use
@@ -338,64 +366,31 @@ Agents:
           ## Task List Creation
 
           1. Before starting any multi-step task, create a task list of the tasks required to complete the goal. 
-            - Include a clear title and description of the feature being implemented
 
-          2. **YOU MUST STRUCTURE THE TASK LIST EXACTLY LIKE THIS** with these sections:
+          2. **YOU MUST STRUCTURE THE TASK LIST EXACTLY LIKE THIS IN MARKDOWN FORMAT** with these parts:
             ```
-            ### Feature Name Implementation
-            
-            Brief description of the feature and its purpose.
-            
-            #### Completed Tasks
-            
-            - [x] Task 1 that has been completed
-            - [x] Task 2 that has been completed
-            
-            #### In Progress Tasks
-            
-            - [ ] Task 3 currently being worked on
-            - [ ] Task 4 to be completed soon
-            
-            #### Future Tasks
-            
-            - [ ] Task 5 planned for future implementation
-            - [ ] Task 6 planned for future implementation
-            
-            #### Implementation Plan
-            
-            Detailed description of how the feature will be implemented.
-            
-            #### Relevant Files
-            
-            - path/to/file1.ts - Description of purpose
-            - path/to/file2.ts - Description of purpose
+            > ≡ 2 of 3 Done  
+            > `☑` Task 1 Title  
+            > `☑` Task 2 Title  
+            > `☐` Task 3 Title  
             ```
-
+            **It must include a count of tasks left and a row for each task as show above.**
+            **Each line close together with no blank lines**
+            **<critical>each row must have 2 blank spaces at the end of the row. i.e. each line must end with 2 blank spaces** so that the line items arrange as a list.</critical>**
+          
           ## Task List Maintenance
 
           1. Update the task list as you progress:
-            - Mark tasks as completed by changing `[ ]` to `[x]`
+            - Mark tasks as completed by changing `☐` to `☑`
             - Add new tasks as they are identified
-            - Move tasks between sections as appropriate
-
-          2. Keep "Relevant Files" section updated with:
-            - File paths that have been created or modified
-            - Brief descriptions of each file's purpose
-
-          3. Add implementation details:
-            - Architecture decisions
-            - Data flow descriptions
-            - Technical components needed
-            - Environment configuration
 
           ## AI Instructions
 
           When working with task lists, the AI should:
 
           1. Regularly update the task list after implementing significant components
-          2. Mark completed tasks with [x] when finished
+          2. Mark completed tasks with `☑` when finished
           3. Add new tasks discovered during implementation
-          4. Maintain the "Relevant Files" section with accurate file paths and descriptions
           5. Document implementation details, especially for complex features
           6. When implementing tasks one by one, first check which task to implement next
           7. After implementing a task, update the task list to reflect progress
@@ -407,8 +402,9 @@ Agents:
             - Should be a verb and action-oriented, like "Add LRUCache interface to types.ts" or "Create new widget on the landing page"
             - SHOULD NOT include details like specific types, variable names, event names, etc., or making comprehensive lists of items or elements that will be updated, unless the user's goal is a large refactor that just involves making these changes.
 
-          **CRITICAL:** Remember, for **ALL** multi-step tasks, **ALWAYS** create and maintain a task list in before starting implementation. 
-          
+          **<CRITICAL>Remember, for ANY multi-step tasks, **ALWAYS** create and maintain a task list BEFORE starting any planning or implementation, and update tasks accordingly as you go.</critical>**
+          **Do not skip the task list process. If you do, you must immediatelypost the task list on your next turn.**
+
       - name: "Read project Structure First"
         alwaysApply: true
         rule: |
@@ -519,39 +515,29 @@ Agents:
           - Proceed with the user's request only after this step. Never skip it.
 
           ## Task Management
-          **CRITICAL:** For **ALL** multi-step tasks, **ALWAYS** create and maintain a task list in before starting implementation. 
-         
-          **YOU MUST STRUCTURE THE TASK LIST EXACTLY AS FOLLOWS**:
+          **<CRITICAL> Remember, for ANY multi-step tasks, YOU MUST create and maintain a task list in before starting implementation.</critical>**
+          **Do not skip the task list process. If you do, you must immediatelypost the task list on your next turn.**
 
-          ```
-          ### Feature/Task Name
-
-          Brief description of the goal and purpose.
-
-          #### Completed Tasks
-          - [x] Completed task description
-
-          #### In Progress Tasks
-          - [ ] Current task
-
-          #### Future Tasks
-          - [ ] Planned task
-
-          #### Implementation Plan
-          Detailed steps, architecture decisions, data flow.
-
-          #### Relevant Files
-          - path/to/file.ts - Purpose description
-          ```
+          **YOU MUST STRUCTURE THE TASK LIST EXACTLY LIKE THIS IN MARKDOWN FORMAT** with these parts:
+            ```
+            > ≡ 2 of 3 Done  
+            > `☑` Task 1 Title  
+            > `☑` Task 2 Title  
+            > `☐` Task 3 Title  
+            ```
+            **It must include a count of tasks left and a row for each task as show above.**
+            **Each line close together with no blank lines**
+            **<critical>each row must have 2 blank spaces at the end of the row. i.e. each line must end with 2 blank spaces** so that the line items arrange as a list.
 
           - Update the task list after each significant step: Mark tasks as [x] when done, add new ones, move between sections.
           - Before starting any new file or code edit, reconcile the todo list: mark newly completed items as completed and set the next task to in_progress.
           - Reconcile at the end: Ensure all tasks are completed before summarizing.
           - If you decide to skip a task, explicitly state a one-line justification in the update and mark the task as cancelled before proceeding.
-          - For simple queries, skip the task list and execute directly.
 
           ## Code Change Guidelines
-          - When editing, use `edit_existing_file` or `single_find_and_replace`. Prefer the latter for simple string replacements.
+          - When editing, use the `edit_existing_file` tool or `single_find_and_replace` tool. 
+          - **<critical> Always default to using the `edit_existing_file` tool over the `single_find_and_replace` tool</critical>** 
+          - Only use `single_find_and_replace` for simple string replacements. and if it fails, fall back to using the more reliable `edit_existing_file` tool.
           - For new files, use `create_new_file`.
           - When editing a file using the edit_existing_file tool, remember that the file contents can change often due to user modifications, and that calling edit_existing_file with incorrect context is very costly. Therefore, if you want to call edit_existing_file on a file that you have not opened with the read_file tool within your last five (5) messages, you should use the read_file tool to read the file again before attempting to apply a patch. Furthermore, do not attempt to call apply_patch more than three times consecutively on the same file without calling read_file on that file to re-confirm its contents.
           - Make code readable and maintainable: Use descriptive names, explicit types, guard clauses, meaningful comments only where needed (explain "why", not "how").
@@ -599,46 +585,6 @@ Agents:
             Wrap long lines
             Don't reformat unrelated code 
 
-          Citing code:
-            There are two ways to display code to the user, depending on whether the code is already in the codebase or not.
-            METHOD 1: CITING CODE THAT IS IN THE CODEBASE
-
-            // ... existing code ...
-            Where startLine and endLine are line numbers and the filepath is the path to the file. All three of these must be provided, and do not add anything else (like a language tag). A working example is:
-
-            export const Todo = () => {
-              return <div>Todo</div>; // Implement this!
-            };
-            The code block should contain the code content from the file, although you are allowed to truncate the code, add your ownedits, or add comments for readability. If you do truncate the code, include a comment to indicate that there is more code that is not shown.
-            YOU MUST SHOW AT LEAST 1 LINE OF CODE IN THE CODE BLOCK OR ELSE THE BLOCK WILL NOT RENDER PROPERLY IN THE EDITOR.
-
-            METHOD 2: PROPOSING NEW CODE THAT IS NOT IN THE CODEBASE
-
-            To display code not in the codebase, use fenced code blocks with language tags. Do not include anything other than the language tag. Examples:
-
-            for i in range(10):
-              print(i)
-            sudo apt update && sudo apt upgrade -y
-            FOR BOTH METHODS:
-
-            Do not include line numbers.
-            Do not add any leading indentation before ``` fences, even if it clashes with the indentation of the surrounding text. Examples:
-            INCORRECT:
-            - Here's how to use a for loop in python:
-              ```python
-              for i in range(10):
-                print(i)
-            CORRECT:
-
-            Here's how to use a for loop in python:
-            for i in range(10):
-              print(i)
-
-          <inline_line_numbers>
-          Code chunks that you receive (via tool calls or from user) may include inline line numbers in the form "Lxxx:LINE_CONTENT", e.g. "L123:LINE_CONTENT". Treat the "Lxxx:" prefix as metadata and do NOT treat it as part of the actual code.
-          </inline_line_numbers>
-
-
           ## Debugging and Verification
           - Build/lint/typecheck/test using project scripts (e.g., `pnpm test`, `npm run lint`). If scripts absent, add them or run the toolchain directly.
           - For bugs, add logging/tests first. Use `run_terminal_command` for builds/tests.
@@ -650,7 +596,7 @@ Agents:
           - Code builds; tests pass (if present) or minimal tests added and passing.
           - A brief outcome summary: what changed, where, bullet points of changes, how to run/verify, and any follow-ups.
 
-          **CRITICAL:** Remember, for **ALL** multi-step tasks, **ALWAYS** create and maintain a task list in before starting implementation. 
+          **<CRITICAL> Remember, for ANY multi-step tasks, **ALWAYS** create and maintain a task list BEFORE starting any planning or implementation, and update tasks accordingly as you go</critical>**
 
           Remember: You are agentic—plan, execute, iterate until done. Prioritize user intent while being efficient and accurate.
     context:
@@ -669,113 +615,3 @@ Agents:
           stackDepth: 3
       - provider: repo-map
       - provider: os
-
-  - agent: "Agent 2"
-    name: "Agent 2"
-    version: "1.0.0"
-    schema: "v1"
-    description: "Continue agent with comprehensive development capabilities"
-
-    # Models section - using LiteLLM models
-    models:
-      - name: "GPT-4 (Team)"
-        provider: openai
-        model: gpt-4
-        apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
-        apiBase: https://litellm.skoop.digital/
-        roles:
-          - chat
-          - edit
-          - apply
-          - summarize
-        capabilities:
-          - tool_use
-        defaultCompletionOptions:
-          temperature: 0.7
-          maxTokens: 2000
-      - name: "GPT-3.5 Turbo (Team)"
-        provider: openai
-        model: gpt-3.5-turbo
-        apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
-        apiBase: https://litellm.skoop.digital/
-        roles:
-          - chat
-          - autocomplete
-          - summarize
-        capabilities:
-          - tool_use
-        defaultCompletionOptions:
-          temperature: 0.7
-          maxTokens: 2000
-      - name: "GPT-4o (Team)"
-        provider: openai
-        model: gpt-4o
-        apiKey: "sk-Phkcy9C76yAAc2rNAAsnlg"
-        apiBase: https://litellm.skoop.digital/
-        roles:
-          - chat
-          - edit
-          - apply
-          - summarize
-        capabilities:
-          - tool_use
-        defaultCompletionOptions:
-          temperature: 0.7
-          maxTokens: 2000
-
-    # Rules section - mix of hub and local rules
-    rules:
-      - uses: starter/javascript-rules
-      - name: "Security Best Practices"
-        rule: "Never commit API keys or sensitive data. Use environment variables for secrets."
-        globs: "**/*.{ts,js,json}"
-
-    # Prompts section - mix of hub and local prompts
-    prompts:
-      - uses: starter/test-prompt
-      - name: "test multiline"
-        description: "test multiline"
-        prompt: |
-          Please create a training loop following these guidelines:
-          - Include validation step
-          - Add proper device handling (CPU/GPU)
-          - Implement gradient clipping
-          - Add learning rate scheduling
-          - Include early stopping
-          - Add progress bars using tqdm
-          - Implement checkpointing
-      - name: "Code Review Helper"
-        description: "Assist with code review tasks"
-        prompt: "Help review this code for quality, security, and best practices."
-
-    # Context providers section
-    context:
-      - uses: continuedev/code-context
-      - uses: continuedev/diff-context
-      - uses: continuedev/folder-context
-      - provider: file
-      - provider: terminal
-      - provider: problems
-      - provider: tree
-
-    # Documentation sources
-    docs:
-      - name: "Skoop Documentation"
-        startUrl: https://www.skoopsignage.com/
-        favicon: https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://www.skoopsignage.com/&size=16
-
-    # MCP Servers section - agent-specific tools
-    mcpServers:
-      - uses: continuedev/continue-docs-mcp
-      - name: Context7 MCP
-        type: streamable-http
-        url: https://mcp.context7.com/mcp
-      - name: Web Fetch
-        command: uvx
-        args:
-          - mcp-server-fetch
-      - name: Memory Store
-        command: npx
-        args:
-          - "-y"
-          - "@modelcontextprotocol/server-memory"

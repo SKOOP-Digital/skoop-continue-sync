@@ -201,11 +201,10 @@ interface TeamConfig {
 async function fetchTeamConfig(): Promise<TeamConfig & { rawYaml: string }> {
     console.log('[Skoop Continue Sync] Fetching team configuration from endpoint...');
 
-    const userEmail = vscode.workspace.getConfiguration('skoop-continue-sync').get('userEmail', '');
-    const userPassword = vscode.workspace.getConfiguration('skoop-continue-sync').get('userPassword', '');
+    const apiKey = vscode.workspace.getConfiguration('skoop-continue-sync').get('apiKey', '');
 
-    if (!userEmail || !userPassword) {
-        throw new Error('User email and password must be configured in Skoop Continue Sync settings.');
+    if (!apiKey) {
+        throw new Error('API key must be configured in Skoop Continue Sync settings.');
     }
 
     const endpoint = 'https://n8n.skoopsignage.dev/webhook/4cf533b9-7da1-483d-b6a0-98155fe715ca';
@@ -218,8 +217,7 @@ async function fetchTeamConfig(): Promise<TeamConfig & { rawYaml: string }> {
             method: 'GET',
             headers: {
                 'Authorization': 'V2e&ytoH@*30%*yWQ%3lS0ck@w@viy6E',
-                'user': userEmail,
-                'password': userPassword,
+                'apiKey': apiKey,
                 'Content-Type': 'application/json'
             }
         };
@@ -766,12 +764,10 @@ async function checkAndRefreshConfig() {
         return;
     }
 
-    const userEmail = vscode.workspace.getConfiguration('skoop-continue-sync').get('userEmail', '');
-    const userPassword = vscode.workspace.getConfiguration('skoop-continue-sync').get('userPassword', '');
-
+    const apiKey = vscode.workspace.getConfiguration('skoop-continue-sync').get('apiKey', '');
     // Only refresh if credentials are configured
-    if (!userEmail || !userPassword) {
-        console.log('[Skoop Continue Sync] Skipping automatic refresh - credentials not configured');
+    if (!apiKey) {
+        console.log('[Skoop Continue Sync] Skipping automatic refresh - API key not configured');
         return;
     }
 
@@ -919,3 +915,4 @@ function forceDocsRetryForRawYaml(rawYaml: string) {
         // we'd need to return it or modify the calling code. For now, we'll just log.
     }
 }
+
