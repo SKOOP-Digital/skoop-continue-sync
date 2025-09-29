@@ -59,15 +59,11 @@
     "configuration": {
       "title": "Skoop Continue Sync",
       "properties": {
-        "skoop-continue-sync.userEmail": {
+        "skoop-continue-sync.apiKey": {
           "type": "string",
           "default": "",
-          "description": "User email for authentication with config endpoint"
-        },
-        "skoop-continue-sync.userPassword": {
-          "type": "string",
-          "default": "",
-          "description": "User password for authentication with config endpoint"
+          "description": "API key for authentication with config endpoint",
+          "password": true
         },
         "skoop-continue-sync.applyConfig": {
           "type": "boolean",
