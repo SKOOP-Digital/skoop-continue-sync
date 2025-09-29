@@ -14,7 +14,6 @@ A VS Code extension that synchronizes Continue.dev settings for team members by 
 ## Prerequisites
 
 - [Visual Studio Code](https://code.visualstudio.com/)
-- [Continue.dev VS Code Extension](https://marketplace.visualstudio.com/items?itemName=Continue.continue)
 
 ## Installation
 

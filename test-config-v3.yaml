@@ -355,7 +355,6 @@ Agents:
       - name: Context7 MCP
         type: streamable-http
         url: https://mcp.context7.com/mcp
-      - uses: continuedev/continue-docs-mcp
     rules:
       - name: "Use Task Lists for Multi-Step Tasks"
         alwaysApply: true
