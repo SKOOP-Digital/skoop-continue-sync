@@ -981,209 +981,142 @@ function setupAutoAcceptDialogs(context: vscode.ExtensionContext) {
 }
 
 /**
- * Enable automatic acceptance of Continue.dev dialogs
+ * Enable automatic acceptance of Continue.dev dialogs by modifying its database
  */
-function enableAutoAccept() {
+async function enableAutoAccept() {
     if (dialogInterceptionActive) {
         console.log('[Skoop Continue Sync] Auto-accept already active');
         return;
     }
 
-    console.log('[Skoop Continue Sync] Enabling auto-accept for Continue.dev dialogs...');
+    console.log('[Skoop Continue Sync] Enabling auto-accept for Continue.dev...');
 
-    // Store original methods
-    originalShowInformationMessage = vscode.window.showInformationMessage;
-    originalShowWarningMessage = vscode.window.showWarningMessage;
-    originalShowErrorMessage = vscode.window.showErrorMessage;
-
-    // Monkey patch showInformationMessage
-    (vscode.window as any).showInformationMessage = function (message: string, ...items: any[]) {
-        if (shouldAutoAccept(message)) {
-            console.log('[Skoop Continue Sync] Auto-accepting dialog:', message.substring(0, 100));
-            
-            // Find the first acceptable action
-            const acceptAction = findAcceptAction(items);
-            if (acceptAction) {
-                console.log('[Skoop Continue Sync] Returning accept action:', acceptAction);
-                return Promise.resolve(acceptAction);
-            }
-        }
-        
-        // Fall through to original method
-        return originalShowInformationMessage.apply(vscode.window, [message, ...items]);
-    };
-
-    // Monkey patch showWarningMessage
-    (vscode.window as any).showWarningMessage = function (message: string, ...items: any[]) {
-        if (shouldAutoAccept(message)) {
-            console.log('[Skoop Continue Sync] Auto-accepting warning:', message.substring(0, 100));
-            
-            const acceptAction = findAcceptAction(items);
-            if (acceptAction) {
-                console.log('[Skoop Continue Sync] Returning accept action:', acceptAction);
-                return Promise.resolve(acceptAction);
-            }
-        }
-        
-        return originalShowWarningMessage.apply(vscode.window, [message, ...items]);
-    };
-
-    dialogInterceptionActive = true;
-    
-    // Try to register Continue.dev's accept command listener
-    setupContinueCommandListener();
-    
-    console.log('[Skoop Continue Sync] Auto-accept enabled successfully');
-    
-    vscode.window.showInformationMessage(
-        '⚠️ Skoop Auto-Accept Active: Attempting to auto-accept Continue.dev prompts. Check console for status.'
-    );
-}
-
-/**
- * Setup listener to automatically trigger Continue.dev's accept command
- */
-async function setupContinueCommandListener() {
-    console.log('[Skoop Continue Sync] Setting up Continue.dev command listener...');
-    
-    // First, list all available Continue commands
     try {
-        const allCommands = await vscode.commands.getCommands(true);
-        const continueCommands = allCommands.filter(cmd => cmd.startsWith('continue.'));
-        console.log('[Skoop Continue Sync] Found Continue.dev commands:', continueCommands);
+        // Modify Continue.dev's globalContext.json directly
+        const globalContextPath = path.join(process.env.HOME || process.env.USERPROFILE || '', '.continue', 'index', 'globalContext.json');
         
-        // Look for accept-related commands
-        const acceptCommands = continueCommands.filter(cmd => 
-            cmd.includes('accept') || cmd.includes('apply') || cmd.includes('diff')
-        );
-        console.log('[Skoop Continue Sync] Accept-related commands:', acceptCommands);
-    } catch (error) {
-        console.error('[Skoop Continue Sync] Error listing commands:', error);
-    }
-    
-    // Try to execute Continue's accept command automatically with a delay
-    const autoAcceptInterval = setInterval(async () => {
-        try {
-            // Try different possible Continue.dev accept commands based on the codebase
-            const possibleCommands = [
-                'continue.acceptDiff',
-                'continue.accept',
-                'continue.acceptAgentEdit',
-                'continue.acceptEdit',
-                'continue.applyDiff',
-                'continue.apply',
-                'continue.applyCodeBlock',
-                'continue.acceptVerticalDiffBlock'
-            ];
-            
-            for (const cmd of possibleCommands) {
-                try {
-                    await vscode.commands.executeCommand(cmd);
-                    console.log(`[Skoop Continue Sync] Successfully executed: ${cmd}`);
-                } catch (e) {
-                    // Command doesn't exist or failed, try next one
-                }
-            }
-        } catch (error) {
-            // Silently fail - this is expected when no prompt is active
+        if (!fs.existsSync(globalContextPath)) {
+            throw new Error('Continue.dev globalContext.json not found. Is Continue.dev installed?');
         }
-    }, 500); // Check every 500ms
-    
-    // Store interval ID for cleanup
-    (globalThis as any).continueAutoAcceptInterval = autoAcceptInterval;
+
+        // Read current config
+        const globalContext = JSON.parse(fs.readFileSync(globalContextPath, 'utf8'));
+        
+        // Backup original tool policies
+        if (globalContext.toolPolicies) {
+            (globalThis as any).originalToolPolicies = JSON.parse(JSON.stringify(globalContext.toolPolicies));
+        }
+        
+        // Set all tool policies to allowedWithoutPermission
+        const allTools = [
+            'read_file',
+            'edit_existing_file',
+            'create_new_file',
+            'ls',
+            'grep_search',
+            'file_glob_search',
+            'run_terminal_command',
+            'multi_edit',
+            'single_find_and_replace',
+            'view_diff',
+            'read_currently_open_file',
+            'codebase_search',
+            'list_dir',
+            'search_replace'
+        ];
+        
+        globalContext.toolPolicies = {};
+        allTools.forEach(tool => {
+            globalContext.toolPolicies[tool] = 'allowedWithoutPermission';
+        });
+        
+        // Also set the shared config flags
+        if (!globalContext.sharedConfig) {
+            globalContext.sharedConfig = {};
+        }
+        globalContext.sharedConfig.autoAcceptEditToolDiffs = true;
+        
+        // Write back
+        fs.writeFileSync(globalContextPath, JSON.stringify(globalContext, null, 2), 'utf8');
+        
+        dialogInterceptionActive = true;
+        
+        console.log('[Skoop Continue Sync] ✅ Auto-accept enabled successfully');
+        console.log('[Skoop Continue Sync] Set', allTools.length, 'tool policies to allowedWithoutPermission');
+        
+        vscode.window.showWarningMessage(
+            '⚠️ Skoop Auto-Accept ENABLED: All Continue.dev tools will execute without permission! Reload window for changes to take effect.',
+            'Reload Window'
+        ).then(selection => {
+            if (selection === 'Reload Window') {
+                vscode.commands.executeCommand('workbench.action.reloadWindow');
+            }
+        });
+        
+    } catch (error) {
+        console.error('[Skoop Continue Sync] Failed to enable auto-accept:', error);
+        vscode.window.showErrorMessage(`Failed to enable auto-accept: ${error}`);
+        
+        // Reset the setting
+        await vscode.workspace.getConfiguration('skoop-continue-sync').update(
+            'autoAcceptContinueDialogs',
+            false,
+            vscode.ConfigurationTarget.Global
+        );
+    }
 }
 
+
 /**
- * Disable automatic acceptance and restore original dialog methods
+ * Disable automatic acceptance and restore original Continue.dev configuration
  */
-function disableAutoAccept() {
+async function disableAutoAccept() {
     if (!dialogInterceptionActive) {
         return;
     }
 
     console.log('[Skoop Continue Sync] Disabling auto-accept...');
 
-    // Restore original methods
-    if (originalShowInformationMessage) {
-        (vscode.window as any).showInformationMessage = originalShowInformationMessage;
-    }
-    if (originalShowWarningMessage) {
-        (vscode.window as any).showWarningMessage = originalShowWarningMessage;
-    }
-    if (originalShowErrorMessage) {
-        (vscode.window as any).showErrorMessage = originalShowErrorMessage;
-    }
-
-    // Clear the auto-accept interval
-    if ((globalThis as any).continueAutoAcceptInterval) {
-        clearInterval((globalThis as any).continueAutoAcceptInterval);
-        (globalThis as any).continueAutoAcceptInterval = null;
+    try {
+        // Restore Continue.dev's globalContext.json
+        const globalContextPath = path.join(process.env.HOME || process.env.USERPROFILE || '', '.continue', 'index', 'globalContext.json');
+        
+        if (fs.existsSync(globalContextPath)) {
+            const globalContext = JSON.parse(fs.readFileSync(globalContextPath, 'utf8'));
+            
+            // Remove our tool policies
+            delete globalContext.toolPolicies;
+            
+            // Restore original tool policies if we backed them up
+            if ((globalThis as any).originalToolPolicies) {
+                globalContext.toolPolicies = (globalThis as any).originalToolPolicies;
+                delete (globalThis as any).originalToolPolicies;
+            }
+            
+            // Keep autoAcceptEditToolDiffs as it's a legitimate setting users might want
+            // Just note that it doesn't work properly in Continue.dev currently
+            
+            // Write back
+            fs.writeFileSync(globalContextPath, JSON.stringify(globalContext, null, 2), 'utf8');
+            
+            console.log('[Skoop Continue Sync] ✅ Auto-accept disabled, configuration restored');
+        }
+        
+    } catch (error) {
+        console.error('[Skoop Continue Sync] Error disabling auto-accept:', error);
+        vscode.window.showErrorMessage(`Error disabling auto-accept: ${error}`);
     }
 
     dialogInterceptionActive = false;
-    console.log('[Skoop Continue Sync] Auto-accept disabled');
-}
-
-/**
- * Determine if a dialog message should be auto-accepted
- */
-function shouldAutoAccept(message: string): boolean {
-    // Patterns that indicate Continue.dev tool usage prompts
-    const continuePatterns = [
-        /continue/i,
-        /tool/i,
-        /accept/i,
-        /reject/i,
-        /agent/i,
-        /edit/i,
-        /apply/i,
-        /changes/i,
-        /diff/i,
-        /file/i,
-        /terminal/i,
-        /command/i,
-        /run/i
-    ];
-
-    // Check if message matches any Continue.dev patterns
-    const matches = continuePatterns.some(pattern => pattern.test(message));
     
-    if (matches) {
-        console.log('[Skoop Continue Sync] Dialog matches Continue.dev pattern:', message.substring(0, 100));
-    }
-    
-    return matches;
-}
-
-/**
- * Find the "accept" action from dialog items
- */
-function findAcceptAction(items: any[]): any {
-    if (!items || items.length === 0) {
-        return undefined;
-    }
-
-    // Common accept action labels
-    const acceptLabels = [
-        'Accept',
-        'OK',
-        'Yes',
-        'Apply',
-        'Continue',
-        'Confirm',
-        'Allow'
-    ];
-
-    // Try to find an accept action
-    for (const item of items) {
-        const itemStr = typeof item === 'string' ? item : (item?.title || '');
-        
-        if (acceptLabels.some(label => itemStr.toLowerCase().includes(label.toLowerCase()))) {
-            return item;
+    vscode.window.showInformationMessage(
+        'Skoop Auto-Accept DISABLED. Reload window for changes to take effect.',
+        'Reload Window'
+    ).then(selection => {
+        if (selection === 'Reload Window') {
+            vscode.commands.executeCommand('workbench.action.reloadWindow');
         }
-    }
-
-    // If no explicit accept action found, return the first item
-    return items[0];
+    });
 }
+
 
