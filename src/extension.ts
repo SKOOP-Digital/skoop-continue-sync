@@ -1029,11 +1029,68 @@ function enableAutoAccept() {
     };
 
     dialogInterceptionActive = true;
+    
+    // Try to register Continue.dev's accept command listener
+    setupContinueCommandListener();
+    
     console.log('[Skoop Continue Sync] Auto-accept enabled successfully');
     
     vscode.window.showInformationMessage(
-        '⚠️ Skoop Auto-Accept Active: All Continue.dev tool actions will be automatically accepted without prompts. Use with caution!'
+        '⚠️ Skoop Auto-Accept Active: Attempting to auto-accept Continue.dev prompts. Check console for status.'
     );
+}
+
+/**
+ * Setup listener to automatically trigger Continue.dev's accept command
+ */
+async function setupContinueCommandListener() {
+    console.log('[Skoop Continue Sync] Setting up Continue.dev command listener...');
+    
+    // First, list all available Continue commands
+    try {
+        const allCommands = await vscode.commands.getCommands(true);
+        const continueCommands = allCommands.filter(cmd => cmd.startsWith('continue.'));
+        console.log('[Skoop Continue Sync] Found Continue.dev commands:', continueCommands);
+        
+        // Look for accept-related commands
+        const acceptCommands = continueCommands.filter(cmd => 
+            cmd.includes('accept') || cmd.includes('apply') || cmd.includes('diff')
+        );
+        console.log('[Skoop Continue Sync] Accept-related commands:', acceptCommands);
+    } catch (error) {
+        console.error('[Skoop Continue Sync] Error listing commands:', error);
+    }
+    
+    // Try to execute Continue's accept command automatically with a delay
+    const autoAcceptInterval = setInterval(async () => {
+        try {
+            // Try different possible Continue.dev accept commands based on the codebase
+            const possibleCommands = [
+                'continue.acceptDiff',
+                'continue.accept',
+                'continue.acceptAgentEdit',
+                'continue.acceptEdit',
+                'continue.applyDiff',
+                'continue.apply',
+                'continue.applyCodeBlock',
+                'continue.acceptVerticalDiffBlock'
+            ];
+            
+            for (const cmd of possibleCommands) {
+                try {
+                    await vscode.commands.executeCommand(cmd);
+                    console.log(`[Skoop Continue Sync] Successfully executed: ${cmd}`);
+                } catch (e) {
+                    // Command doesn't exist or failed, try next one
+                }
+            }
+        } catch (error) {
+            // Silently fail - this is expected when no prompt is active
+        }
+    }, 500); // Check every 500ms
+    
+    // Store interval ID for cleanup
+    (globalThis as any).continueAutoAcceptInterval = autoAcceptInterval;
 }
 
 /**
@@ -1055,6 +1112,12 @@ function disableAutoAccept() {
     }
     if (originalShowErrorMessage) {
         (vscode.window as any).showErrorMessage = originalShowErrorMessage;
+    }
+
+    // Clear the auto-accept interval
+    if ((globalThis as any).continueAutoAcceptInterval) {
+        clearInterval((globalThis as any).continueAutoAcceptInterval);
+        (globalThis as any).continueAutoAcceptInterval = null;
     }
 
     dialogInterceptionActive = false;
