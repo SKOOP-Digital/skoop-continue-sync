@@ -3519,3 +3519,139 @@ This fix should resolve the issue completely!
 
 ---
 
+_**User (2025-09-29 23:28Z)**_
+
+
+    "budget_tokens": 2048
+  }
+}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759206892519] Forwarding to https://litellm.skoop.digital/v1/chat/completions
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759206892519] LiteLLM response status: 200
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759206892519] Stream chunk: {"id":"chatcmpl-108dabff-c995-4162-9855-739bec0675ac","created":1759206894,"model":"claude-sonnet-4-5","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":"Project","role":"assis
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759206892519] Stream chunk: {"id":"chatcmpl-a417f488-fe79-4f17-bdb7-1b0c9d85f87e","created":1759206894,"model":"claude-sonnet-4-5","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":" Structure Exploration
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759206892519] Stream chunk: {"id":"chatcmpl-ceb1ea8b-060d-44d8-80a0-ea958d1195c4","created":1759206894,"model":"claude-sonnet-4-5","object":"chat.completion.chunk","choices":[{"finish_reason":"stop","index":0,"delta":{}}]}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759206892519] Stream complete
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759206892519] Stream ended
+log.ts:460   ERR [Extension Host] Error handling webview message: {
+  "msg": {
+    "messageId": "0690d64c-8c71-4e56-aed8-99c11a095daa",
+    "messageType": "tools/call",
+    "data": {
+      "toolCall": {
+        "id": "tc_3e9f11ad-e407-455a-ad0e-baa6819f9644",
+        "type": "function",
+        "function": {
+          "name": "",
+          "arguments": "\"\""
+        }
+      }
+    }
+  }
+}
+
+Error: Tool  not found
+error @ log.ts:460
+error @ log.ts:565
+error @ logService.ts:51
+kvs @ remoteConsoleUtil.ts:58
+$logExtensionHostMessage @ mainThreadConsole.ts:38
+S @ rpcProtocol.ts:458
+Q @ rpcProtocol.ts:443
+M @ rpcProtocol.ts:373
+L @ rpcProtocol.ts:299
+(anonymous) @ rpcProtocol.ts:161
+C @ event.ts:1201
+fire @ event.ts:1232
+fire @ ipc.net.ts:652
+l.onmessage @ localProcessExtensionHost.ts:383
+console.ts:137 [Extension Host] Error handling webview message: {
+  "msg": {
+    "messageId": "0690d64c-8c71-4e56-aed8-99c11a095daa",
+    "messageType": "tools/call",
+    "data": {
+      "toolCall": {
+        "id": "tc_3e9f11ad-e407-455a-ad0e-baa6819f9644",
+        "type": "function",
+        "function": {
+          "name": "",
+          "arguments": "\"\""
+        }
+      }
+    }
+  }
+}
+
+Error: Tool  not found
+Cvs @ console.ts:137
+$logExtensionHostMessage @ mainThreadConsole.ts:39
+S @ rpcProtocol.ts:458
+Q @ rpcProtocol.ts:443
+M @ rpcProtocol.ts:373
+L @ rpcProtocol.ts:299
+(anonymous) @ rpcProtocol.ts:161
+C @ event.ts:1201
+fire @ event.ts:1232
+fire @ ipc.net.ts:652
+l.onmessage @ localProcessExtensionHost.ts:383
+
+
+we are now gettinghtis, but even the smallest prompts make it have a ll the sudden a list of 5-10 tools that are called.sthat we did not create. 
+how do we remove these? additionally, I'm not seeing any thinking in the litellm or final chat or dev tools. Make sure we are translating to and from ollama correctly for the thinking, and refrain from using any copyrighted code.
+
+---
+
+_**Assistant (claude-4.5-sonnet-thinking)**_
+
+<think><details><summary>Thought Process</summary>The user is seeing:
+1. Progress! The streaming is working now (no more crash)
+2. But there's an error about tools with empty names being called
+3. Continue.dev is trying to use tools that weren't properly sent
+4. No thinking/reasoning content is showing up in the responses
+
+Looking at the logs, I can see:
+- The stream is working
+- But there's a tool call with empty name and arguments
+- The reasoning content isn't being displayed
+
+Issues to fix:
+1. Tool calls in streaming aren't being properly converted from OpenAI format to Ollama format
+2. Thinking/reasoning content isn't being included in the stream chunks
+
+Let me check the conversion functions and fix them.</details></think>
+
+---
+
+Great progress! The streaming is now working, but we have two issues:
+
+1. **Tool calls with empty names** - The streaming conversion isn't properly handling tool calls
+2. **No thinking/reasoning content showing** - We need to ensure reasoning_content is properly extracted and included
+
+Let me fix both issues:
+
+---
+
+Tool use: **read_file**
+
+Read file: src/extension.ts
+
+---
+
+<think><details><summary>Thought Process</summary>The issue is that we're directly passing through OpenAI's streaming tool_calls format, which has a different structure than Ollama expects. OpenAI streams tool calls in chunks with partial data, while Ollama expects complete tool calls.
+
+We need to:
+1. Filter out incomplete/empty tool call chunks
+2. Only pass through complete tool calls
+3. Check if the thinking content is actually being sent by LiteLLM in the delta
+
+Let me fix the streaming conversion function.</details></think>
+
+---
+
+
+
+---
+
+
+
+---
+

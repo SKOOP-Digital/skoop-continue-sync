@@ -1282,7 +1282,15 @@ async function forwardToLiteLLM(
 
                         try {
                             const parsed = JSON.parse(data);
-                            console.log(`[LiteLLM Proxy ${requestId}] Stream chunk:`, JSON.stringify(parsed).substring(0, 200));
+                            const choice = parsed.choices?.[0];
+                            const delta = choice?.delta;
+                            
+                            // Log if we're getting reasoning content
+                            if (delta?.reasoning_content) {
+                                console.log(`[LiteLLM Proxy ${requestId}] *** REASONING CONTENT DETECTED ***:`, delta.reasoning_content.substring(0, 100));
+                            }
+                            
+                            console.log(`[LiteLLM Proxy ${requestId}] Stream chunk delta:`, JSON.stringify(delta).substring(0, 200));
                             
                             // Convert OpenAI stream format to Ollama format
                             const ollamaChunk = convertOpenAIStreamToOllama(parsed);
@@ -1322,7 +1330,16 @@ async function forwardToLiteLLM(
             litellmRes.on('end', () => {
                 try {
                     const openaiResponse = JSON.parse(data);
-                    console.log(`[LiteLLM Proxy ${requestId}] OpenAI response:`, JSON.stringify(openaiResponse, null, 2));
+                    const message = openaiResponse.choices?.[0]?.message;
+                    
+                    // Log if we're getting reasoning content
+                    if (message?.reasoning_content) {
+                        console.log(`[LiteLLM Proxy ${requestId}] *** REASONING CONTENT DETECTED ***:`, message.reasoning_content.substring(0, 200));
+                    } else {
+                        console.log(`[LiteLLM Proxy ${requestId}] No reasoning_content in response`);
+                    }
+                    
+                    console.log(`[LiteLLM Proxy ${requestId}] OpenAI response message:`, JSON.stringify(message).substring(0, 300));
 
                     // Convert OpenAI response to Ollama format
                     const ollamaResponse = convertOpenAIToOllama(openaiResponse, openaiRequest.model);
@@ -1422,8 +1439,8 @@ function convertOpenAIStreamToOllama(openaiChunk: any): any {
 
     // Include reasoning content if present in the stream
     if (delta.reasoning_content) {
-        console.log('[LiteLLM Proxy] Stream chunk includes reasoning content');
-        content = `<thinking>${delta.reasoning_content}</thinking>` + content;
+        console.log('[LiteLLM Proxy] Stream chunk includes reasoning content:', delta.reasoning_content.substring(0, 100));
+        content = `<thinking>\n${delta.reasoning_content}\n</thinking>\n\n` + content;
     }
 
     const ollamaChunk: any = {
@@ -1436,9 +1453,17 @@ function convertOpenAIStreamToOllama(openaiChunk: any): any {
         }
     };
 
-    // Add tool calls if present
-    if (delta.tool_calls) {
-        ollamaChunk.message.tool_calls = delta.tool_calls;
+    // Only add tool calls if they are complete (have both id and function.name)
+    if (delta.tool_calls && Array.isArray(delta.tool_calls)) {
+        const validToolCalls = delta.tool_calls.filter((tc: any) => {
+            // Filter out incomplete tool calls that are just streaming chunks
+            return tc.id && tc.function && tc.function.name && tc.function.name.length > 0;
+        });
+        
+        if (validToolCalls.length > 0) {
+            console.log('[LiteLLM Proxy] Adding tool calls to chunk:', validToolCalls.length);
+            ollamaChunk.message.tool_calls = validToolCalls;
+        }
     }
 
     return ollamaChunk;
