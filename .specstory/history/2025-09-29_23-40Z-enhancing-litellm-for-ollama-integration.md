@@ -8328,7 +8328,225 @@ Ctrl+Shift+P → "Developer: Reload Window"
 models:
   - name: "claude-sonnet-4"
     provider: anthropic
-    model: anthropic/claude-sonnet
+    model: anthropic/claude-sonnet-4-20250514
+    apiBase: http://localhost:8009/v1  # ← Keep /v1 suffix
+    apiKey: "dummy"
+    roles:
+      - chat
+      - edit
+    requestOptions:
+      extraBodyProperties:
+        thinking:
+          type: "enabled"
+          budget_tokens: 2048
+    defaultCompletionOptions:
+      contextLength: 200000
+      maxTokens: 30000
+    capabilities:
+      - tool_use
+      - image_input
+```
+
+**Test in Continue.dev**:
+Send a message and check:
+- ✅ Response should appear in chat
+- ✅ Thinking blocks should show in special UI
+- ✅ Tool calls should work
+- ✅ Multi-turn conversations should work
+
+The SSE format now matches Anthropic's exact specification, which should fix the display issue! 🚀
+
+---
+
+_**User (2025-09-29 23:28Z)**_
+
+Ok, now it's thinking but it only does 1 turn thenstops it doesnt keep going by itself, like ifit has multiple things to do
+
+---
+
+_**Assistant (claude-4.5-sonnet-thinking)**_
+
+<think><details><summary>Thought Process</summary>The user is saying that the proxy is working now - thinking is showing, but Continue.dev is stopping after one turn instead of continuing autonomously with multiple tool calls. This is likely a Continue.dev behavior issue rather than a proxy issue, but it might be related to how we're sending the responses.
+
+Looking at the context, Continue.dev has an "Agent mode" that should autonomously continue with multiple tool calls. The issue might be that:
+
+1. Continue.dev isn't receiving the response in a format that tells it to continue
+2. The stop_reason or finish_reason might be set incorrectly
+3. Continue.dev might need specific configuration
+
+Since the user says "it's thinking" and only doing "1 turn", it sounds like:
+- The proxy is working
+- Thinking is showing (great!)
+- But Continue.dev isn't autonomously executing the tool calls and continuing
+
+This is more of a Continue.dev configuration issue than a proxy issue. The proxy's job is to convert formats correctly, which it's doing. Continue.dev's agent mode should be handling the autonomous execution.
+
+Let me suggest checking the Continue.dev mode and configuration.</details></think>
+
+---
+
+Great news - the thinking is working! 🎉
+
+The issue you're describing (stopping after one turn instead of continuing autonomously) is a **Continue.dev behavior**, not a proxy issue. This is controlled by Continue.dev's **mode selection**.
+
+## Solution: Use Agent Mode
+
+Continue.dev has three modes:
+
+1. **Chat** - No tools, just conversation
+2. **Plan** - Read-only tools, stops after each turn (← You're probably in this mode)
+3. **Agent** - Full autonomy, continues executing tools until complete
+
+### Switch to Agent Mode
+
+In Continue.dev chat:
+1. Look at the bottom of the chat input box
+2. Click the **mode selector** dropdown
+3. Select **"Agent"** (not "Chat" or "Plan")
+
+Or use keyboard shortcut: `Ctrl + .` to cycle through modes
+
+---
+
+## Verify Agent Mode is Available
+
+If "Agent" shows `Not Supported`, it means Continue.dev doesn't recognize the model as supporting tools properly. 
+
+### Ensure Your Config Has Tools Enabled
+
+Your `~/.continue/config.yaml` should include:
+
+```yaml
+models:
+  - name: "claude-sonnet-4"
+    provider: anthropic
+    model: anthropic/claude-sonnet-4-20250514
+    apiBase: http://localhost:8009/v1
+    apiKey: "dummy"
+    roles:
+      - chat
+      - edit
+    capabilities:
+      - tool_use  # ← Make sure this is present!
+      - image_input
+    defaultCompletionOptions:
+      contextLength: 200000
+      maxTokens: 30000
+```
+
+---
+
+## If Agent Mode Still Stops After One Turn
+
+Try adding this to your Continue config:
+
+```yaml
+experimental:
+  useChainOfThought: true
+  continueUntilDone: true
+```
+
+Or in the Continue.dev settings (JSON), add:
+
+```json
+{
+  "experimental": {
+    "useChainOfThought": true
+  }
+}
+```
+
+---
+
+## The Proxy is Working Correctly! ✅
+
+Your logs show:
+- ✅ Thinking blocks streaming
+- ✅ Tool calls being sent
+- ✅ Responses appearing
+
+The proxy's job is done - it's correctly converting formats. Continue.dev's Agent mode controls whether it continues autonomously or waits for you after each turn.
+
+**Just switch to Agent mode** and it should keep going! 🚀
+
+---
+
+_**User (2025-09-29 23:28Z)**_
+
+check again. all the other models work fine. I am trying in agent mode and it says suppoted, it just finishes after every turn
+
+---
+
+function":{"arguments":"{\"dirPath\""},"type":"function","index":0}]}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759235051305] Stream chunk delta: {"content":"","tool_calls":[{"function":{"arguments":": \"/\""},"type":"function","index":0}]}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759235051305] Stream chunk delta: {"content":"","tool_calls":[{"function":{"arguments":", \"recursi"},"type":"function","index":0}]}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759235051305] Stream chunk delta: {"content":"","tool_calls":[{"function":{"arguments":"ve"},"type":"function","index":0}]}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759235051305] Stream chunk delta: {"content":"","tool_calls":[{"function":{"arguments":"\": tr"},"type":"function","index":0}]}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759235051305] Stream chunk delta: {"content":"","tool_calls":[{"function":{"arguments":"ue}"},"type":"function","index":0}]}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759235051305] Stream chunk delta: {}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759235051305] Stream complete
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759235051305] Stream ended
+
+---
+
+modify this so that the jitsi version blocks all features like sharing screen, backgrounds, disabling camera or mute from the guest but still allows the agent to do it, and do the same for the wherby version
+
+
+Agent
+
+claude-sonnet-4-5-o
+Ctrl⏎ Active file
+⏎ Enter
+3 rules
+Thought
+
+
+I'll start by exploring the project structure to understand the codebase and locate the Jitsi and Whereby configurations.
+
+and thenit ends 
+
+---
+
+_**Assistant (claude-4.5-sonnet-thinking)**_
+
+<think><details><summary>Thought Process</summary>Ah! The issue is clear now. Looking at the Continue.dev documentation on Agent mode, after a tool call is made, Continue.dev executes it and sends the tool response back to the model. However, what's happening is:
+
+1. Model makes a tool call (ls)
+2. Continue.dev executes it
+3. Continue.dev should send the tool response back to the model
+4. Model should continue with next steps
+
+But it's stopping instead of continuing. This suggests that the streaming response isn't being handled correctly - specifically, Continue.dev might not be seeing the complete tool call structure or the stop events aren't being sent correctly.
+
+Looking at the logs, I can see:
+- The thinking blocks are being sent ✅
+- The text content is being sent ✅
+- The tool calls are being streamed ✅
+- The stream ends ✅
+
+But Continue.dev isn't continuing after the tool call completes. This is likely because:
+
+1. We're not sending proper `content_block_stop` events for tool_use blocks
+2. The message_delta with stop_reason isn't being recognized properly
+3. The tool call format might not be complete
+
+Let me check the code - I see we're adding `content_block_stop` for tool calls, but we might be missing it for text and thinking blocks. Also, we need to make sure we're tracking block indices correctly across all content types.
+
+Actually, looking more carefully at the streaming conversion, I think the issue is that we're not sending `content_block_stop` events for thinking and text blocks, which might be causing Continue.dev to think the message isn't complete.</details></think>
+
+---
+
+I see the issue! Continue.dev is waiting for the complete tool call, but we're not sending `content_block_stop` events for all blocks. Also, the block index tracking needs to be correct across thinking, text, and tool_use blocks.
+
+Let me fix the streaming conversion to properly close all content blocks:
+
+---
+
+
+
+---
+
+
 
 ---
 

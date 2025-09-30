@@ -998,7 +998,7 @@ async function forwardToLiteLLM(url, openaiRequest, res, requestId, isStreaming)
                             }
                             console.log(`[LiteLLM Proxy ${requestId}] Stream chunk delta:`, JSON.stringify(delta).substring(0, 200));
                             // Convert OpenAI stream format to Anthropic format
-                            const anthropicEvents = convertOpenAIStreamToAnthropic(parsed, messageStartSent);
+                            const anthropicEvents = convertOpenAIStreamToAnthropic(parsed, messageStartSent, requestId);
                             if (anthropicEvents.length > 0 && !messageStartSent) {
                                 messageStartSent = true;
                             }
@@ -1016,10 +1016,14 @@ async function forwardToLiteLLM(url, openaiRequest, res, requestId, isStreaming)
             });
             litellmRes.on('end', () => {
                 console.log(`[LiteLLM Proxy ${requestId}] Stream ended`);
-                // Send message_stop event
+                // Send message_stop event (empty object is correct for Anthropic)
                 res.write(`event: message_stop\n`);
                 res.write(`data: {}\n\n`);
                 res.end();
+                // Clean up any remaining state
+                if (requestId) {
+                    streamState.delete(requestId);
+                }
             });
         }
         else {
@@ -1135,13 +1139,25 @@ function convertOpenAIToAnthropic(openaiResponse) {
     }
     return anthropicResponse;
 }
-function convertOpenAIStreamToAnthropic(openaiChunk, messageStartSent) {
+// Track content blocks across chunks (needs to be stateful per request)
+const streamState = new Map();
+function convertOpenAIStreamToAnthropic(openaiChunk, messageStartSent, requestId) {
     const events = [];
     const choice = openaiChunk.choices?.[0];
     if (!choice) {
         return events;
     }
-    // Send message_start event if not sent yet (with all required Anthropic fields)
+    // Initialize or get stream state for this request
+    const stateKey = requestId || 'default';
+    if (!streamState.has(stateKey)) {
+        streamState.set(stateKey, {
+            thinkingStarted: false,
+            textStarted: false,
+            toolStarted: new Set()
+        });
+    }
+    const state = streamState.get(stateKey);
+    // Send message_start event if not sent yet
     if (!messageStartSent) {
         events.push({
             type: 'message_start',
@@ -1161,6 +1177,40 @@ function convertOpenAIStreamToAnthropic(openaiChunk, messageStartSent) {
     // Handle thinking/reasoning content
     if (delta.thinking_blocks && Array.isArray(delta.thinking_blocks)) {
         delta.thinking_blocks.forEach((block) => {
+            if (!state.thinkingStarted && block.thinking) {
+                events.push({
+                    type: 'content_block_start',
+                    index: 0,
+                    content_block: {
+                        type: 'thinking',
+                        thinking: ''
+                    }
+                });
+                state.thinkingStarted = true;
+            }
+            if (block.thinking) {
+                events.push({
+                    type: 'content_block_delta',
+                    index: 0,
+                    delta: {
+                        type: 'thinking_delta',
+                        thinking: block.thinking
+                    }
+                });
+            }
+            // Check if thinking block is complete (has signature)
+            if (block.signature) {
+                events.push({
+                    type: 'content_block_stop',
+                    index: 0
+                });
+                state.thinkingStarted = false;
+                console.log('[LiteLLM Proxy] Completed thinking block');
+            }
+        });
+    }
+    else if (delta.reasoning_content) {
+        if (!state.thinkingStarted) {
             events.push({
                 type: 'content_block_start',
                 index: 0,
@@ -1169,27 +1219,8 @@ function convertOpenAIStreamToAnthropic(openaiChunk, messageStartSent) {
                     thinking: ''
                 }
             });
-            events.push({
-                type: 'content_block_delta',
-                index: 0,
-                delta: {
-                    type: 'thinking_delta',
-                    thinking: block.thinking
-                }
-            });
-        });
-        console.log(`[LiteLLM Proxy] Streamed ${delta.thinking_blocks.length} thinking blocks`);
-    }
-    else if (delta.reasoning_content) {
-        // Fallback if only reasoning_content is present
-        events.push({
-            type: 'content_block_start',
-            index: 0,
-            content_block: {
-                type: 'thinking',
-                thinking: ''
-            }
-        });
+            state.thinkingStarted = true;
+        }
         events.push({
             type: 'content_block_delta',
             index: 0,
@@ -1198,12 +1229,10 @@ function convertOpenAIStreamToAnthropic(openaiChunk, messageStartSent) {
                 thinking: delta.reasoning_content
             }
         });
-        console.log('[LiteLLM Proxy] Stream chunk includes reasoning content:', delta.reasoning_content.substring(0, 100));
     }
     // Handle text content
     if (delta.content) {
-        // Send content_block_start for text if this is the first text chunk
-        if (delta.role === 'assistant') {
+        if (!state.textStarted) {
             events.push({
                 type: 'content_block_start',
                 index: 1,
@@ -1212,6 +1241,7 @@ function convertOpenAIStreamToAnthropic(openaiChunk, messageStartSent) {
                     text: ''
                 }
             });
+            state.textStarted = true;
         }
         events.push({
             type: 'content_block_delta',
@@ -1226,16 +1256,20 @@ function convertOpenAIStreamToAnthropic(openaiChunk, messageStartSent) {
     if (delta.tool_calls && Array.isArray(delta.tool_calls)) {
         delta.tool_calls.forEach((toolCall, idx) => {
             if (toolCall.id && toolCall.function && toolCall.function.name) {
-                events.push({
-                    type: 'content_block_start',
-                    index: idx + 2,
-                    content_block: {
-                        type: 'tool_use',
-                        id: toolCall.id,
-                        name: toolCall.function.name,
-                        input: {}
-                    }
-                });
+                const toolId = toolCall.id;
+                if (!state.toolStarted.has(toolId)) {
+                    events.push({
+                        type: 'content_block_start',
+                        index: idx + 2,
+                        content_block: {
+                            type: 'tool_use',
+                            id: toolCall.id,
+                            name: toolCall.function.name,
+                            input: {}
+                        }
+                    });
+                    state.toolStarted.add(toolId);
+                }
                 if (toolCall.function.arguments) {
                     events.push({
                         type: 'content_block_delta',
@@ -1246,15 +1280,25 @@ function convertOpenAIStreamToAnthropic(openaiChunk, messageStartSent) {
                         }
                     });
                 }
-                events.push({
-                    type: 'content_block_stop',
-                    index: idx + 2
-                });
             }
         });
     }
-    // Handle finish_reason
+    // Handle finish_reason - send stop events for all blocks before message_delta
     if (choice.finish_reason) {
+        // Stop text block if it was started
+        if (state.textStarted) {
+            events.push({
+                type: 'content_block_stop',
+                index: 1
+            });
+        }
+        // Stop any tool blocks
+        state.toolStarted.forEach((toolId, idx) => {
+            events.push({
+                type: 'content_block_stop',
+                index: idx + 2
+            });
+        });
         const stopReason = choice.finish_reason === 'tool_calls' ? 'tool_use' : 'end_turn';
         events.push({
             type: 'message_delta',
@@ -1264,6 +1308,8 @@ function convertOpenAIStreamToAnthropic(openaiChunk, messageStartSent) {
             },
             usage: { output_tokens: 1 }
         });
+        // Clear state for this request
+        streamState.delete(stateKey);
     }
     return events;
 }
