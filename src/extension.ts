@@ -1280,15 +1280,18 @@ async function forwardToLiteLLM(
                             }
                             
                             anthropicEvents.forEach(event => {
+                                // Extract type and data (everything except type)
+                                const { type, ...eventData } = event;
+                                
                                 // Write SSE event in Anthropic's exact format
-                                const eventString = `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`;
-                                res.write(eventString);
+                                res.write(`event: ${type}\n`);
+                                res.write(`data: ${JSON.stringify(eventData)}\n\n`);
                                 
                                 // Log tool_use events for debugging
-                                if (event.type === 'content_block_start' && event.content_block?.type === 'tool_use') {
-                                    console.log(`[LiteLLM Proxy ${requestId}] ⚙️ TOOL_USE START:`, event.content_block.name);
+                                if (type === 'content_block_start' && eventData.content_block?.type === 'tool_use') {
+                                    console.log(`[LiteLLM Proxy ${requestId}] ⚙️ TOOL_USE START:`, eventData.content_block.name);
                                 }
-                                if (event.type === 'message_delta' && event.delta?.stop_reason === 'tool_use') {
+                                if (type === 'message_delta' && eventData.delta?.stop_reason === 'tool_use') {
                                     console.log(`[LiteLLM Proxy ${requestId}] 🛑 STOP_REASON: tool_use - Continue should execute tools now!`);
                                 }
                             });
