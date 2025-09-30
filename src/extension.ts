@@ -1241,8 +1241,14 @@ async function forwardToLiteLLM(
             res.writeHead(litellmRes.statusCode || 200, {
                 'Content-Type': 'text/event-stream',
                 'Cache-Control': 'no-cache',
-                'Connection': 'keep-alive'
+                'Connection': 'keep-alive',
+                'X-Accel-Buffering': 'no'  // Disable nginx buffering
             });
+
+            // Send initial ping event (like Anthropic does)
+            res.write(`event: ping\n`);
+            res.write(`data: {"type": "ping"}\n\n`);
+            console.log(`[LiteLLM Proxy ${requestId}] 🏓 Sent initial ping event`);
 
             let buffer = '';
             let messageStartSent = false;
