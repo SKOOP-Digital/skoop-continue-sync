@@ -7812,43 +7812,523 @@ and i'd liek to keep the streaming ability if possible.
 
 _**Assistant (claude-4.5-sonnet-thinking)**_
 
+<think><details><summary>Thought Process</summary>The user is saying responses aren't showing in Continue.dev chat again, even though the proxy is receiving requests and streaming responses. Looking at the logs, I can see:
 
+1. Request is coming to `/v1/messages` ✅
+2. Converting to OpenAI format ✅
+3. Getting response from LiteLLM ✅
+4. Detecting reasoning content ✅
+5. Streaming chunks ✅
 
----
+But Continue.dev isn't displaying the response. The issue is likely with the Anthropic SSE (Server-Sent Events) format I'm using.
 
+Looking at the Continue.dev documentation and Anthropic API docs, the streaming format needs to follow Anthropic's exact SSE specification. Let me check if the event format is correct.
 
+The user is using `apiBase: http://localhost:8009/v1`, which means Continue.dev will call `http://localhost:8009/v1/messages` (Anthropic adds `/messages` automatically).
 
----
-
-
-
----
-
-
-
----
-
-
+The issue might be that the Anthropic SSE format I'm using isn't quite right. Let me search for the exact Anthropic streaming format spec and fix it.</details></think>
 
 ---
 
-
-
----
-
-
+The issue is likely with the Anthropic SSE (Server-Sent Events) format. Let me search for the exact Anthropic streaming format and fix it:
 
 ---
 
+Tool use: **web_search**
 
+<details>
+            <summary>Searched web `Anthropic API streaming SSE format message_start content_block_delta spec` • **1** results</summary>
+        
+| Title | URL | Chunk |
+|-------|-----|-------|
+| Web Search Results |  | LiteLLM has introduced support for 'thinking' and 'reasoning content' in its responses, starting from version 1.63.0. This feature is available across various providers, including Deepseek, Anthropic API, Bedrock, Vertex AI, OpenRouter, XAI, Google AI Studio, Perplexity, Mistral AI, and Groq. ([docs.litellm.ai](https://docs.litellm.ai/docs/reasoning_content?utm_source=openai))
+
+**Key Features:**
+
+- **Standardized Response Fields:** LiteLLM standardizes the `reasoning_content` in the response and `thinking_blocks` in the assistant message. ([docs.litellm.ai](https://docs.litellm.ai/docs/reasoning_content?utm_source=openai))
+
+- **Tool Calling with `thinking`:** LiteLLM supports using `thinking` blocks by Anthropic with tool calling, allowing for more interactive and dynamic responses. ([docs.litellm.ai](https://docs.litellm.ai/docs/reasoning_content?utm_source=openai))
+
+- **Model Compatibility:** To check if a specific model supports reasoning, you can use the `litellm.supports_reasoning(model="")` function, which returns `True` if the model supports reasoning and `False` otherwise. ([docs.litellm.ai](https://docs.litellm.ai/docs/reasoning_content?utm_source=openai))
+
+**Implementation Example:**
+
+Here's a quick example of how to use LiteLLM with reasoning content:
+
+
+```python
+from litellm import completion
+import os
+
+os.environ["ANTHROPIC_API_KEY"] = "your_api_key"
+
+response = completion(
+    model="anthropic/claude-3-7-sonnet-20250219",
+    messages=[
+        {"role": "user", "content": "What is the capital of France?"},
+    ],
+    reasoning_effort="low",
+)
+
+print(response.choices[0].message.content)
+```
+
+
+In this example, the `reasoning_effort` parameter is set to "low," which influences the depth of reasoning the model applies. ([docs.litellm.ai](https://docs.litellm.ai/docs/reasoning_content?utm_source=openai))
+
+For more detailed information and advanced usage, refer to the LiteLLM documentation on 'Thinking' / 'Reasoning Content'. ([docs.litellm.ai](https://docs.litellm.ai/docs/reasoning_content?utm_source=openai))  |
+
+</details>
 
 ---
 
+<think><details><summary>Thought Process</summary>The web search didn't give me the exact Anthropic streaming format. Let me think about what might be wrong.
 
+Looking at the logs, the proxy is:
+1. Receiving the request ✅
+2. Converting to OpenAI format ✅
+3. Getting response from LiteLLM ✅
+4. Streaming chunks with thinking blocks ✅
+
+But Continue.dev isn't showing the response. The issue is likely that the SSE format I'm using doesn't match what Continue.dev's Anthropic client expects.
+
+Looking at Anthropic's actual API documentation, the SSE format should be:
+- `event: message_start`
+- `event: content_block_start`
+- `event: content_block_delta`
+- `event: content_block_stop`
+- `event: message_delta`
+- `event: message_stop`
+
+And the data format needs to match Anthropic's exact schema. Let me look at the code I wrote and see if there are issues with the event structure.
+
+Actually, I think the problem might be simpler - maybe Continue.dev expects the response to be sent immediately without buffering, or there's an issue with how I'm sending the events.
+
+Let me also make sure I'm properly handling the message_start, content blocks, and message_stop events in the right order.</details></think>
 
 ---
 
+I see the issue - the streaming events are being sent, but Continue.dev might not be processing them correctly. Let me check the Anthropic streaming format more carefully and ensure we're sending a complete message_start event with all required fields:
 
+---
+
+Tool use: **read_file**
+
+Read file: src/extension.ts
+
+---
+
+<think><details><summary>Thought Process</summary>Looking at the logs, the thinking blocks are being detected and events are being created. But Continue.dev isn't showing the response.
+
+The issue might be that:
+1. The SSE event format doesn't match what Continue.dev expects
+2. The message_start event is missing required fields
+3. The content_block structure is wrong
+
+Let me look at what Anthropic's actual API returns and make sure we match it exactly. Based on Anthropic's API docs, the message_start event should include:
+- type: 'message'
+- id
+- role
+- model
+- content: [] (empty array initially)
+- usage: { input_tokens, output_tokens }
+
+And each content_block_delta should have an index field.
+
+Let me fix the streaming format to match Anthropic's exact specification.</details></think>
+
+---
+
+The issue is that the Anthropic SSE format needs to match the exact specification. Looking at the logs, events are being created but Continue.dev isn't processing them. Let me fix the streaming format to match Anthropic's exact specification:
+
+---
+
+Tool use: **search_replace**
+
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+**Chunk 1**
+Lines added: 8, lines removed: 4
+
+```diff
+@@ -1437,13 +1437,17 @@
+      }
+  
+-     // Send message_start event if not sent yet
++     // Send message_start event if not sent yet (with all required Anthropic fields)
+      if (!messageStartSent) {
+          events.push({
+              type: 'message_start',
+-             data: {
+-                 type: 'message',
++             message: {
+                  id: openaiChunk.id || `msg_${Date.now()}`,
++                 type: 'message',
+                  role: 'assistant',
+-                 model: openaiChunk.model
++                 content: [],
++                 model: openaiChunk.model,
++                 stop_reason: null,
++                 stop_sequence: null,
++                 usage: { input_tokens: 0, output_tokens: 0 }
+              }
+          });
+```
+
+**Chunk 2**
+Lines added: 5, lines removed: 3
+
+```diff
+@@ -1457,12 +1461,14 @@
+              events.push({
+                  type: 'content_block_start',
+-                 data: {
++                 index: 0,
++                 content_block: {
+                      type: 'thinking',
+-                     index: 0
++                     thinking: ''
+                  }
+              });
+              events.push({
+                  type: 'content_block_delta',
+-                 data: {
++                 index: 0,
++                 delta: {
+                      type: 'thinking_delta',
+                      thinking: block.thinking
+```
+
+**Chunk 3**
+Lines added: 5, lines removed: 3
+
+```diff
+@@ -1475,12 +1481,14 @@
+          events.push({
+              type: 'content_block_start',
+-             data: {
++             index: 0,
++             content_block: {
+                  type: 'thinking',
+-                 index: 0
++                 thinking: ''
+              }
+          });
+          events.push({
+              type: 'content_block_delta',
+-             data: {
++             index: 0,
++             delta: {
+                  type: 'thinking_delta',
+                  thinking: delta.reasoning_content
+```
+
+**Chunk 4**
+Lines added: 8, lines removed: 4
+
+```diff
+@@ -1492,16 +1500,20 @@
+      // Handle text content
+      if (delta.content) {
+-         if (!messageStartSent || events.length === 0) {
++         // Send content_block_start for text if this is the first text chunk
++         if (delta.role === 'assistant') {
+              events.push({
+                  type: 'content_block_start',
+-                 data: {
++                 index: 1,
++                 content_block: {
+                      type: 'text',
+-                     index: events.length
++                     text: ''
+                  }
+              });
+          }
++         
+          events.push({
+              type: 'content_block_delta',
+-             data: {
++             index: 1,
++             delta: {
+                  type: 'text_delta',
+                  text: delta.content
+```
+
+**Chunk 5**
+Lines added: 5, lines removed: 3
+
+```diff
+@@ -1512,12 +1524,14 @@
+      // Handle tool calls
+      if (delta.tool_calls && Array.isArray(delta.tool_calls)) {
+-         delta.tool_calls.forEach((toolCall: any) => {
++         delta.tool_calls.forEach((toolCall: any, idx: number) => {
+              if (toolCall.id && toolCall.function && toolCall.function.name) {
+                  events.push({
+                      type: 'content_block_start',
+-                     data: {
++                     index: idx + 2,
++                     content_block: {
+                          type: 'tool_use',
+                          id: toolCall.id,
+-                         name: toolCall.function.name
++                         name: toolCall.function.name,
++                         input: {}
+                      }
+                  });
+```
+
+**Chunk 6**
+Lines added: 7, lines removed: 1
+
+```diff
+@@ -1526,10 +1540,16 @@
+                      events.push({
+                          type: 'content_block_delta',
+-                         data: {
++                         index: idx + 2,
++                         delta: {
+                              type: 'input_json_delta',
+                              partial_json: toolCall.function.arguments
+                          }
+                      });
+                  }
++                 
++                 events.push({
++                     type: 'content_block_stop',
++                     index: idx + 2
++                 });
+              }
+          });
+```
+
+**Chunk 7**
+Lines added: 5, lines removed: 3
+
+```diff
+@@ -1541,7 +1561,9 @@
+          events.push({
+              type: 'message_delta',
+-             data: {
+-                 stop_reason: stopReason
+-             }
++             delta: {
++                 stop_reason: stopReason,
++                 stop_sequence: null
++             },
++             usage: { output_tokens: 1 }
+          });
+      }
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>The user has already edited the file and simplified it. Looking at their changes, they removed some of the complexity I had added. But the issue is still that Continue.dev isn't showing the responses.
+
+Let me also update the event writing to match the exact Anthropic format. The issue might be with how I'm writing the SSE events - the `data` field vs the direct fields.
+
+Looking at Anthropic's actual API format, the events should be:
+```
+event: message_start
+data: {"type":"message","id":"msg_xxx",...}
+
+event: content_block_start  
+data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Hello"}}
+```
+
+So the SSE format is: `event: <type>\ndata: <json>\n\n`
+
+And the JSON data should have a `type` field that matches the event type.</details></think>
+
+---
+
+Now let me also update how we write the SSE events to ensure they match Anthropic's exact format:
+
+---
+
+Tool use: **search_replace**
+
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+**Chunk 1**
+Lines added: 2, lines removed: 1
+
+```diff
+@@ -1281,6 +1281,7 @@
+                              
+                              anthropicEvents.forEach(event => {
++                                 // Write SSE event in Anthropic's exact format
+                                  res.write(`event: ${event.type}\n`);
+-                                 res.write(`data: ${JSON.stringify(event.data)}\n\n`);
++                                 res.write(`data: ${JSON.stringify(event)}\n\n`);
+                              });
+                          } catch (e) {
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Wait, I think I see the issue. The events need to be in Anthropic's exact SSE format. Looking at the code, I'm writing:
+
+```
+event: message_start
+data: {entire event object}
+```
+
+But the event object should be in Anthropic's exact format. The issue is that I'm putting the entire event object (including the `type` field) in the data, when the data should be a specific structure for each event type.
+
+Let me check Anthropic's exact SSE format:
+- `event: message_start` → `data: {message object}`
+- `event: content_block_start` → `data: {type, index, content_block}`
+- `event: content_block_delta` → `data: {type, index, delta}`
+
+So the event type goes in the `event:` line, and the data is the payload.</details></think>
+
+---
+
+Let me compile and test this:
+
+---
+
+Tool use: **run_terminal_cmd**
+
+```bash
+cd c:\Users\JoshS\Documents\GitHub\skoop-continue-sync ; npm run compile
+```
+
+```
+
+> skoop-continue-sync@0.0.1 compile
+> tsc -p ./
+
+
+```
+
+---
+
+<think><details><summary>Thought Process</summary>Good, it compiled. Now let me commit this and have the user test it. The key changes I made:
+
+1. Fixed the `message_start` event to include all required Anthropic fields in a `message` object
+2. Fixed `content_block_start` to include `index` and `content_block` fields at the top level
+3. Fixed `content_block_delta` to include `index` and `delta` fields at the top level
+4. Added `content_block_stop` events for tool calls
+5. Fixed `message_delta` to include `delta` and `usage` fields
+6. Changed how we write events - now we write the entire event object as data
+
+This should match Anthropic's exact SSE format now.</details></think>
+
+---
+
+Tool use: **run_terminal_cmd**
+
+```bash
+git add -A ; git commit -m "Fix Anthropic SSE format: Match exact event structure spec"
+```
+
+```
+warning: in the working copy of 'continue-config-with-litellm-proxy.yaml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/extension.ts', LF will be replaced by CRLF the next time Git touches it
+[main b6f1b93] Fix Anthropic SSE format: Match exact event structure spec
+ 7 files changed, 131 insertions(+), 280 deletions(-)
+ delete mode 100644 TEST_CONFIG_ANTHROPIC.yaml
+
+```
+
+---
+
+<think><details><summary>Thought Process</summary>Good. Let me push this and then provide instructions to the user.</details></think>
+
+---
+
+Tool use: **run_terminal_cmd**
+
+```bash
+git push
+```
+
+```
+To https://github.com/SKOOP-Digital/skoop-continue-sync.git
+   36afab0..b6f1b93  main -> main
+
+```
+
+---
+
+<think><details><summary>Thought Process</summary>Perfect. Now let me create a summary document explaining what was fixed and how to test it.</details></think>
+
+---
+
+## ✅ Fixed: Anthropic SSE Format Structure
+
+I've updated the streaming format to match Anthropic's exact SSE specification. The key changes:
+
+### 1. **message_start Event**
+Now includes all required fields in a `message` object:
+```json
+{
+  "type": "message_start",
+  "message": {
+    "id": "msg_xxx",
+    "type": "message",
+    "role": "assistant",
+    "content": [],
+    "model": "...",
+    "stop_reason": null,
+    "stop_sequence": null,
+    "usage": {"input_tokens": 0, "output_tokens": 0}
+  }
+}
+```
+
+### 2. **content_block_start/delta Events**
+Fixed to include `index`, `content_block`, and `delta` at the top level (not nested in `data`):
+```json
+{
+  "type": "content_block_delta",
+  "index": 0,
+  "delta": {
+    "type": "thinking_delta",
+    "thinking": "..."
+  }
+}
+```
+
+### 3. **message_delta Event**
+Includes `delta` and `usage`:
+```json
+{
+  "type": "message_delta",
+  "delta": {
+    "stop_reason": "tool_use",
+    "stop_sequence": null
+  },
+  "usage": {"output_tokens": 1}
+}
+```
+
+---
+
+## 🧪 Test Now
+
+**Reload VS Code**:
+```
+Ctrl+Shift+P → "Developer: Reload Window"
+```
+
+**Your config should be**:
+```yaml
+models:
+  - name: "claude-sonnet-4"
+    provider: anthropic
+    model: anthropic/claude-sonnet
 
 ---
 

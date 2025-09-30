@@ -276,7 +276,7 @@ Agents:
         provider: openai
         model: anthropic/claude-sonnet-4-20250514
         apiKey: "{{ $node["Webhook"].json["headers"]["apikey"] }}"
-        apiBase: https://litellm.skoop.digital/v1/
+        apiBase: https://litellm.skoop.digital/v1
         roles:
           - chat
           - edit
