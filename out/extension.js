@@ -765,59 +765,25 @@ function startProxyServer(context) {
             res.end();
             return;
         }
-        // Handle /api/show endpoint (Ollama model info)
-        if (req.url === '/api/show' || req.url?.startsWith('/api/show')) {
-            console.log(`[LiteLLM Proxy ${requestId}] Returning model info`);
-            // Return static model info response
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({
-                modelfile: '',
-                parameters: '',
-                template: '',
-                details: {
-                    parent_model: '',
-                    format: 'gguf',
-                    family: 'anthropic',
-                    families: ['anthropic'],
-                    parameter_size: '200B',
-                    quantization_level: 'F16'
-                },
-                model_info: {
-                    'general.architecture': 'llama',
-                    'general.file_type': 2,
-                    'general.parameter_count': 200000000000,
-                    'general.quantization_version': 2
-                }
-            }));
-            return;
-        }
-        // Handle /api/tags endpoint (Ollama models list)
-        if (req.url === '/api/tags' || req.url === '/v1/models') {
+        // Handle /v1/models endpoint (Anthropic-style models list)
+        if (req.url === '/v1/models') {
             console.log(`[LiteLLM Proxy ${requestId}] Returning models list`);
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({
-                models: [
+                data: [
                     {
-                        name: 'anthropic/claude-sonnet-4-5',
-                        model: 'anthropic/claude-sonnet-4-5',
-                        modified_at: new Date().toISOString(),
-                        size: 0,
-                        digest: 'sha256:0000000000000000',
-                        details: {
-                            parent_model: '',
-                            format: 'gguf',
-                            family: 'anthropic',
-                            families: ['anthropic'],
-                            parameter_size: '200B',
-                            quantization_level: 'F16'
-                        }
+                        id: 'anthropic/claude-sonnet-4-20250514',
+                        object: 'model',
+                        created: Math.floor(Date.now() / 1000),
+                        owned_by: 'anthropic'
                     }
-                ]
+                ],
+                object: 'list'
             }));
             return;
         }
-        // Handle /api/chat or /v1/chat/completions endpoints (main chat endpoint)
-        if (req.url === '/api/chat' || req.url === '/v1/chat/completions') {
+        // Handle /v1/messages endpoint (Anthropic chat completions)
+        if (req.url === '/v1/messages' || req.url === '/v1/chat/completions') {
             if (req.method !== 'POST') {
                 res.writeHead(405, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ error: 'Method not allowed' }));
@@ -829,60 +795,25 @@ function startProxyServer(context) {
             });
             req.on('end', async () => {
                 try {
-                    const ollamaRequest = JSON.parse(body);
-                    console.log(`[LiteLLM Proxy ${requestId}] Ollama request:`, JSON.stringify(ollamaRequest, null, 2));
-                    // Convert Ollama format to OpenAI format
-                    const openaiRequest = convertOllamaToOpenAI(ollamaRequest);
+                    const anthropicRequest = JSON.parse(body);
+                    console.log(`[LiteLLM Proxy ${requestId}] Anthropic request:`, JSON.stringify(anthropicRequest, null, 2));
+                    // Convert Anthropic format to OpenAI format
+                    const openaiRequest = convertAnthropicToOpenAI(anthropicRequest);
                     console.log(`[LiteLLM Proxy ${requestId}] OpenAI request:`, JSON.stringify(openaiRequest, null, 2));
                     // Determine the correct LiteLLM endpoint
                     const litellmUrl = `${LITELLM_BASE_URL}/v1/chat/completions`;
                     // Make request to LiteLLM
-                    await forwardToLiteLLM(litellmUrl, openaiRequest, res, requestId, ollamaRequest.stream || false);
+                    await forwardToLiteLLM(litellmUrl, openaiRequest, res, requestId, anthropicRequest.stream || false);
                 }
                 catch (error) {
                     console.error(`[LiteLLM Proxy ${requestId}] Error:`, error);
                     res.writeHead(500, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({
-                        error: 'Internal server error',
-                        details: error instanceof Error ? error.message : String(error)
-                    }));
-                }
-            });
-            return;
-        }
-        // Handle /api/generate endpoint (Ollama completions)
-        if (req.url === '/api/generate') {
-            if (req.method !== 'POST') {
-                res.writeHead(405, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: 'Method not allowed' }));
-                return;
-            }
-            let body = '';
-            req.on('data', chunk => {
-                body += chunk.toString();
-            });
-            req.on('end', async () => {
-                try {
-                    const ollamaRequest = JSON.parse(body);
-                    console.log(`[LiteLLM Proxy ${requestId}] Ollama generate request:`, JSON.stringify(ollamaRequest, null, 2));
-                    // Convert prompt to messages format
-                    const messages = ollamaRequest.messages || [
-                        { role: 'user', content: ollamaRequest.prompt || '' }
-                    ];
-                    const openaiRequest = convertOllamaToOpenAI({
-                        ...ollamaRequest,
-                        messages
-                    });
-                    console.log(`[LiteLLM Proxy ${requestId}] OpenAI request:`, JSON.stringify(openaiRequest, null, 2));
-                    const litellmUrl = `${LITELLM_BASE_URL}/v1/chat/completions`;
-                    await forwardToLiteLLM(litellmUrl, openaiRequest, res, requestId, ollamaRequest.stream || false);
-                }
-                catch (error) {
-                    console.error(`[LiteLLM Proxy ${requestId}] Error:`, error);
-                    res.writeHead(500, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({
-                        error: 'Internal server error',
-                        details: error instanceof Error ? error.message : String(error)
+                        type: 'error',
+                        error: {
+                            type: 'internal_error',
+                            message: error instanceof Error ? error.message : String(error)
+                        }
                     }));
                 }
             });
@@ -909,67 +840,86 @@ function startProxyServer(context) {
         }
     });
 }
-function convertOllamaToOpenAI(ollamaRequest) {
+function convertAnthropicToOpenAI(anthropicRequest) {
     const openaiRequest = {
-        model: ollamaRequest.model,
+        model: anthropicRequest.model,
         messages: [],
-        stream: ollamaRequest.stream || false
+        stream: anthropicRequest.stream || false,
+        max_tokens: anthropicRequest.max_tokens
     };
+    // Extract system message if present
+    let systemMessage;
+    if (anthropicRequest.system) {
+        if (typeof anthropicRequest.system === 'string') {
+            systemMessage = anthropicRequest.system;
+        }
+        else if (Array.isArray(anthropicRequest.system)) {
+            // Handle system message blocks
+            systemMessage = anthropicRequest.system
+                .map((block) => block.text || '')
+                .join('\n');
+        }
+    }
     // Convert messages
-    if (ollamaRequest.messages) {
-        openaiRequest.messages = ollamaRequest.messages.map(msg => {
-            let messageContent = msg.content;
-            // Strip out <thinking> tags that Continue.dev sent back from previous responses
-            // This prevents breaking Anthropic's message format when using tool calls
-            if (typeof messageContent === 'string' && messageContent.includes('<thinking>')) {
-                messageContent = messageContent.replace(/<thinking>[\s\S]*?<\/thinking>\n*/g, '').trim();
-                console.log(`[LiteLLM Proxy] Stripped thinking tags from ${msg.role} message`);
-            }
-            // Handle images if present
-            if (msg.images && msg.images.length > 0) {
+    openaiRequest.messages = anthropicRequest.messages.map(msg => {
+        // Handle content blocks (Anthropic format)
+        if (Array.isArray(msg.content)) {
+            const textBlocks = msg.content.filter((block) => block.type === 'text');
+            const imageBlocks = msg.content.filter((block) => block.type === 'image');
+            if (imageBlocks.length > 0) {
+                // Convert to OpenAI's vision format
                 const content = [];
-                if (messageContent) {
-                    content.push({ type: 'text', text: messageContent });
-                }
-                msg.images.forEach(imageData => {
-                    // Ollama sends base64 images
-                    const imageUrl = imageData.startsWith('data:') ? imageData : `data:image/jpeg;base64,${imageData}`;
-                    content.push({
-                        type: 'image_url',
-                        image_url: { url: imageUrl }
-                    });
+                textBlocks.forEach((block) => {
+                    content.push({ type: 'text', text: block.text });
                 });
-                return {
-                    role: msg.role,
-                    content: content
-                };
+                imageBlocks.forEach((block) => {
+                    const source = block.source;
+                    let imageUrl = '';
+                    if (source.type === 'base64') {
+                        imageUrl = `data:${source.media_type};base64,${source.data}`;
+                    }
+                    else if (source.type === 'url') {
+                        imageUrl = source.url;
+                    }
+                    content.push({ type: 'image_url', image_url: { url: imageUrl } });
+                });
+                return { role: msg.role, content: content };
             }
-            return {
-                role: msg.role,
-                content: messageContent
-            };
+            else {
+                // Text only
+                const text = textBlocks.map((b) => b.text).join('\n');
+                return { role: msg.role, content: text };
+            }
+        }
+        // Simple string content
+        return {
+            role: msg.role,
+            content: msg.content
+        };
+    });
+    // Add system message as first message if present
+    if (systemMessage) {
+        openaiRequest.messages.unshift({
+            role: 'system',
+            content: systemMessage
         });
     }
-    // Convert options
-    if (ollamaRequest.options) {
-        if (ollamaRequest.options.temperature !== undefined) {
-            openaiRequest.temperature = ollamaRequest.options.temperature;
-        }
-        if (ollamaRequest.options.top_p !== undefined) {
-            openaiRequest.top_p = ollamaRequest.options.top_p;
-        }
-        if (ollamaRequest.options.max_tokens !== undefined || ollamaRequest.options.num_predict !== undefined) {
-            openaiRequest.max_tokens = ollamaRequest.options.max_tokens || ollamaRequest.options.num_predict;
-        }
+    // Copy parameters
+    if (anthropicRequest.temperature !== undefined) {
+        openaiRequest.temperature = anthropicRequest.temperature;
+    }
+    if (anthropicRequest.top_p !== undefined) {
+        openaiRequest.top_p = anthropicRequest.top_p;
     }
     // Add tools if present
-    if (ollamaRequest.tools) {
-        openaiRequest.tools = ollamaRequest.tools;
+    if (anthropicRequest.tools) {
+        openaiRequest.tools = anthropicRequest.tools;
     }
-    // Add thinking/reasoning parameters for Claude/Anthropic models
-    // According to LiteLLM docs: use EITHER reasoning_effort OR thinking, not both
-    // IMPORTANT: max_tokens must be greater than thinking.budget_tokens
-    if (ollamaRequest.model.includes('claude') || ollamaRequest.model.includes('anthropic')) {
+    // Pass through thinking parameter or add it for Claude/Anthropic models
+    if (anthropicRequest.thinking) {
+        openaiRequest.thinking = anthropicRequest.thinking;
+    }
+    else if (anthropicRequest.model.includes('claude') || anthropicRequest.model.includes('anthropic')) {
         const thinkingBudget = 2048;
         const requestedMaxTokens = openaiRequest.max_tokens || 30000;
         // Only add thinking if max_tokens is large enough
@@ -1019,12 +969,14 @@ async function forwardToLiteLLM(url, openaiRequest, res, requestId, isStreaming)
             return;
         }
         if (isStreaming) {
-            // Handle streaming response
+            // Handle streaming response in Anthropic SSE format
             res.writeHead(litellmRes.statusCode || 200, {
-                'Content-Type': 'application/x-ndjson',
-                'Transfer-Encoding': 'chunked'
+                'Content-Type': 'text/event-stream',
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive'
             });
             let buffer = '';
+            let messageStartSent = false;
             litellmRes.on('data', (chunk) => {
                 buffer += chunk.toString();
                 const lines = buffer.split('\n');
@@ -1045,9 +997,15 @@ async function forwardToLiteLLM(url, openaiRequest, res, requestId, isStreaming)
                                 console.log(`[LiteLLM Proxy ${requestId}] *** REASONING CONTENT DETECTED ***:`, delta.reasoning_content.substring(0, 100));
                             }
                             console.log(`[LiteLLM Proxy ${requestId}] Stream chunk delta:`, JSON.stringify(delta).substring(0, 200));
-                            // Convert OpenAI stream format to Ollama format
-                            const ollamaChunk = convertOpenAIStreamToOllama(parsed);
-                            res.write(JSON.stringify(ollamaChunk) + '\n');
+                            // Convert OpenAI stream format to Anthropic format
+                            const anthropicEvents = convertOpenAIStreamToAnthropic(parsed, messageStartSent);
+                            if (anthropicEvents.length > 0 && !messageStartSent) {
+                                messageStartSent = true;
+                            }
+                            anthropicEvents.forEach(event => {
+                                res.write(`event: ${event.type}\n`);
+                                res.write(`data: ${JSON.stringify(event.data)}\n\n`);
+                            });
                         }
                         catch (e) {
                             console.error(`[LiteLLM Proxy ${requestId}] Error parsing stream chunk:`, e);
@@ -1057,17 +1015,9 @@ async function forwardToLiteLLM(url, openaiRequest, res, requestId, isStreaming)
             });
             litellmRes.on('end', () => {
                 console.log(`[LiteLLM Proxy ${requestId}] Stream ended`);
-                // Send final done message in Ollama format
-                const doneMessage = {
-                    model: openaiRequest.model,
-                    created_at: new Date().toISOString(),
-                    done: true,
-                    message: {
-                        role: 'assistant',
-                        content: ''
-                    }
-                };
-                res.write(JSON.stringify(doneMessage) + '\n');
+                // Send message_stop event
+                res.write(`event: message_stop\n`);
+                res.write(`data: {}\n\n`);
                 res.end();
             });
         }
@@ -1089,18 +1039,21 @@ async function forwardToLiteLLM(url, openaiRequest, res, requestId, isStreaming)
                         console.log(`[LiteLLM Proxy ${requestId}] No reasoning_content in response`);
                     }
                     console.log(`[LiteLLM Proxy ${requestId}] OpenAI response message:`, JSON.stringify(message).substring(0, 300));
-                    // Convert OpenAI response to Ollama format
-                    const ollamaResponse = convertOpenAIToOllama(openaiResponse, openaiRequest.model);
-                    console.log(`[LiteLLM Proxy ${requestId}] Ollama response:`, JSON.stringify(ollamaResponse, null, 2));
+                    // Convert OpenAI response to Anthropic format
+                    const anthropicResponse = convertOpenAIToAnthropic(openaiResponse);
+                    console.log(`[LiteLLM Proxy ${requestId}] Anthropic response:`, JSON.stringify(anthropicResponse).substring(0, 500));
                     res.writeHead(litellmRes.statusCode || 200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify(ollamaResponse));
+                    res.end(JSON.stringify(anthropicResponse));
                 }
                 catch (error) {
                     console.error(`[LiteLLM Proxy ${requestId}] Error parsing response:`, error);
                     res.writeHead(500, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({
-                        error: 'Error parsing LiteLLM response',
-                        details: error instanceof Error ? error.message : String(error)
+                        type: 'error',
+                        error: {
+                            type: 'internal_error',
+                            message: error instanceof Error ? error.message : String(error)
+                        }
                     }));
                 }
             });
@@ -1117,87 +1070,180 @@ async function forwardToLiteLLM(url, openaiRequest, res, requestId, isStreaming)
     litellmReq.write(requestBody);
     litellmReq.end();
 }
-function convertOpenAIToOllama(openaiResponse, model) {
+function convertOpenAIToAnthropic(openaiResponse) {
     const choice = openaiResponse.choices?.[0];
     if (!choice) {
         return {
-            model: model,
-            created_at: new Date().toISOString(),
-            done: true,
-            message: {
-                role: 'assistant',
-                content: ''
+            id: openaiResponse.id || `msg_${Date.now()}`,
+            type: 'message',
+            role: 'assistant',
+            content: [],
+            model: openaiResponse.model,
+            stop_reason: 'end_turn',
+            usage: {
+                input_tokens: 0,
+                output_tokens: 0
             }
         };
     }
     const message = choice.message;
-    let content = message.content || '';
-    // Include reasoning/thinking content if present
-    if (message.reasoning_content) {
-        console.log('[LiteLLM Proxy] Including reasoning content in response');
-        // Prepend thinking content in a formatted way
-        content = `<thinking>\n${message.reasoning_content}\n</thinking>\n\n${content}`;
-    }
-    const ollamaResponse = {
-        model: model,
-        created_at: new Date().toISOString(),
-        done: true,
-        message: {
-            role: message.role,
-            content: content
-        }
+    const anthropicResponse = {
+        id: openaiResponse.id || `msg_${Date.now()}`,
+        type: 'message',
+        role: 'assistant',
+        model: openaiResponse.model,
+        stop_reason: choice.finish_reason === 'tool_calls' ? 'tool_use' : 'end_turn'
     };
-    // Add tool calls if present
-    if (message.tool_calls) {
-        ollamaResponse.message.tool_calls = message.tool_calls;
+    // Build content blocks
+    const contentBlocks = [];
+    // Add thinking blocks if present
+    if (message.thinking_blocks && Array.isArray(message.thinking_blocks)) {
+        message.thinking_blocks.forEach((block) => {
+            contentBlocks.push({
+                type: 'thinking',
+                thinking: block.thinking
+            });
+        });
+        console.log(`[LiteLLM Proxy] Added ${message.thinking_blocks.length} thinking blocks to response`);
     }
-    // Add usage information if present
+    // Add text content
+    if (message.content) {
+        contentBlocks.push({
+            type: 'text',
+            text: message.content
+        });
+    }
+    // Add tool use blocks if present
+    if (message.tool_calls && Array.isArray(message.tool_calls)) {
+        message.tool_calls.forEach((toolCall) => {
+            contentBlocks.push({
+                type: 'tool_use',
+                id: toolCall.id,
+                name: toolCall.function.name,
+                input: JSON.parse(toolCall.function.arguments || '{}')
+            });
+        });
+    }
+    anthropicResponse.content = contentBlocks;
+    // Add usage information
     if (openaiResponse.usage) {
-        ollamaResponse.eval_count = openaiResponse.usage.completion_tokens;
-        ollamaResponse.prompt_eval_count = openaiResponse.usage.prompt_tokens;
-    }
-    return ollamaResponse;
-}
-function convertOpenAIStreamToOllama(openaiChunk) {
-    const choice = openaiChunk.choices?.[0];
-    if (!choice) {
-        return {
-            model: openaiChunk.model,
-            created_at: new Date().toISOString(),
-            done: false,
-            message: {
-                role: 'assistant',
-                content: ''
-            }
+        anthropicResponse.usage = {
+            input_tokens: openaiResponse.usage.prompt_tokens || 0,
+            output_tokens: openaiResponse.usage.completion_tokens || 0
         };
     }
-    const delta = choice.delta;
-    let content = delta.content || '';
-    // Include reasoning content if present in the stream
-    if (delta.reasoning_content) {
-        console.log('[LiteLLM Proxy] Stream chunk includes reasoning content:', delta.reasoning_content.substring(0, 100));
-        content = `<thinking>\n${delta.reasoning_content}\n</thinking>\n\n` + content;
+    return anthropicResponse;
+}
+function convertOpenAIStreamToAnthropic(openaiChunk, messageStartSent) {
+    const events = [];
+    const choice = openaiChunk.choices?.[0];
+    if (!choice) {
+        return events;
     }
-    const ollamaChunk = {
-        model: openaiChunk.model,
-        created_at: new Date().toISOString(),
-        done: choice.finish_reason !== null,
-        message: {
-            role: delta.role || 'assistant',
-            content: content
-        }
-    };
-    // Only add tool calls if they are complete (have both id and function.name)
-    if (delta.tool_calls && Array.isArray(delta.tool_calls)) {
-        const validToolCalls = delta.tool_calls.filter((tc) => {
-            // Filter out incomplete tool calls that are just streaming chunks
-            return tc.id && tc.function && tc.function.name && tc.function.name.length > 0;
+    // Send message_start event if not sent yet
+    if (!messageStartSent) {
+        events.push({
+            type: 'message_start',
+            data: {
+                type: 'message',
+                id: openaiChunk.id || `msg_${Date.now()}`,
+                role: 'assistant',
+                model: openaiChunk.model
+            }
         });
-        if (validToolCalls.length > 0) {
-            console.log('[LiteLLM Proxy] Adding tool calls to chunk:', validToolCalls.length);
-            ollamaChunk.message.tool_calls = validToolCalls;
-        }
     }
-    return ollamaChunk;
+    const delta = choice.delta;
+    // Handle thinking/reasoning content
+    if (delta.thinking_blocks && Array.isArray(delta.thinking_blocks)) {
+        delta.thinking_blocks.forEach((block) => {
+            events.push({
+                type: 'content_block_start',
+                data: {
+                    type: 'thinking',
+                    index: 0
+                }
+            });
+            events.push({
+                type: 'content_block_delta',
+                data: {
+                    type: 'thinking_delta',
+                    thinking: block.thinking
+                }
+            });
+        });
+        console.log(`[LiteLLM Proxy] Streamed ${delta.thinking_blocks.length} thinking blocks`);
+    }
+    else if (delta.reasoning_content) {
+        // Fallback if only reasoning_content is present
+        events.push({
+            type: 'content_block_start',
+            data: {
+                type: 'thinking',
+                index: 0
+            }
+        });
+        events.push({
+            type: 'content_block_delta',
+            data: {
+                type: 'thinking_delta',
+                thinking: delta.reasoning_content
+            }
+        });
+        console.log('[LiteLLM Proxy] Stream chunk includes reasoning content:', delta.reasoning_content.substring(0, 100));
+    }
+    // Handle text content
+    if (delta.content) {
+        if (!messageStartSent || events.length === 0) {
+            events.push({
+                type: 'content_block_start',
+                data: {
+                    type: 'text',
+                    index: events.length
+                }
+            });
+        }
+        events.push({
+            type: 'content_block_delta',
+            data: {
+                type: 'text_delta',
+                text: delta.content
+            }
+        });
+    }
+    // Handle tool calls
+    if (delta.tool_calls && Array.isArray(delta.tool_calls)) {
+        delta.tool_calls.forEach((toolCall) => {
+            if (toolCall.id && toolCall.function && toolCall.function.name) {
+                events.push({
+                    type: 'content_block_start',
+                    data: {
+                        type: 'tool_use',
+                        id: toolCall.id,
+                        name: toolCall.function.name
+                    }
+                });
+                if (toolCall.function.arguments) {
+                    events.push({
+                        type: 'content_block_delta',
+                        data: {
+                            type: 'input_json_delta',
+                            partial_json: toolCall.function.arguments
+                        }
+                    });
+                }
+            }
+        });
+    }
+    // Handle finish_reason
+    if (choice.finish_reason) {
+        const stopReason = choice.finish_reason === 'tool_calls' ? 'tool_use' : 'end_turn';
+        events.push({
+            type: 'message_delta',
+            data: {
+                stop_reason: stopReason
+            }
+        });
+    }
+    return events;
 }
 //# sourceMappingURL=extension.js.map

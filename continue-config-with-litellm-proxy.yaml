@@ -3,13 +3,14 @@ version: "1.0.0"
 schema: "v1"
 description: "Continue agent using LiteLLM proxy for reasoning models"
 
-# Models section - using the LiteLLM proxy
+# Models section - using the LiteLLM proxy with ANTHROPIC provider
 models:
-  # Claude Sonnet 4.5 via LiteLLM Proxy (with reasoning/thinking support)
-  - name: "claude-sonnet-4-5"
-    provider: ollama
-    model: anthropic/claude-sonnet-4-5
+  # Claude Sonnet 4 via LiteLLM Proxy (with native thinking/reasoning support)
+  - name: "claude-sonnet-4"
+    provider: anthropic  # Use anthropic provider for native thinking support!
+    model: anthropic/claude-sonnet-4-20250514
     apiBase: http://localhost:8009
+    apiKey: "dummy"  # Not used but required by Continue.dev
     roles:
       - chat
       - edit
@@ -21,8 +22,6 @@ models:
     defaultCompletionOptions:
       contextLength: 200000
       maxTokens: 30000
-      reasoning: true
-      reasoningBudgetTokens: 2048
       promptCaching: true  
     capabilities:
       - tool_use

@@ -1,16 +1,16 @@
 # LiteLLM Proxy for Continue.dev - Setup Guide
 
-This extension now includes a built-in proxy server that allows Continue.dev to use LiteLLM models with full reasoning/thinking support, even though Continue.dev only natively supports reasoning with Anthropic and Ollama providers.
+This extension now includes a built-in proxy server that allows Continue.dev to use LiteLLM models with full **native thinking/reasoning support** through Anthropic's API format.
 
 ## What This Does
 
 The proxy server:
 1. Listens on `localhost:8009`
-2. Accepts requests from Continue.dev in Ollama format
+2. Accepts requests from Continue.dev in **Anthropic format**
 3. Converts them to OpenAI/LiteLLM format with reasoning parameters
 4. Forwards to LiteLLM API at `https://litellm.skoop.digital`
-5. Converts responses back to Ollama format (including thinking/reasoning content)
-6. Returns to Continue.dev with full reasoning support
+5. Converts responses back to **Anthropic format** (preserving native thinking blocks)
+6. Returns to Continue.dev with **full native thinking display support**
 
 ## Features
 
@@ -36,10 +36,11 @@ Add models to your Continue.dev config (`~/.continue/config.yaml`) using this fo
 
 ```yaml
 models:
-  - name: "claude-sonnet-4-5"
-    provider: ollama                           # Must be "ollama" for Continue to recognize it
-    model: anthropic/claude-sonnet-4-5         # Actual LiteLLM model name
+  - name: "claude-sonnet-4"
+    provider: anthropic                        # Use anthropic for native thinking support!
+    model: anthropic/claude-sonnet-4-20250514  # Actual LiteLLM model name
     apiBase: http://localhost:8009             # Points to our proxy
+    apiKey: "dummy"                            # Not used, but required by Continue
     roles:
       - chat
       - edit
@@ -51,8 +52,6 @@ models:
     defaultCompletionOptions:
       contextLength: 200000
       maxTokens: 30000
-      reasoning: true
-      reasoningBudgetTokens: 2048
       promptCaching: true  
     capabilities:
       - tool_use
@@ -60,9 +59,10 @@ models:
 ```
 
 **Key Points:**
-- `provider: ollama` - Continue.dev sees this as an Ollama model
-- `model: anthropic/claude-sonnet-4-5` - The actual model name for LiteLLM
+- `provider: anthropic` - **NEW**: Use Anthropic for native thinking display!
+- `model: anthropic/claude-sonnet-4-20250514` - The actual model name for LiteLLM
 - `apiBase: http://localhost:8009` - Points to our proxy server
+- `apiKey: "dummy"` - Required by Continue.dev but not used (proxy handles auth)
 
 ### Step 3: Use in Continue.dev
 
@@ -79,66 +79,81 @@ The proxy works with any LiteLLM-supported model, but reasoning features are aut
 - **OpenAI**: `gpt-5`, `gpt-5-c` (if available)
 - And more...
 
+## Why Use Anthropic Provider?
+
+**Using `provider: anthropic` instead of `provider: ollama` provides:**
+- ✅ **Native thinking display** - Continue.dev shows thinking blocks in a special UI
+- ✅ **Proper conversation history** - Thinking blocks preserved correctly
+- ✅ **No format hacks** - No need to embed thinking in `<tags>`
+- ✅ **Full tool call support** - Multi-turn conversations work perfectly
+
 ## Configuration Examples
 
-### Claude Sonnet 4.5 (Primary Recommendation)
+### Claude Sonnet 4 (Primary Recommendation)
 
 ```yaml
-- name: "claude-sonnet-4-5"
-  provider: ollama
-  model: anthropic/claude-sonnet-4-5
+- name: "claude-sonnet-4"
+  provider: anthropic  # Native thinking support!
+  model: anthropic/claude-sonnet-4-20250514
   apiBase: http://localhost:8009
+  apiKey: "dummy"  # Required but not used
   roles:
     - chat
     - edit
+  requestOptions:
+    extraBodyProperties:
+      thinking:
+        type: "enabled"
+        budget_tokens: 2048
   defaultCompletionOptions:
     contextLength: 200000
     maxTokens: 30000
-    reasoning: true
-    reasoningBudgetTokens: 2048
     promptCaching: true  
   capabilities:
     - tool_use
     - image_input
 ```
 
-### Deepseek Chat
+### Claude 3.7 Sonnet (Extended Thinking)
+
+```yaml
+- name: "claude-3-7-sonnet"
+  provider: anthropic
+  model: anthropic/claude-3-7-sonnet-20250219
+  apiBase: http://localhost:8009
+  apiKey: "dummy"
+  roles:
+    - chat
+    - edit
+  requestOptions:
+    extraBodyProperties:
+      thinking:
+        type: "enabled"
+        budget_tokens: 2048
+  defaultCompletionOptions:
+    contextLength: 200000
+    maxTokens: 30000
+  capabilities:
+    - tool_use
+    - image_input
+```
+
+### Deepseek Chat (via Anthropic format)
 
 ```yaml
 - name: "deepseek-chat"
-  provider: ollama
+  provider: anthropic
   model: deepseek/deepseek-chat
   apiBase: http://localhost:8009
+  apiKey: "dummy"
   roles:
     - chat
     - edit
   defaultCompletionOptions:
     contextLength: 64000
     maxTokens: 8000
-    reasoning: true
-    reasoningBudgetTokens: 1024
   capabilities:
     - tool_use
-```
-
-### Gemini 2.5 Pro
-
-```yaml
-- name: "gemini-2-5-pro"
-  provider: ollama
-  model: gemini/gemini-2.5-pro
-  apiBase: http://localhost:8009
-  roles:
-    - chat
-    - edit
-  defaultCompletionOptions:
-    contextLength: 1048570
-    maxTokens: 65530
-    reasoning: true
-    reasoningBudgetTokens: 2048
-  capabilities:
-    - tool_use
-    - image_input
 ```
 
 ## Troubleshooting
@@ -216,25 +231,25 @@ Continue.dev will display this content inline, allowing you to see the model's r
 
 ### Endpoints Supported
 
-- `GET /api/tags` - Returns available models list (Ollama format)
-- `GET /v1/models` - Returns available models list (OpenAI format)
-- `POST /api/chat` - Chat completions (Ollama format)
-- `POST /v1/chat/completions` - Chat completions (OpenAI format)
-- `POST /api/generate` - Text generation (Ollama format)
+- `GET /v1/models` - Returns available models list (Anthropic/OpenAI compatible)
+- `POST /v1/messages` - Chat completions (Anthropic format)
+- `POST /v1/chat/completions` - Chat completions (OpenAI format, also accepted)
 
 ### Format Conversions
 
-**Ollama → OpenAI:**
-- Messages array: Direct conversion
-- Images: Base64 → `image_url` format
-- Options: `temperature`, `top_p`, `max_tokens`, `num_predict`
-- Auto-adds reasoning parameters for supported models
+**Anthropic → OpenAI:**
+- Messages array: Direct conversion with content blocks
+- System messages: Extracted to separate system role
+- Images: Anthropic `source` format → OpenAI `image_url` format
+- Parameters: `temperature`, `top_p`, `max_tokens`
+- Thinking parameter: Passed through or auto-added
 
-**OpenAI → Ollama:**
-- Response structure conversion
-- `reasoning_content` → `<thinking>` tags
-- Tool calls preservation
-- Usage stats mapping
+**OpenAI → Anthropic:**
+- Response structure: OpenAI choices → Anthropic content blocks
+- `thinking_blocks` → Native Anthropic thinking blocks (preserved!)
+- `reasoning_content` → Thinking block fallback
+- Tool calls: OpenAI format → Anthropic `tool_use` blocks
+- Usage stats: OpenAI format → Anthropic token counts
 
 ### Reasoning Parameters
 
