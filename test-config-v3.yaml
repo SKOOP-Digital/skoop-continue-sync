@@ -252,6 +252,28 @@ Agents:
           maxTokens: 60000
           reasoning: true
           reasoningBudgetTokens: 2048
+      - name: "claude-sonnet-4-5-o"
+        provider: ollama
+        model: anthropic/claude-sonnet-4-5
+        apiKey: "{{ $node["Webhook"].json["headers"]["apikey"] }}"
+        apiBase: http://localhost:8009
+        roles:
+          - chat
+          - edit
+        requestOptions:
+          extraBodyProperties:
+            thinking:
+              type: "enabled"
+              budget_tokens: 2048
+        defaultCompletionOptions:
+          contextLength: 200000
+          maxTokens: 30000
+          reasoning: true
+          reasoningBudgetTokens: 2048
+          promptCaching: true  
+        capabilities:
+          - tool_use
+          - image_input  
       - name: "claude-sonnet-4-20250514"
         provider: openai
         model: anthropic/claude-sonnet-4-20250514
