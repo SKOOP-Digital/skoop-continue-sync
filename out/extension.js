@@ -918,11 +918,18 @@ function convertOllamaToOpenAI(ollamaRequest) {
     // Convert messages
     if (ollamaRequest.messages) {
         openaiRequest.messages = ollamaRequest.messages.map(msg => {
+            let messageContent = msg.content;
+            // Strip out <thinking> tags that Continue.dev sent back from previous responses
+            // This prevents breaking Anthropic's message format when using tool calls
+            if (typeof messageContent === 'string' && messageContent.includes('<thinking>')) {
+                messageContent = messageContent.replace(/<thinking>[\s\S]*?<\/thinking>\n*/g, '').trim();
+                console.log(`[LiteLLM Proxy] Stripped thinking tags from ${msg.role} message`);
+            }
             // Handle images if present
             if (msg.images && msg.images.length > 0) {
                 const content = [];
-                if (msg.content) {
-                    content.push({ type: 'text', text: msg.content });
+                if (messageContent) {
+                    content.push({ type: 'text', text: messageContent });
                 }
                 msg.images.forEach(imageData => {
                     // Ollama sends base64 images
@@ -939,7 +946,7 @@ function convertOllamaToOpenAI(ollamaRequest) {
             }
             return {
                 role: msg.role,
-                content: msg.content
+                content: messageContent
             };
         });
     }
