@@ -998,47 +998,27 @@ function startProxyServer(context: vscode.ExtensionContext) {
         if (req.url === '/api/show' || req.url?.startsWith('/api/show')) {
             console.log(`[LiteLLM Proxy ${requestId}] Returning model info`);
             
-            let body = '';
-            req.on('data', chunk => {
-                body += chunk.toString();
-            });
-
-            req.on('end', () => {
-                try {
-                    const requestData = body ? JSON.parse(body) : {};
-                    const modelName = requestData.name || requestData.model || 'anthropic/claude-sonnet-4-5';
-                    
-                    res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({
-                        modelfile: '',
-                        parameters: '',
-                        template: '',
-                        details: {
-                            parent_model: '',
-                            format: 'gguf',
-                            family: 'anthropic',
-                            families: ['anthropic'],
-                            parameter_size: '200B',
-                            quantization_level: 'F16'
-                        },
-                        model_info: {
-                            'general.architecture': 'llama',
-                            'general.file_type': 2,
-                            'general.parameter_count': 200000000000,
-                            'general.quantization_version': 2
-                        }
-                    }));
-                } catch (error) {
-                    console.error(`[LiteLLM Proxy ${requestId}] Error handling /api/show:`, error);
-                    res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({
-                        modelfile: '',
-                        parameters: '',
-                        template: '',
-                        details: {}
-                    }));
+            // Return static model info response
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+                modelfile: '',
+                parameters: '',
+                template: '',
+                details: {
+                    parent_model: '',
+                    format: 'gguf',
+                    family: 'anthropic',
+                    families: ['anthropic'],
+                    parameter_size: '200B',
+                    quantization_level: 'F16'
+                },
+                model_info: {
+                    'general.architecture': 'llama',
+                    'general.file_type': 2,
+                    'general.parameter_count': 200000000000,
+                    'general.quantization_version': 2
                 }
-            });
+            }));
             return;
         }
 
