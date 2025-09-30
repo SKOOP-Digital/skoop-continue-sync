@@ -1,0 +1,74 @@
+name: "Local Agent with LiteLLM Proxy"
+version: "1.0.0"
+schema: "v1"
+description: "Continue agent using LiteLLM proxy for reasoning models"
+
+# Models section - using the LiteLLM proxy
+models:
+  # Claude Sonnet 4.5 via LiteLLM Proxy (with reasoning/thinking support)
+  - name: "claude-sonnet-4-5"
+    provider: ollama
+    model: anthropic/claude-sonnet-4-5
+    apiBase: http://localhost:8009
+    roles:
+      - chat
+      - edit
+    requestOptions:
+      extraBodyProperties:
+        thinking:
+          type: "enabled"
+          budget_tokens: 2048
+    defaultCompletionOptions:
+      contextLength: 200000
+      maxTokens: 30000
+      reasoning: true
+      reasoningBudgetTokens: 2048
+      promptCaching: true  
+    capabilities:
+      - tool_use
+      - image_input
+
+  # You can add more models by following the same pattern
+  # Just make sure the model name matches what LiteLLM supports
+  
+  # Example: Deepseek via LiteLLM proxy
+  # - name: "deepseek-chat"
+  #   provider: ollama
+  #   model: deepseek/deepseek-chat
+  #   apiBase: http://localhost:8009
+  #   roles:
+  #     - chat
+  #     - edit
+  #   defaultCompletionOptions:
+  #     contextLength: 64000
+  #     maxTokens: 8000
+  #     reasoning: true
+  #     reasoningBudgetTokens: 1024
+  #   capabilities:
+  #     - tool_use
+
+rules:
+  - name: "Code Quality"
+    rule: "Write clean, readable, and maintainable code following best practices."
+
+prompts:
+  - name: "Code Review"
+    description: "Review code for quality and best practices"
+    prompt: "Please review this code for quality, security, and best practices."
+
+context:
+  - provider: file
+  - provider: terminal
+  - provider: problems
+  - provider: tree
+  - provider: code
+  - provider: diff
+  - provider: currentFile
+  - provider: open
+    params:
+      onlyPinned: true
+  - provider: debugger
+    params:
+      stackDepth: 3
+  - provider: repo-map
+  - provider: os

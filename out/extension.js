@@ -28,10 +28,16 @@ const vscode = __importStar(require("vscode"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const https = __importStar(require("https"));
+const http = __importStar(require("http"));
 // Global state for automatic refresh
 let lastConfigRefresh = 0;
 let refreshTimer = null;
 let isOnline = true;
+// LiteLLM proxy server
+let proxyServer = null;
+const PROXY_PORT = 8009;
+const LITELLM_BASE_URL = 'https://litellm.skoop.digital';
+const LITELLM_API_KEY = 'sk-Xko8_N_iN3Q_Mrda5imWQw';
 function activate(context) {
     console.log('[Skoop Continue Sync] Extension activated successfully!');
     console.log('[Skoop Continue Sync] Current workspace:', vscode.workspace.rootPath);
@@ -40,6 +46,8 @@ function activate(context) {
         USERPROFILE: process.env.USERPROFILE,
         APPDATA: process.env.APPDATA
     });
+    // Start LiteLLM proxy server
+    startProxyServer(context);
     // Check for required extensions
     const requiredExtensions = [
         { id: 'Continue.continue', name: 'Continue', marketplaceUrl: 'https://marketplace.visualstudio.com/items?itemName=Continue.continue' },
@@ -116,10 +124,9 @@ exports.activate = activate;
 // Fetch configuration from HTTP endpoint
 async function fetchTeamConfig() {
     console.log('[Skoop Continue Sync] Fetching team configuration from endpoint...');
-    const userEmail = vscode.workspace.getConfiguration('skoop-continue-sync').get('userEmail', '');
-    const userPassword = vscode.workspace.getConfiguration('skoop-continue-sync').get('userPassword', '');
-    if (!userEmail || !userPassword) {
-        throw new Error('User email and password must be configured in Skoop Continue Sync settings.');
+    const apiKey = vscode.workspace.getConfiguration('skoop-continue-sync').get('apiKey', '');
+    if (!apiKey) {
+        throw new Error('API key must be configured in Skoop Continue Sync settings.');
     }
     const endpoint = 'https://n8n.skoopsignage.dev/webhook/4cf533b9-7da1-483d-b6a0-98155fe715ca';
     return new Promise((resolve, reject) => {
@@ -130,8 +137,7 @@ async function fetchTeamConfig() {
             method: 'GET',
             headers: {
                 'Authorization': 'V2e&ytoH@*30%*yWQ%3lS0ck@w@viy6E',
-                'user': userEmail,
-                'password': userPassword,
+                'apiKey': apiKey,
                 'Content-Type': 'application/json'
             }
         };
@@ -608,11 +614,10 @@ async function checkAndRefreshConfig() {
         console.log('[Skoop Continue Sync] Extension context not available, skipping automatic refresh');
         return;
     }
-    const userEmail = vscode.workspace.getConfiguration('skoop-continue-sync').get('userEmail', '');
-    const userPassword = vscode.workspace.getConfiguration('skoop-continue-sync').get('userPassword', '');
+    const apiKey = vscode.workspace.getConfiguration('skoop-continue-sync').get('apiKey', '');
     // Only refresh if credentials are configured
-    if (!userEmail || !userPassword) {
-        console.log('[Skoop Continue Sync] Skipping automatic refresh - credentials not configured');
+    if (!apiKey) {
+        console.log('[Skoop Continue Sync] Skipping automatic refresh - API key not configured');
         return;
     }
     const now = Date.now();
@@ -638,6 +643,13 @@ function deactivate() {
     if (refreshTimer) {
         clearInterval(refreshTimer);
         refreshTimer = null;
+    }
+    // Stop proxy server
+    if (proxyServer) {
+        proxyServer.close(() => {
+            console.log('[LiteLLM Proxy] Server stopped');
+        });
+        proxyServer = null;
     }
 }
 exports.deactivate = deactivate;
@@ -738,5 +750,372 @@ function forceDocsRetryForRawYaml(rawYaml) {
         // Note: This function modifies the rawYaml by reference, but since it's passed by value,
         // we'd need to return it or modify the calling code. For now, we'll just log.
     }
+}
+function startProxyServer(context) {
+    console.log('[LiteLLM Proxy] Starting proxy server on port', PROXY_PORT);
+    proxyServer = http.createServer(async (req, res) => {
+        const requestId = Date.now().toString();
+        console.log(`[LiteLLM Proxy ${requestId}] ${req.method} ${req.url}`);
+        // Enable CORS
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+        if (req.method === 'OPTIONS') {
+            res.writeHead(200);
+            res.end();
+            return;
+        }
+        // Handle /api/tags endpoint (Ollama models list)
+        if (req.url === '/api/tags' || req.url === '/v1/models') {
+            console.log(`[LiteLLM Proxy ${requestId}] Returning models list`);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+                models: [
+                    {
+                        name: 'anthropic/claude-sonnet-4-5',
+                        model: 'anthropic/claude-sonnet-4-5',
+                        modified_at: new Date().toISOString(),
+                        size: 0,
+                        digest: 'sha256:0000000000000000',
+                        details: {
+                            parent_model: '',
+                            format: 'gguf',
+                            family: 'anthropic',
+                            families: ['anthropic'],
+                            parameter_size: '200B',
+                            quantization_level: 'F16'
+                        }
+                    }
+                ]
+            }));
+            return;
+        }
+        // Handle /api/chat or /v1/chat/completions endpoints (main chat endpoint)
+        if (req.url === '/api/chat' || req.url === '/v1/chat/completions') {
+            if (req.method !== 'POST') {
+                res.writeHead(405, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Method not allowed' }));
+                return;
+            }
+            let body = '';
+            req.on('data', chunk => {
+                body += chunk.toString();
+            });
+            req.on('end', async () => {
+                try {
+                    const ollamaRequest = JSON.parse(body);
+                    console.log(`[LiteLLM Proxy ${requestId}] Ollama request:`, JSON.stringify(ollamaRequest, null, 2));
+                    // Convert Ollama format to OpenAI format
+                    const openaiRequest = convertOllamaToOpenAI(ollamaRequest);
+                    console.log(`[LiteLLM Proxy ${requestId}] OpenAI request:`, JSON.stringify(openaiRequest, null, 2));
+                    // Determine the correct LiteLLM endpoint
+                    const litellmUrl = `${LITELLM_BASE_URL}/v1/chat/completions`;
+                    // Make request to LiteLLM
+                    await forwardToLiteLLM(litellmUrl, openaiRequest, res, requestId, ollamaRequest.stream || false);
+                }
+                catch (error) {
+                    console.error(`[LiteLLM Proxy ${requestId}] Error:`, error);
+                    res.writeHead(500, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({
+                        error: 'Internal server error',
+                        details: error instanceof Error ? error.message : String(error)
+                    }));
+                }
+            });
+            return;
+        }
+        // Handle /api/generate endpoint (Ollama completions)
+        if (req.url === '/api/generate') {
+            if (req.method !== 'POST') {
+                res.writeHead(405, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Method not allowed' }));
+                return;
+            }
+            let body = '';
+            req.on('data', chunk => {
+                body += chunk.toString();
+            });
+            req.on('end', async () => {
+                try {
+                    const ollamaRequest = JSON.parse(body);
+                    console.log(`[LiteLLM Proxy ${requestId}] Ollama generate request:`, JSON.stringify(ollamaRequest, null, 2));
+                    // Convert prompt to messages format
+                    const messages = ollamaRequest.messages || [
+                        { role: 'user', content: ollamaRequest.prompt || '' }
+                    ];
+                    const openaiRequest = convertOllamaToOpenAI({
+                        ...ollamaRequest,
+                        messages
+                    });
+                    console.log(`[LiteLLM Proxy ${requestId}] OpenAI request:`, JSON.stringify(openaiRequest, null, 2));
+                    const litellmUrl = `${LITELLM_BASE_URL}/v1/chat/completions`;
+                    await forwardToLiteLLM(litellmUrl, openaiRequest, res, requestId, ollamaRequest.stream || false);
+                }
+                catch (error) {
+                    console.error(`[LiteLLM Proxy ${requestId}] Error:`, error);
+                    res.writeHead(500, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({
+                        error: 'Internal server error',
+                        details: error instanceof Error ? error.message : String(error)
+                    }));
+                }
+            });
+            return;
+        }
+        // Unknown endpoint
+        console.log(`[LiteLLM Proxy ${requestId}] Unknown endpoint:`, req.url);
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Not found' }));
+    });
+    proxyServer.on('error', (error) => {
+        console.error('[LiteLLM Proxy] Server error:', error);
+        vscode.window.showErrorMessage(`LiteLLM Proxy error: ${error.message}`);
+    });
+    proxyServer.listen(PROXY_PORT, 'localhost', () => {
+        console.log(`[LiteLLM Proxy] Server listening on http://localhost:${PROXY_PORT}`);
+        vscode.window.showInformationMessage(`LiteLLM Proxy started on port ${PROXY_PORT}`);
+    });
+    context.subscriptions.push({
+        dispose: () => {
+            if (proxyServer) {
+                proxyServer.close();
+            }
+        }
+    });
+}
+function convertOllamaToOpenAI(ollamaRequest) {
+    const openaiRequest = {
+        model: ollamaRequest.model,
+        messages: [],
+        stream: ollamaRequest.stream || false
+    };
+    // Convert messages
+    if (ollamaRequest.messages) {
+        openaiRequest.messages = ollamaRequest.messages.map(msg => {
+            // Handle images if present
+            if (msg.images && msg.images.length > 0) {
+                const content = [];
+                if (msg.content) {
+                    content.push({ type: 'text', text: msg.content });
+                }
+                msg.images.forEach(imageData => {
+                    // Ollama sends base64 images
+                    const imageUrl = imageData.startsWith('data:') ? imageData : `data:image/jpeg;base64,${imageData}`;
+                    content.push({
+                        type: 'image_url',
+                        image_url: { url: imageUrl }
+                    });
+                });
+                return {
+                    role: msg.role,
+                    content: content
+                };
+            }
+            return {
+                role: msg.role,
+                content: msg.content
+            };
+        });
+    }
+    // Convert options
+    if (ollamaRequest.options) {
+        if (ollamaRequest.options.temperature !== undefined) {
+            openaiRequest.temperature = ollamaRequest.options.temperature;
+        }
+        if (ollamaRequest.options.top_p !== undefined) {
+            openaiRequest.top_p = ollamaRequest.options.top_p;
+        }
+        if (ollamaRequest.options.max_tokens !== undefined || ollamaRequest.options.num_predict !== undefined) {
+            openaiRequest.max_tokens = ollamaRequest.options.max_tokens || ollamaRequest.options.num_predict;
+        }
+    }
+    // Add tools if present
+    if (ollamaRequest.tools) {
+        openaiRequest.tools = ollamaRequest.tools;
+    }
+    // Add thinking/reasoning parameters for Claude Sonnet 4.5
+    if (ollamaRequest.model.includes('claude') || ollamaRequest.model.includes('anthropic')) {
+        openaiRequest.reasoning_effort = 'medium';
+        openaiRequest.thinking = {
+            type: 'enabled',
+            budget_tokens: 2048
+        };
+    }
+    return openaiRequest;
+}
+async function forwardToLiteLLM(url, openaiRequest, res, requestId, isStreaming) {
+    const urlObj = new URL(url);
+    const requestBody = JSON.stringify(openaiRequest);
+    console.log(`[LiteLLM Proxy ${requestId}] Forwarding to ${url}`);
+    const options = {
+        hostname: urlObj.hostname,
+        port: urlObj.port || 443,
+        path: urlObj.pathname,
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${LITELLM_API_KEY}`,
+            'Content-Length': Buffer.byteLength(requestBody)
+        }
+    };
+    const protocol = urlObj.protocol === 'https:' ? https : http;
+    const litellmReq = protocol.request(options, (litellmRes) => {
+        console.log(`[LiteLLM Proxy ${requestId}] LiteLLM response status:`, litellmRes.statusCode);
+        if (isStreaming) {
+            // Handle streaming response
+            res.writeHead(litellmRes.statusCode || 200, {
+                'Content-Type': 'application/x-ndjson',
+                'Transfer-Encoding': 'chunked'
+            });
+            let buffer = '';
+            litellmRes.on('data', (chunk) => {
+                buffer += chunk.toString();
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+                lines.forEach(line => {
+                    if (line.trim().startsWith('data: ')) {
+                        const data = line.trim().substring(6);
+                        if (data === '[DONE]') {
+                            console.log(`[LiteLLM Proxy ${requestId}] Stream complete`);
+                            return;
+                        }
+                        try {
+                            const parsed = JSON.parse(data);
+                            console.log(`[LiteLLM Proxy ${requestId}] Stream chunk:`, JSON.stringify(parsed).substring(0, 200));
+                            // Convert OpenAI stream format to Ollama format
+                            const ollamaChunk = convertOpenAIStreamToOllama(parsed);
+                            res.write(JSON.stringify(ollamaChunk) + '\n');
+                        }
+                        catch (e) {
+                            console.error(`[LiteLLM Proxy ${requestId}] Error parsing stream chunk:`, e);
+                        }
+                    }
+                });
+            });
+            litellmRes.on('end', () => {
+                console.log(`[LiteLLM Proxy ${requestId}] Stream ended`);
+                // Send final done message in Ollama format
+                const doneMessage = {
+                    model: openaiRequest.model,
+                    created_at: new Date().toISOString(),
+                    done: true
+                };
+                res.write(JSON.stringify(doneMessage) + '\n');
+                res.end();
+            });
+        }
+        else {
+            // Handle non-streaming response
+            let data = '';
+            litellmRes.on('data', (chunk) => {
+                data += chunk.toString();
+            });
+            litellmRes.on('end', () => {
+                try {
+                    const openaiResponse = JSON.parse(data);
+                    console.log(`[LiteLLM Proxy ${requestId}] OpenAI response:`, JSON.stringify(openaiResponse, null, 2));
+                    // Convert OpenAI response to Ollama format
+                    const ollamaResponse = convertOpenAIToOllama(openaiResponse, openaiRequest.model);
+                    console.log(`[LiteLLM Proxy ${requestId}] Ollama response:`, JSON.stringify(ollamaResponse, null, 2));
+                    res.writeHead(litellmRes.statusCode || 200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify(ollamaResponse));
+                }
+                catch (error) {
+                    console.error(`[LiteLLM Proxy ${requestId}] Error parsing response:`, error);
+                    res.writeHead(500, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({
+                        error: 'Error parsing LiteLLM response',
+                        details: error instanceof Error ? error.message : String(error)
+                    }));
+                }
+            });
+        }
+    });
+    litellmReq.on('error', (error) => {
+        console.error(`[LiteLLM Proxy ${requestId}] Request error:`, error);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+            error: 'Error contacting LiteLLM',
+            details: error.message
+        }));
+    });
+    litellmReq.write(requestBody);
+    litellmReq.end();
+}
+function convertOpenAIToOllama(openaiResponse, model) {
+    const choice = openaiResponse.choices?.[0];
+    if (!choice) {
+        return {
+            model: model,
+            created_at: new Date().toISOString(),
+            done: true,
+            message: {
+                role: 'assistant',
+                content: ''
+            }
+        };
+    }
+    const message = choice.message;
+    let content = message.content || '';
+    // Include reasoning/thinking content if present
+    if (message.reasoning_content) {
+        console.log('[LiteLLM Proxy] Including reasoning content in response');
+        // Prepend thinking content in a formatted way
+        content = `<thinking>\n${message.reasoning_content}\n</thinking>\n\n${content}`;
+    }
+    const ollamaResponse = {
+        model: model,
+        created_at: new Date().toISOString(),
+        done: true,
+        message: {
+            role: message.role,
+            content: content
+        }
+    };
+    // Add tool calls if present
+    if (message.tool_calls) {
+        ollamaResponse.message.tool_calls = message.tool_calls;
+    }
+    // Add usage information if present
+    if (openaiResponse.usage) {
+        ollamaResponse.eval_count = openaiResponse.usage.completion_tokens;
+        ollamaResponse.prompt_eval_count = openaiResponse.usage.prompt_tokens;
+    }
+    return ollamaResponse;
+}
+function convertOpenAIStreamToOllama(openaiChunk) {
+    const choice = openaiChunk.choices?.[0];
+    if (!choice) {
+        return {
+            model: openaiChunk.model,
+            created_at: new Date().toISOString(),
+            done: false,
+            message: {
+                role: 'assistant',
+                content: ''
+            }
+        };
+    }
+    const delta = choice.delta;
+    let content = delta.content || '';
+    // Include reasoning content if present in the stream
+    if (delta.reasoning_content) {
+        console.log('[LiteLLM Proxy] Stream chunk includes reasoning content');
+        content = `<thinking>${delta.reasoning_content}</thinking>` + content;
+    }
+    const ollamaChunk = {
+        model: openaiChunk.model,
+        created_at: new Date().toISOString(),
+        done: choice.finish_reason !== null,
+        message: {
+            role: delta.role || 'assistant',
+            content: content
+        }
+    };
+    // Add tool calls if present
+    if (delta.tool_calls) {
+        ollamaChunk.message.tool_calls = delta.tool_calls;
+    }
+    return ollamaChunk;
 }
 //# sourceMappingURL=extension.js.map
