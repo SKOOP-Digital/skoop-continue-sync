@@ -10,7 +10,6 @@ A VS Code extension that synchronizes Continue.dev settings for team members by 
 - **Team-Managed Agents**: Pre-defined agents for tasks like code review, bug fixing, and documentation are deployed to all team members.
 - **Standardized Models**: Ensures all team members use the same models with consistent settings and roles.
 - **Global Rules & Prompts**: Enforces team-wide coding standards and provides standardized prompts.
-- **🆕 LiteLLM Proxy Server**: Built-in proxy that enables Continue.dev to use LiteLLM models with full reasoning/thinking support (Claude Sonnet 4.5, Deepseek, etc.) via Ollama-compatible interface. See [LITELLM_PROXY_GUIDE.md](LITELLM_PROXY_GUIDE.md) for details.
 
 ## Prerequisites
 
