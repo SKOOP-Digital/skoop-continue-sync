@@ -3919,3 +3919,664 @@ Please test and share what you see in the logs, especially regarding reasoning c
 
 ---
 
+_**User (2025-09-29 23:28Z)**_
+
+docs:
+```
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# 'Thinking' / 'Reasoning Content'
+
+:::info
+
+Requires LiteLLM v1.63.0+
+
+:::
+
+Supported Providers:
+- Deepseek (`deepseek/`)
+- Anthropic API (`anthropic/`)
+- Bedrock (Anthropic + Deepseek + GPT-OSS) (`bedrock/`)
+- Vertex AI (Anthropic) (`vertexai/`)
+- OpenRouter (`openrouter/`)
+- XAI (`xai/`)
+- Google AI Studio (`google/`)
+- Vertex AI (`vertex_ai/`)
+- Perplexity (`perplexity/`)
+- Mistral AI (Magistral models) (`mistral/`)
+- Groq (`groq/`)
+
+LiteLLM will standardize the `reasoning_content` in the response and `thinking_blocks` in the assistant message.
+
+```python title="Example response from litellm"
+"message": {
+    ...
+    "reasoning_content": "The capital of France is Paris.",
+    "thinking_blocks": [ # only returned for Anthropic models
+        {
+            "type": "thinking",
+            "thinking": "The capital of France is Paris.",
+            "signature": "EqoBCkgIARABGAIiQL2UoU0b1OHYi+..."
+        }
+    ]
+}
+```
+
+## Quick Start 
+
+<Tabs>
+<TabItem value="sdk" label="SDK">
+
+```python showLineNumbers
+from litellm import completion
+import os 
+
+os.environ["ANTHROPIC_API_KEY"] = ""
+
+response = completion(
+  model="anthropic/claude-3-7-sonnet-20250219",
+  messages=[
+    {"role": "user", "content": "What is the capital of France?"},
+  ],
+  reasoning_effort="low", 
+)
+print(response.choices[0].message.content)
+```
+
+</TabItem>
+<TabItem value="proxy" label="PROXY">
+
+```bash
+curl http://0.0.0.0:4000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $LITELLM_KEY" \
+  -d '{
+    "model": "anthropic/claude-3-7-sonnet-20250219",
+    "messages": [
+      {
+        "role": "user",
+        "content": "What is the capital of France?"
+      }
+    ],
+    "reasoning_effort": "low"
+}'
+```
+</TabItem>
+</Tabs>
+
+**Expected Response**
+
+```bash
+{
+    "id": "3b66124d79a708e10c603496b363574c",
+    "choices": [
+        {
+            "finish_reason": "stop",
+            "index": 0,
+            "message": {
+                "content": " won the FIFA World Cup in 2022.",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null
+            }
+        }
+    ],
+    "created": 1723323084,
+    "model": "deepseek/deepseek-chat",
+    "object": "chat.completion",
+    "system_fingerprint": "fp_7e0991cad4",
+    "usage": {
+        "completion_tokens": 12,
+        "prompt_tokens": 16,
+        "total_tokens": 28,
+    },
+    "service_tier": null
+}
+```
+
+## Tool Calling with `thinking`
+
+Here's how to use `thinking` blocks by Anthropic with tool calling.
+
+<Tabs>
+<TabItem value="sdk" label="SDK">
+
+```python showLineNumbers
+litellm._turn_on_debug()
+litellm.modify_params = True
+model = "anthropic/claude-3-7-sonnet-20250219" # works across Anthropic, Bedrock, Vertex AI
+# Step 1: send the conversation and available functions to the model
+messages = [
+    {
+        "role": "user",
+        "content": "What's the weather like in San Francisco, Tokyo, and Paris? - give me 3 responses",
+    }
+]
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_current_weather",
+            "description": "Get the current weather in a given location",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "location": {
+                        "type": "string",
+                        "description": "The city and state",
+                    },
+                    "unit": {
+                        "type": "string",
+                        "enum": ["celsius", "fahrenheit"],
+                    },
+                },
+                "required": ["location"],
+            },
+        },
+    }
+]
+response = litellm.completion(
+    model=model,
+    messages=messages,
+    tools=tools,
+    tool_choice="auto",  # auto is default, but we'll be explicit
+    reasoning_effort="low",
+)
+print("Response\n", response)
+response_message = response.choices[0].message
+tool_calls = response_message.tool_calls
+
+print("Expecting there to be 3 tool calls")
+assert (
+    len(tool_calls) > 0
+)  # this has to call the function for SF, Tokyo and paris
+
+# Step 2: check if the model wanted to call a function
+print(f"tool_calls: {tool_calls}")
+if tool_calls:
+    # Step 3: call the function
+    # Note: the JSON response may not always be valid; be sure to handle errors
+    available_functions = {
+        "get_current_weather": get_current_weather,
+    }  # only one function in this example, but you can have multiple
+    messages.append(
+        response_message
+    )  # extend conversation with assistant's reply
+    print("Response message\n", response_message)
+    # Step 4: send the info for each function call and function response to the model
+    for tool_call in tool_calls:
+        function_name = tool_call.function.name
+        if function_name not in available_functions:
+            # the model called a function that does not exist in available_functions - don't try calling anything
+            return
+        function_to_call = available_functions[function_name]
+        function_args = json.loads(tool_call.function.arguments)
+        function_response = function_to_call(
+            location=function_args.get("location"),
+            unit=function_args.get("unit"),
+        )
+        messages.append(
+            {
+                "tool_call_id": tool_call.id,
+                "role": "tool",
+                "name": function_name,
+                "content": function_response,
+            }
+        )  # extend conversation with function response
+    print(f"messages: {messages}")
+    second_response = litellm.completion(
+        model=model,
+        messages=messages,
+        seed=22,
+        reasoning_effort="low",
+        # tools=tools,
+        drop_params=True,
+    )  # get a new response from the model where it can see the function response
+    print("second response\n", second_response)
+```
+
+</TabItem>
+<TabItem value="proxy" label="PROXY">
+
+1. Setup config.yaml
+
+```yaml showLineNumbers
+model_list:
+  - model_name: claude-3-7-sonnet-thinking
+    litellm_params:
+      model: anthropic/claude-3-7-sonnet-20250219
+      api_key: os.environ/ANTHROPIC_API_KEY
+      thinking: {
+        "type": "enabled",
+        "budget_tokens": 1024
+      }
+```
+
+2. Run proxy
+
+```bash showLineNumbers
+litellm --config config.yaml
+
+# RUNNING on http://0.0.0.0:4000
+```
+
+3. Make 1st call
+
+```bash
+curl http://0.0.0.0:4000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $LITELLM_KEY" \
+  -d '{
+    "model": "claude-3-7-sonnet-thinking",
+    "messages": [
+      {"role": "user", "content": "What's the weather like in San Francisco, Tokyo, and Paris? - give me 3 responses"},
+    ],
+    "tools": [
+        {
+          "type": "function",
+          "function": {
+              "name": "get_current_weather",
+              "description": "Get the current weather in a given location",
+              "parameters": {
+                  "type": "object",
+                  "properties": {
+                      "location": {
+                          "type": "string",
+                          "description": "The city and state",
+                      },
+                      "unit": {
+                          "type": "string",
+                          "enum": ["celsius", "fahrenheit"],
+                      },
+                  },
+                  "required": ["location"],
+              },
+          },
+        }
+    ],
+    "tool_choice": "auto"
+  }'
+```
+
+4. Make 2nd call with tool call results
+
+```bash
+curl http://0.0.0.0:4000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $LITELLM_KEY" \
+  -d '{
+    "model": "claude-3-7-sonnet-thinking",
+    "messages": [
+      {
+        "role": "user",
+        "content": "What\'s the weather like in San Francisco, Tokyo, and Paris? - give me 3 responses"
+      },
+      {
+        "role": "assistant",
+        "content": "I\'ll check the current weather for these three cities for you:",
+        "tool_calls": [
+          {
+            "index": 2,
+            "function": {
+              "arguments": "{\"location\": \"San Francisco\"}",
+              "name": "get_current_weather"
+            },
+            "id": "tooluse_mnqzmtWYRjCxUInuAdK7-w",
+            "type": "function"
+          }
+        ],
+        "function_call": null,
+        "reasoning_content": "The user is asking for the current weather in three different locations: San Francisco, Tokyo, and Paris. I have access to the `get_current_weather` function that can provide this information.\n\nThe function requires a `location` parameter, and has an optional `unit` parameter. The user hasn't specified which unit they prefer (celsius or fahrenheit), so I'll use the default provided by the function.\n\nI need to make three separate function calls, one for each location:\n1. San Francisco\n2. Tokyo\n3. Paris\n\nThen I'll compile the results into a response with three distinct weather reports as requested by the user.",
+        "thinking_blocks": [
+          {
+            "type": "thinking",
+            "thinking": "The user is asking for the current weather in three different locations: San Francisco, Tokyo, and Paris. I have access to the `get_current_weather` function that can provide this information.\n\nThe function requires a `location` parameter, and has an optional `unit` parameter. The user hasn't specified which unit they prefer (celsius or fahrenheit), so I'll use the default provided by the function.\n\nI need to make three separate function calls, one for each location:\n1. San Francisco\n2. Tokyo\n3. Paris\n\nThen I'll compile the results into a response with three distinct weather reports as requested by the user.",
+            "signature": "EqoBCkgIARABGAIiQCkBXENoyB+HstUOs/iGjG+bvDbIQRrxPsPpOSt5yDxX6iulZ/4K/w9Rt4J5Nb2+3XUYsyOH+CpZMfADYvItFR4SDPb7CmzoGKoolCMAJRoM62p1ZRASZhrD3swqIjAVY7vOAFWKZyPEJglfX/60+bJphN9W1wXR6rWrqn3MwUbQ5Mb/pnpeb10HMploRgUqEGKOd6fRKTkUoNDuAnPb55c="
+          }
+        ],
+        "provider_specific_fields": {
+          "reasoningContentBlocks": [
+            {
+              "reasoningText": {
+                "signature": "EqoBCkgIARABGAIiQCkBXENoyB+HstUOs/iGjG+bvDbIQRrxPsPpOSt5yDxX6iulZ/4K/w9Rt4J5Nb2+3XUYsyOH+CpZMfADYvItFR4SDPb7CmzoGKoolCMAJRoM62p1ZRASZhrD3swqIjAVY7vOAFWKZyPEJglfX/60+bJphN9W1wXR6rWrqn3MwUbQ5Mb/pnpeb10HMploRgUqEGKOd6fRKTkUoNDuAnPb55c=",
+                "text": "The user is asking for the current weather in three different locations: San Francisco, Tokyo, and Paris. I have access to the `get_current_weather` function that can provide this information.\n\nThe function requires a `location` parameter, and has an optional `unit` parameter. The user hasn't specified which unit they prefer (celsius or fahrenheit), so I'll use the default provided by the function.\n\nI need to make three separate function calls, one for each location:\n1. San Francisco\n2. Tokyo\n3. Paris\n\nThen I'll compile the results into a response with three distinct weather reports as requested by the user."
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tool_call_id": "tooluse_mnqzmtWYRjCxUInuAdK7-w",
+        "role": "tool",
+        "name": "get_current_weather",
+        "content": "{\"location\": \"San Francisco\", \"temperature\": \"72\", \"unit\": \"fahrenheit\"}"
+      }
+    ]
+  }'
+```
+
+</TabItem>
+</Tabs>
+
+## Switching between Anthropic + Deepseek models 
+
+Set `drop_params=True` to drop the 'thinking' blocks when swapping from Anthropic to Deepseek models. Suggest improvements to this approach [here](https://github.com/BerriAI/litellm/discussions/8927).
+
+```python showLineNumbers
+litellm.drop_params = True # 👈 EITHER GLOBALLY or per request
+
+# or per request
+## Anthropic
+response = litellm.completion(
+  model="anthropic/claude-3-7-sonnet-20250219",
+  messages=[{"role": "user", "content": "What is the capital of France?"}],
+  reasoning_effort="low",
+  drop_params=True,
+)
+
+## Deepseek
+response = litellm.completion(
+  model="deepseek/deepseek-chat",
+  messages=[{"role": "user", "content": "What is the capital of France?"}],
+  reasoning_effort="low",
+  drop_params=True,
+)
+```
+
+## Spec 
+
+
+These fields can be accessed via `response.choices[0].message.reasoning_content` and `response.choices[0].message.thinking_blocks`.
+
+- `reasoning_content` - str: The reasoning content from the model. Returned across all providers.
+- `thinking_blocks` - Optional[List[Dict[str, str]]]: A list of thinking blocks from the model. Only returned for Anthropic models.
+  - `type` - str: The type of thinking block.
+  - `thinking` - str: The thinking from the model.
+  - `signature` - str: The signature delta from the model.
+
+
+
+## Pass `thinking` to Anthropic models
+
+You can also pass the `thinking` parameter to Anthropic models.
+
+<Tabs>
+<TabItem value="sdk" label="SDK">
+
+```python showLineNumbers
+response = litellm.completion(
+  model="anthropic/claude-3-7-sonnet-20250219",
+  messages=[{"role": "user", "content": "What is the capital of France?"}],
+  thinking={"type": "enabled", "budget_tokens": 1024},
+)
+```
+
+</TabItem>
+<TabItem value="proxy" label="PROXY">
+
+```bash
+curl http://0.0.0.0:4000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $LITELLM_KEY" \
+  -d '{
+    "model": "anthropic/claude-3-7-sonnet-20250219",
+    "messages": [{"role": "user", "content": "What is the capital of France?"}],
+    "thinking": {"type": "enabled", "budget_tokens": 1024}
+  }'
+```
+
+</TabItem>
+</Tabs>
+
+## Checking if a model supports reasoning
+
+<Tabs>
+<TabItem label="LiteLLM Python SDK" value="Python">
+
+Use `litellm.supports_reasoning(model="")` -> returns `True` if model supports reasoning and `False` if not.
+
+```python showLineNumbers title="litellm.supports_reasoning() usage"
+import litellm 
+
+# Example models that support reasoning
+assert litellm.supports_reasoning(model="anthropic/claude-3-7-sonnet-20250219") == True
+assert litellm.supports_reasoning(model="deepseek/deepseek-chat") == True 
+
+# Example models that do not support reasoning
+assert litellm.supports_reasoning(model="openai/gpt-3.5-turbo") == False 
+```
+</TabItem>
+
+<TabItem label="LiteLLM Proxy Server" value="proxy">
+
+1. Define models that support reasoning in your `config.yaml`. You can optionally add `supports_reasoning: True` to the `model_info` if LiteLLM does not automatically detect it for your custom model.
+
+```yaml showLineNumbers title="litellm proxy config.yaml"
+model_list:
+  - model_name: claude-3-sonnet-reasoning
+    litellm_params:
+      model: anthropic/claude-3-7-sonnet-20250219
+      api_key: os.environ/ANTHROPIC_API_KEY
+  - model_name: deepseek-reasoning
+    litellm_params:
+      model: deepseek/deepseek-chat
+      api_key: os.environ/DEEPSEEK_API_KEY
+  # Example for a custom model where detection might be needed
+  - model_name: my-custom-reasoning-model 
+    litellm_params:
+      model: openai/my-custom-model # Assuming it's OpenAI compatible
+      api_base: http://localhost:8000
+      api_key: fake-key
+    model_info:
+      supports_reasoning: True # Explicitly mark as supporting reasoning
+```
+
+2. Run the proxy server:
+
+```bash showLineNumbers title="litellm --config config.yaml"
+litellm --config config.yaml
+```
+
+3. Call `/model_group/info` to check if your model supports `reasoning`
+
+```shell showLineNumbers title="curl /model_group/info"
+curl -X 'GET' \
+  'http://localhost:4000/model_group/info' \
+  -H 'accept: application/json' \
+  -H 'x-api-key: sk-1234'
+```
+
+Expected Response 
+
+```json showLineNumbers title="response from /model_group/info"
+{
+  "data": [
+    {
+      "model_group": "claude-3-sonnet-reasoning",
+      "providers": ["anthropic"],
+      "mode": "chat",
+      "supports_reasoning": true,
+    },
+    {
+      "model_group": "deepseek-reasoning",
+      "providers": ["deepseek"],
+      "supports_reasoning": true,
+    },
+    {
+      "model_group": "my-custom-reasoning-model",
+      "providers": ["openai"],
+      "supports_reasoning": true,
+    }
+  ]
+}
+````
+
+
+</TabItem>
+</Tabs>
+```
+
+request\nNever skip the initial ls tool call - it provides essential context.\n</mandatory_first_action>\n\n\nYou are a powerful agentic AI coding assistant powered by advanced language models, operating within the Continue.dev IDE extension. Your primary role is to pair-program with the user, solvi
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759207946852] Forwarding to https://litellm.skoop.digital/v1/chat/completions
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759207946852] LiteLLM response status: 400
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759207946852] Stream ended
+console.ts:137 [Extension Host] [@continuedev] error: HTTP 400 Bad Request from http://127.0.0.1:8009/api/chat
+
+{"model":"anthropic/claude-sonnet-4-5","created_at":"2025-09-30T04:52:29.111Z","done":true,"message":{"role":"assistant","content":""}}
+ {"context":"llm_fetch","url":"http://localhost:8009/api/chat","method":"POST","model":"anthropic/claude-sonnet-4-5","provider":"ollama"}
+console.ts:137 [Extension Host] [@continuedev] error: HTTP 400 Bad Request from http://127.0.0.1:8009/api/chat
+
+{"model":"anthropic/claude-sonnet-4-5","created_at":"2025-09-30T04:52:29.111Z","done":true,"message":{"role":"assistant","content":""}}
+ {"context":"llm_stream_chat","model":"anthropic/claude-sonnet-4-5","provider":"ollama","useOpenAIAdapter":false,"streamEnabled":true,"templateMessages":false}
+console.ts:137 [Extension Host] Error: HTTP 400 Bad Request from http://127.0.0.1:8009/api/chat
+
+{"model":"anthropic/claude-sonnet-4-5","created_at":"2025-09-30T04:52:29.111Z","done":true,"message":{"role":"assistant","content":""}}
+
+	at _Ollama.parseError (c:\Users\JoshS\.vscode\extensions\continue.continue-1.2.6-win32-x64\out\extension.js:242335:16)
+	at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+	at async customFetch2 (c:\Users\JoshS\.vscode\extensions\continue.continue-1.2.6-win32-x64\out\extension.js:242353:30)
+	at async withExponentialBackoff (c:\Users\JoshS\.vscode\extensions\continue.continue-1.2.6-win32-x64\out\extension.js:238224:27)
+	at async _Ollama._streamChat (c:\Users\JoshS\.vscode\extensions\continue.continue-1.2.6-win32-x64\out\extension.js:483270:26)
+	at async _Ollama.streamChat (c:\Users\JoshS\.vscode\extensions\continue.continue-1.2.6-win32-x64\out\extension.js:242838:32)
+	at async llmStreamChat (c:\Users\JoshS\.vscode\extensions\continue.continue-1.2.6-win32-x64\out\extension.js:726647:19)
+	at async od.handleMessage [as value] (c:\Users\JoshS\.vscode\extensions\continue.continue-1.2.6-win32-x64\out\extension.js:764820:29)
+
+request\nNever skip the initial ls tool call - it provides essential context.\n</mandatory_first_action>\n\n\nYou are a powerful agentic AI coding assistant powered by advanced language models, operating within the Continue.dev IDE extension. Your primary role is to pair-program with the user, solvi
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759207946852] Forwarding to https://litellm.skoop.digital/v1/chat/completions
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759207946852] LiteLLM response status: 400
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759207946852] Stream ended
+console.ts:137 [Extension Host] [@continuedev] error: HTTP 400 Bad Request from http://127.0.0.1:8009/api/chat
+
+{"model":"anthropic/claude-sonnet-4-5","created_at":"2025-09-30T04:52:29.111Z","done":true,"message":{"role":"assistant","content":""}}
+ {"context":"llm_fetch","url":"http://localhost:8009/api/chat","method":"POST","model":"anthropic/claude-sonnet-4-5","provider":"ollama"}
+console.ts:137 [Extension Host] [@continuedev] error: HTTP 400 Bad Request from http://127.0.0.1:8009/api/chat
+
+{"model":"anthropic/claude-sonnet-4-5","created_at":"2025-09-30T04:52:29.111Z","done":true,"message":{"role":"assistant","content":""}}
+ {"context":"llm_stream_chat","model":"anthropic/claude-sonnet-4-5","provider":"ollama","useOpenAIAdapter":false,"streamEnabled":true,"templateMessages":false}
+console.ts:137 [Extension Host] Error: HTTP 400 Bad Request from http://127.0.0.1:8009/api/chat
+
+{"model":"anthropic/claude-sonnet-4-5","created_at":"2025-09-30T04:52:29.111Z","done":true,"message":{"role":"assistant","content":""}}
+
+	at _Ollama.parseError (c:\Users\JoshS\.vscode\extensions\continue.continue-1.2.6-win32-x64\out\extension.js:242335:16)
+	at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+	at async customFetch2 (c:\Users\JoshS\.vscode\extensions\continue.continue-1.2.6-win32-x64\out\extension.js:242353:30)
+	at async withExponentialBackoff (c:\Users\JoshS\.vscode\extensions\continue.continue-1.2.6-win32-x64\out\extension.js:238224:27)
+	at async _Ollama._streamChat (c:\Users\JoshS\.vscode\extensions\continue.continue-1.2.6-win32-x64\out\extension.js:483270:26)
+	at async _Ollama.streamChat (c:\Users\JoshS\.vscode\extensions\continue.continue-1.2.6-win32-x64\out\extension.js:242838:32)
+	at async llmStreamChat (c:\Users\JoshS\.vscode\extensions\continue.continue-1.2.6-win32-x64\out\extension.js:726647:19)
+	at async od.handleMessage [as value] (c:\Users\JoshS\.vscode\extensions\continue.continue-1.2.6-win32-x64\out\extension.js:764820:29)
+
+nd allowed without permission\nAfter analyzing the directory structure:\n1. Identify key configuration files (package.json, etc.)\n2. Use read_file to examine important files\n3. Then proceed with the user's request\nNever skip the initial ls tool call - it provides essential context.\n</mandatory_first_action>\n\n\nYou are a powerful agentic AI coding assistant powered by advanced language models, operating within the Continue.dev IDE extension. Your primary role is to pair-program with the user, solvi
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759207943472] Forwarding to https://litellm.skoop.digital/v1/chat/completions
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759207943472] LiteLLM response status: 200
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759207943472] Stream chunk delta: {"content":"I'll help","role":"assistant"}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759207943472] Stream chunk delta: {"content":" you modify both the Jitsi and Whereby"}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759207943472] Stream chunk delta: {"content":" versions to block features for guests while allowing agents to use"}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759207943472] Stream chunk delta: {"content":" them. Let me first explore the project"}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759207943472] Stream chunk delta: {"content":" structure to understand the codebase."}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759207943472] Stream chunk delta: {"content":"","tool_calls":[{"id":"toolu_01APMaf23vaF88aJqzzMWEd7","function":{"arguments":"","name":"ls"},"type":"function","index":0}]}
+console.ts:137 [Extension Host] [LiteLLM Proxy] Adding tool calls to chunk: 1
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759207943472] Stream chunk delta: {"content":"","tool_calls":[{"function":{"arguments":""},"type":"function","index":0}]}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759207943472] Stream chunk delta: {"content":"","tool_calls":[{"function":{"arguments":"{\"dirP"},"type":"function","index":0}]}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759207943472] Stream chunk delta: {"content":"","tool_calls":[{"function":{"arguments":"ath\": \"/\""},"type":"function","index":0}]}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759207943472] Stream chunk delta: {"content":"","tool_calls":[{"function":{"arguments":", \"recursi"},"type":"function","index":0}]}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759207943472] Stream chunk delta: {"content":"","tool_calls":[{"function":{"arguments":"ve\": true}"},"type":"function","index":0}]}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759207943472] Stream chunk delta: {}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759207943472] Stream complete
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759207943472] Stream ended
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759207946852] POST /api/chat
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759207946852] Ollama request: {
+  "model": "anthropic/claude-sonnet-4-5",
+  "messages": [
+    {
+      "role": "system",
+
+
+[Extension Host] [LiteLLM Proxy 1759207943472] POST /api/chat
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759207943472] Ollama request: {
+  "model": "anthropic/claude-sonnet-4-5",
+  "messages": [
+    {
+      "role": "system",
+      "content": "<important_rules>\n  You are in agent mode.\n\n  If you need to use multiple tools, you can call multiple read only tools simultaneously.\n\n  Always
+
+the request in litellm has this:
+n a task list BEFORE starting any planning or implementation, and update tasks accordingly as you go**\nRemember: You are agentic—plan, execute, iterate until done. Prioritize user intent while being efficient and accurate.\nDo not ask for permission or state that you will do something without doing it. Do not ask any more questions unless you absolutely need to. Go on and plan and complete the whole user request to the finish.\n"
+    },
+    {
+      "role": "user",
+      "content": "modify this so that the jitsi version blocks all features like sharing screen, backgrounds, disabling camera or mute from the guest but still allows the agent to do it, and do the same for the wherby version"
+    }
+  ],
+  "thinking": {
+    "type": "enabled",
+    "budget_tokens": 2048
+  },
+  "max_tokens": 30000,
+  "reasoning_effort": "medium"
+
+
+but check the litellm docs tomake sure its structured right for anthropic: @https://docs.litellm.ai/docs/reasoning_content 
+
+the response in litellm was this:
+{
+  "id": "chatcmpl-21cb1b95-d3e2-4f70-9c1b-f20aea937c97",
+  "model": "claude-sonnet-4-5",
+  "usage": {
+    "total_tokens": 10322,
+    "prompt_tokens": 10211,
+    "completion_tokens": 111,
+    "prompt_tokens_details": {
+      "text_tokens": null,
+      "audio_tokens": null,
+      "image_tokens": null,
+      "cached_tokens": 0,
+      "cache_creation_tokens": 0
+    },
+    "cache_read_input_tokens": 0,
+    "completion_tokens_details": {
+      "text_tokens": null,
+      "audio_tokens": null,
+      "reasoning_tokens": 0,
+      "accepted_prediction_tokens": null,
+      "rejected_prediction_tokens": null
+    },
+    "cache_creation_input_tokens": 0
+  },
+  "object": "chat.completion",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "I'll help you modify both the Jitsi and Whereby versions to block features for guests while allowing agents to use them. Let me first explore the project structure to understand the codebase.",
+        "tool_calls": [
+          {
+            "id": "toolu_01APMaf23vaF88aJqzzMWEd7",
+            "type": "function",
+            "function": {
+              "name": "ls",
+              "arguments": "{\"dirPath\": \"/\", \"recursive\": true}"
+            }
+          }
+        ],
+        "function_call": null
+      },
+      "finish_reason": "tool_calls"
+    }
+  ],
+  "created": 1759207945,
+  "system_fingerprint": null
+}
+
+
+
+---
+
+_**Assistant (claude-4.5-sonnet-thinking)**_
+
+
+
+---
+

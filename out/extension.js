@@ -959,9 +959,10 @@ function convertOllamaToOpenAI(ollamaRequest) {
     if (ollamaRequest.tools) {
         openaiRequest.tools = ollamaRequest.tools;
     }
-    // Add thinking/reasoning parameters for Claude Sonnet 4.5
+    // Add thinking/reasoning parameters for Claude/Anthropic models
+    // According to LiteLLM docs: use EITHER reasoning_effort OR thinking, not both
     if (ollamaRequest.model.includes('claude') || ollamaRequest.model.includes('anthropic')) {
-        openaiRequest.reasoning_effort = 'medium';
+        // Use the thinking parameter (preferred for Anthropic)
         openaiRequest.thinking = {
             type: 'enabled',
             budget_tokens: 2048
@@ -987,6 +988,20 @@ async function forwardToLiteLLM(url, openaiRequest, res, requestId, isStreaming)
     const protocol = urlObj.protocol === 'https:' ? https : http;
     const litellmReq = protocol.request(options, (litellmRes) => {
         console.log(`[LiteLLM Proxy ${requestId}] LiteLLM response status:`, litellmRes.statusCode);
+        // Handle error responses
+        if (litellmRes.statusCode && (litellmRes.statusCode < 200 || litellmRes.statusCode >= 300)) {
+            let errorData = '';
+            const errorStatusCode = litellmRes.statusCode;
+            litellmRes.on('data', (chunk) => {
+                errorData += chunk.toString();
+            });
+            litellmRes.on('end', () => {
+                console.error(`[LiteLLM Proxy ${requestId}] LiteLLM error response (${errorStatusCode}):`, errorData);
+                res.writeHead(errorStatusCode, { 'Content-Type': 'application/json' });
+                res.end(errorData || JSON.stringify({ error: 'LiteLLM request failed', status: errorStatusCode }));
+            });
+            return;
+        }
         if (isStreaming) {
             // Handle streaming response
             res.writeHead(litellmRes.statusCode || 200, {
