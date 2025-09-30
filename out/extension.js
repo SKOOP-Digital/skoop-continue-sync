@@ -1120,14 +1120,8 @@ function convertOpenAIToAnthropic(openaiResponse) {
         };
     }
     const message = choice.message;
-    const anthropicResponse = {
-        id: openaiResponse.id || `msg_${Date.now()}`,
-        type: 'message',
-        role: 'assistant',
-        model: openaiResponse.model,
-        stop_reason: choice.finish_reason === 'tool_calls' ? 'tool_use' : 'end_turn'
-    };
-    // Build content blocks
+    // Build content blocks - text and thinking only
+    // Tool calls will be in a separate message (handled by Continue.dev)
     const contentBlocks = [];
     // Add thinking blocks if present
     if (message.thinking_blocks && Array.isArray(message.thinking_blocks)) {
@@ -1157,7 +1151,15 @@ function convertOpenAIToAnthropic(openaiResponse) {
             });
         });
     }
-    anthropicResponse.content = contentBlocks;
+    const anthropicResponse = {
+        id: openaiResponse.id || `msg_${Date.now()}`,
+        type: 'message',
+        role: 'assistant',
+        model: openaiResponse.model,
+        content: contentBlocks,
+        stop_reason: choice.finish_reason === 'tool_calls' ? 'tool_use' : 'end_turn',
+        stop_sequence: null
+    };
     // Add usage information
     if (openaiResponse.usage) {
         anthropicResponse.usage = {

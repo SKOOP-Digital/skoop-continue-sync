@@ -1412,15 +1412,9 @@ function convertOpenAIToAnthropic(openaiResponse: any): any {
     }
 
     const message = choice.message;
-    const anthropicResponse: any = {
-        id: openaiResponse.id || `msg_${Date.now()}`,
-        type: 'message',
-        role: 'assistant',
-        model: openaiResponse.model,
-        stop_reason: choice.finish_reason === 'tool_calls' ? 'tool_use' : 'end_turn'
-    };
-
-    // Build content blocks
+    
+    // Build content blocks - text and thinking only
+    // Tool calls will be in a separate message (handled by Continue.dev)
     const contentBlocks: any[] = [];
 
     // Add thinking blocks if present
@@ -1454,7 +1448,15 @@ function convertOpenAIToAnthropic(openaiResponse: any): any {
         });
     }
 
-    anthropicResponse.content = contentBlocks;
+    const anthropicResponse: any = {
+        id: openaiResponse.id || `msg_${Date.now()}`,
+        type: 'message',
+        role: 'assistant',
+        model: openaiResponse.model,
+        content: contentBlocks,
+        stop_reason: choice.finish_reason === 'tool_calls' ? 'tool_use' : 'end_turn',
+        stop_sequence: null
+    };
 
     // Add usage information
     if (openaiResponse.usage) {
