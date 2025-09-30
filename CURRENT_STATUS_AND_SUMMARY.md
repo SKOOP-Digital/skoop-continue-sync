@@ -1,17 +1,5 @@
 # LiteLLM Proxy - Current Status & Summary
 
-## 🔄 DECISION: Revert to Ollama Format
-
-After extensive testing, Anthropic SSE format has compatibility issues with Continue.dev when using custom `apiBase`. 
-
-**Going back to Ollama format** which:
-- ✅ Shows responses in chat (confirmed working earlier)
-- ✅ Simpler format (NDJSON, not SSE)
-- ✅ Better Continue.dev compatibility
-- ⚠️ Thinking embedded in `<thinking>` tags (not native UI)
-
-# LiteLLM Proxy - Current Status & Summary
-
 ## ✅ What's Working
 
 ### 1. Proxy Server

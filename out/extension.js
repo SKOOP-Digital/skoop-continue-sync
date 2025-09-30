@@ -973,13 +973,8 @@ async function forwardToLiteLLM(url, openaiRequest, res, requestId, isStreaming)
             res.writeHead(litellmRes.statusCode || 200, {
                 'Content-Type': 'text/event-stream',
                 'Cache-Control': 'no-cache',
-                'Connection': 'keep-alive',
-                'X-Accel-Buffering': 'no' // Disable nginx buffering
+                'Connection': 'keep-alive'
             });
-            // Send initial ping event (like Anthropic does)
-            res.write(`event: ping\n`);
-            res.write(`data: {"type": "ping"}\n\n`);
-            console.log(`[LiteLLM Proxy ${requestId}] 🏓 Sent initial ping event`);
             let buffer = '';
             let messageStartSent = false;
             litellmRes.on('data', (chunk) => {
@@ -1007,16 +1002,10 @@ async function forwardToLiteLLM(url, openaiRequest, res, requestId, isStreaming)
                             if (anthropicEvents.length > 0 && !messageStartSent) {
                                 messageStartSent = true;
                             }
-                            // Log how many events we're about to send
-                            console.log(`[LiteLLM Proxy ${requestId}] 📤 Sending ${anthropicEvents.length} SSE events`);
                             anthropicEvents.forEach(event => {
-                                // Extract event type and data payload
-                                const { type, ...data } = event;
-                                // Write SSE event (type in event line, everything else in data)
-                                res.write(`event: ${type}\n`);
-                                res.write(`data: ${JSON.stringify(data)}\n\n`);
-                                // Simple logging
-                                console.log(`[LiteLLM Proxy ${requestId}] 📨 ${type}`);
+                                // Write SSE event in Anthropic's exact format
+                                res.write(`event: ${event.type}\n`);
+                                res.write(`data: ${JSON.stringify(event)}\n\n`);
                             });
                         }
                         catch (e) {
@@ -1103,8 +1092,14 @@ function convertOpenAIToAnthropic(openaiResponse) {
         };
     }
     const message = choice.message;
-    // Build content blocks - text and thinking only
-    // Tool calls will be in a separate message (handled by Continue.dev)
+    const anthropicResponse = {
+        id: openaiResponse.id || `msg_${Date.now()}`,
+        type: 'message',
+        role: 'assistant',
+        model: openaiResponse.model,
+        stop_reason: choice.finish_reason === 'tool_calls' ? 'tool_use' : 'end_turn'
+    };
+    // Build content blocks
     const contentBlocks = [];
     // Add thinking blocks if present
     if (message.thinking_blocks && Array.isArray(message.thinking_blocks)) {
@@ -1134,15 +1129,7 @@ function convertOpenAIToAnthropic(openaiResponse) {
             });
         });
     }
-    const anthropicResponse = {
-        id: openaiResponse.id || `msg_${Date.now()}`,
-        type: 'message',
-        role: 'assistant',
-        model: openaiResponse.model,
-        content: contentBlocks,
-        stop_reason: choice.finish_reason === 'tool_calls' ? 'tool_use' : 'end_turn',
-        stop_sequence: null
-    };
+    anthropicResponse.content = contentBlocks;
     // Add usage information
     if (openaiResponse.usage) {
         anthropicResponse.usage = {
@@ -1268,10 +1255,9 @@ function convertOpenAIStreamToAnthropic(openaiChunk, messageStartSent, requestId
     // Handle tool calls
     if (delta.tool_calls && Array.isArray(delta.tool_calls)) {
         delta.tool_calls.forEach((toolCall, idx) => {
-            const toolIndex = idx + 2;
-            // Start tool block if this chunk has id and name
             if (toolCall.id && toolCall.function && toolCall.function.name) {
                 const toolId = toolCall.id;
+                const toolIndex = idx + 2;
                 if (!state.toolStarted.has(toolId)) {
                     events.push({
                         type: 'content_block_start',
@@ -1284,19 +1270,17 @@ function convertOpenAIStreamToAnthropic(openaiChunk, messageStartSent, requestId
                         }
                     });
                     state.toolStarted.add(toolId);
-                    console.log(`[LiteLLM Proxy] Started tool block: ${toolCall.function.name}`);
                 }
-            }
-            // Send argument delta if present (even without id/name)
-            if (toolCall.function && toolCall.function.arguments) {
-                events.push({
-                    type: 'content_block_delta',
-                    index: toolIndex,
-                    delta: {
-                        type: 'input_json_delta',
-                        partial_json: toolCall.function.arguments
-                    }
-                });
+                if (toolCall.function.arguments) {
+                    events.push({
+                        type: 'content_block_delta',
+                        index: toolIndex,
+                        delta: {
+                            type: 'input_json_delta',
+                            partial_json: toolCall.function.arguments
+                        }
+                    });
+                }
             }
         });
     }

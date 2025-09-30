@@ -12456,10 +12456,6 @@ The only issue is a subtle format mismatch that Continue.dev's Anthropic SSE par
 
 _**User (2025-09-29 23:28Z)**_
 
-still not showing responses in the chat, and probably still not continue ing to do agentic stuffuntil the users request is finished, stopping after the first response
-
-we at least had it showing in the chat earlier inthis conversation
-
 [Extension Host] [LiteLLM Proxy 1759258469730] Forwarding to https://litellm.skoop.digital/v1/chat/completions
 console.ts:137 [Extension Host] [LiteLLM Proxy 1759258469730] LiteLLM response status: 200
 console.ts:137 [Extension Host] [LiteLLM Proxy 1759258469730] 🏓 Sent initial ping event
@@ -12552,6 +12548,11 @@ console.ts:137 [Extension Host] [LiteLLM Proxy 1759258469730] Stream ended
 
 
 
+still not showing responses in the chat, and probably still not continue ing to do agentic stuffuntil the users request is finished, stopping after the first response
+
+We at least had it showing in chat in this version:
+
+
 
 ---
 
@@ -12560,22 +12561,6 @@ _**Assistant (claude-4.5-sonnet-thinking)**_
 
 
 ---
-
-
-
----
-
-
-
----
-
-_**User (2025-09-29 23:28Z)**_
-
-no we already saw that ollama wasn't working with thinking right, and we had anthropic showing in chat before, dont switch to ollama
-
----
-
-_**Assistant (claude-4.5-sonnet-thinking)**_
 
 
 
