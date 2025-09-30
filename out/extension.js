@@ -1278,9 +1278,10 @@ function convertOpenAIStreamToAnthropic(openaiChunk, messageStartSent, requestId
     // Handle tool calls
     if (delta.tool_calls && Array.isArray(delta.tool_calls)) {
         delta.tool_calls.forEach((toolCall, idx) => {
+            const toolIndex = idx + 2;
+            // Start tool block if this chunk has id and name
             if (toolCall.id && toolCall.function && toolCall.function.name) {
                 const toolId = toolCall.id;
-                const toolIndex = idx + 2;
                 if (!state.toolStarted.has(toolId)) {
                     events.push({
                         type: 'content_block_start',
@@ -1293,17 +1294,19 @@ function convertOpenAIStreamToAnthropic(openaiChunk, messageStartSent, requestId
                         }
                     });
                     state.toolStarted.add(toolId);
+                    console.log(`[LiteLLM Proxy] Started tool block: ${toolCall.function.name}`);
                 }
-                if (toolCall.function.arguments) {
-                    events.push({
-                        type: 'content_block_delta',
-                        index: toolIndex,
-                        delta: {
-                            type: 'input_json_delta',
-                            partial_json: toolCall.function.arguments
-                        }
-                    });
-                }
+            }
+            // Send argument delta if present (even without id/name)
+            if (toolCall.function && toolCall.function.arguments) {
+                events.push({
+                    type: 'content_block_delta',
+                    index: toolIndex,
+                    delta: {
+                        type: 'input_json_delta',
+                        partial_json: toolCall.function.arguments
+                    }
+                });
             }
         });
     }
