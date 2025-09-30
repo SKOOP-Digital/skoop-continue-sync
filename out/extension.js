@@ -782,8 +782,8 @@ function startProxyServer(context) {
             }));
             return;
         }
-        // Handle /v1/messages endpoint (Anthropic chat completions)
-        if (req.url === '/v1/messages' || req.url === '/v1/chat/completions') {
+        // Handle /v1/messages and /messages endpoints (Anthropic chat completions)
+        if (req.url === '/v1/messages' || req.url === '/messages' || req.url === '/v1/chat/completions') {
             if (req.method !== 'POST') {
                 res.writeHead(405, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ error: 'Method not allowed' }));
@@ -1003,8 +1003,9 @@ async function forwardToLiteLLM(url, openaiRequest, res, requestId, isStreaming)
                                 messageStartSent = true;
                             }
                             anthropicEvents.forEach(event => {
-                                res.write(`event: ${event.type}\n`);
-                                res.write(`data: ${JSON.stringify(event.data)}\n\n`);
+                                const eventString = `event: ${event.type}\ndata: ${JSON.stringify(event.data)}\n\n`;
+                                res.write(eventString);
+                                console.log(`[LiteLLM Proxy ${requestId}] Sent event: ${event.type}`);
                             });
                         }
                         catch (e) {
@@ -1148,28 +1149,57 @@ function convertOpenAIStreamToAnthropic(openaiChunk, messageStartSent) {
                 type: 'message',
                 id: openaiChunk.id || `msg_${Date.now()}`,
                 role: 'assistant',
-                model: openaiChunk.model
+                model: openaiChunk.model,
+                usage: {
+                    input_tokens: 0,
+                    output_tokens: 0
+                }
             }
         });
     }
     const delta = choice.delta;
+    // Track if this is a new content block
+    let isNewBlock = false;
     // Handle thinking/reasoning content
     if (delta.thinking_blocks && Array.isArray(delta.thinking_blocks)) {
-        delta.thinking_blocks.forEach((block) => {
-            events.push({
-                type: 'content_block_start',
-                data: {
-                    type: 'thinking',
-                    index: 0
-                }
-            });
-            events.push({
-                type: 'content_block_delta',
-                data: {
-                    type: 'thinking_delta',
-                    thinking: block.thinking
-                }
-            });
+        delta.thinking_blocks.forEach((block, index) => {
+            // Only send start event if this looks like a new thinking block
+            if (block.thinking && !block.signature) {
+                isNewBlock = true;
+            }
+            if (isNewBlock) {
+                events.push({
+                    type: 'content_block_start',
+                    data: {
+                        type: 'thinking',
+                        index: index,
+                        thinking: ''
+                    }
+                });
+            }
+            if (block.thinking) {
+                events.push({
+                    type: 'content_block_delta',
+                    data: {
+                        type: 'thinking_delta',
+                        delta: {
+                            type: 'thinking_delta',
+                            thinking: block.thinking
+                        },
+                        index: index
+                    }
+                });
+            }
+            // Send stop event if signature is present (indicates end of thinking block)
+            if (block.signature) {
+                events.push({
+                    type: 'content_block_stop',
+                    data: {
+                        index: index
+                    }
+                });
+                console.log(`[LiteLLM Proxy] Completed thinking block ${index}`);
+            }
         });
         console.log(`[LiteLLM Proxy] Streamed ${delta.thinking_blocks.length} thinking blocks`);
     }
@@ -1179,26 +1209,33 @@ function convertOpenAIStreamToAnthropic(openaiChunk, messageStartSent) {
             type: 'content_block_start',
             data: {
                 type: 'thinking',
-                index: 0
+                index: 0,
+                thinking: ''
             }
         });
         events.push({
             type: 'content_block_delta',
             data: {
                 type: 'thinking_delta',
-                thinking: delta.reasoning_content
+                delta: {
+                    type: 'thinking_delta',
+                    thinking: delta.reasoning_content
+                },
+                index: 0
             }
         });
         console.log('[LiteLLM Proxy] Stream chunk includes reasoning content:', delta.reasoning_content.substring(0, 100));
     }
     // Handle text content
     if (delta.content) {
-        if (!messageStartSent || events.length === 0) {
+        // Check if we need to start a text block
+        if (delta.role === 'assistant' || (!messageStartSent && events.length > 0)) {
             events.push({
                 type: 'content_block_start',
                 data: {
                     type: 'text',
-                    index: events.length
+                    index: events.filter(e => e.type === 'content_block_start').length,
+                    text: ''
                 }
             });
         }
@@ -1206,20 +1243,27 @@ function convertOpenAIStreamToAnthropic(openaiChunk, messageStartSent) {
             type: 'content_block_delta',
             data: {
                 type: 'text_delta',
-                text: delta.content
+                delta: {
+                    type: 'text_delta',
+                    text: delta.content
+                },
+                index: events.filter(e => e.type === 'content_block_start').length - 1
             }
         });
     }
     // Handle tool calls
     if (delta.tool_calls && Array.isArray(delta.tool_calls)) {
-        delta.tool_calls.forEach((toolCall) => {
+        delta.tool_calls.forEach((toolCall, tcIndex) => {
             if (toolCall.id && toolCall.function && toolCall.function.name) {
+                const blockIndex = events.filter(e => e.type === 'content_block_start').length;
                 events.push({
                     type: 'content_block_start',
                     data: {
                         type: 'tool_use',
+                        index: blockIndex,
                         id: toolCall.id,
-                        name: toolCall.function.name
+                        name: toolCall.function.name,
+                        input: {}
                     }
                 });
                 if (toolCall.function.arguments) {
@@ -1227,7 +1271,20 @@ function convertOpenAIStreamToAnthropic(openaiChunk, messageStartSent) {
                         type: 'content_block_delta',
                         data: {
                             type: 'input_json_delta',
-                            partial_json: toolCall.function.arguments
+                            delta: {
+                                type: 'input_json_delta',
+                                partial_json: toolCall.function.arguments
+                            },
+                            index: blockIndex
+                        }
+                    });
+                }
+                // Send stop event for complete tool calls
+                if (toolCall.function.arguments && !toolCall.function.arguments.includes('...')) {
+                    events.push({
+                        type: 'content_block_stop',
+                        data: {
+                            index: blockIndex
                         }
                     });
                 }
@@ -1240,7 +1297,13 @@ function convertOpenAIStreamToAnthropic(openaiChunk, messageStartSent) {
         events.push({
             type: 'message_delta',
             data: {
-                stop_reason: stopReason
+                delta: {
+                    stop_reason: stopReason,
+                    stop_sequence: null
+                },
+                usage: {
+                    output_tokens: 1
+                }
             }
         });
     }
