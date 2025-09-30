@@ -255,7 +255,7 @@ Agents:
       - name: "claude-sonnet-4-5-o"
         provider: ollama
         model: anthropic/claude-sonnet-4-5
-        apiBase: http://localhost:8009/v1/
+        apiBase: http://localhost:8009/
         roles:
           - chat
           - edit
