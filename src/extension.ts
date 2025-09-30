@@ -1289,33 +1289,15 @@ async function forwardToLiteLLM(
                             console.log(`[LiteLLM Proxy ${requestId}] 📤 Sending ${anthropicEvents.length} SSE events`);
                             
                             anthropicEvents.forEach(event => {
-                                const eventType = event.type;
+                                // Extract event type and data payload
+                                const { type, ...data } = event;
                                 
-                                // Determine what to send in the data field based on event type
-                                let eventData: any;
-                                if (eventType === 'message_start') {
-                                    // For message_start, data is the message object
-                                    eventData = event.message;
-                                } else {
-                                    // For other events, data is everything except type
-                                    const { type, ...rest } = event;
-                                    eventData = rest;
-                                }
+                                // Write SSE event (type in event line, everything else in data)
+                                res.write(`event: ${type}\n`);
+                                res.write(`data: ${JSON.stringify(data)}\n\n`);
                                 
-                                // Write SSE event in Anthropic's exact format
-                                const sseEvent = `event: ${eventType}\ndata: ${JSON.stringify(eventData)}\n\n`;
-                                res.write(sseEvent);
-                                
-                                // Log every event being sent
-                                console.log(`[LiteLLM Proxy ${requestId}] 📨 SSE: event=${eventType}, data=${JSON.stringify(eventData).substring(0, 100)}`);
-                                
-                                // Log tool_use events for debugging
-                                if (eventType === 'content_block_start' && eventData.content_block?.type === 'tool_use') {
-                                    console.log(`[LiteLLM Proxy ${requestId}] ⚙️ TOOL_USE START:`, eventData.content_block.name);
-                                }
-                                if (eventType === 'message_delta' && eventData.delta?.stop_reason === 'tool_use') {
-                                    console.log(`[LiteLLM Proxy ${requestId}] 🛑 STOP_REASON: tool_use - Continue should execute tools now!`);
-                                }
+                                // Simple logging
+                                console.log(`[LiteLLM Proxy ${requestId}] 📨 ${type}`);
                             });
                         } catch (e) {
                             console.error(`[LiteLLM Proxy ${requestId}] Error parsing stream chunk:`, e);
