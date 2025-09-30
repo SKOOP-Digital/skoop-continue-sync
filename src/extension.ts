@@ -1218,12 +1218,21 @@ function convertOllamaToOpenAI(ollamaRequest: OllamaRequest): OpenAIRequest {
 
     // Add thinking/reasoning parameters for Claude/Anthropic models
     // According to LiteLLM docs: use EITHER reasoning_effort OR thinking, not both
+    // IMPORTANT: max_tokens must be greater than thinking.budget_tokens
     if (ollamaRequest.model.includes('claude') || ollamaRequest.model.includes('anthropic')) {
-        // Use the thinking parameter (preferred for Anthropic)
-        openaiRequest.thinking = {
-            type: 'enabled',
-            budget_tokens: 2048
-        };
+        const thinkingBudget = 2048;
+        const requestedMaxTokens = openaiRequest.max_tokens || 30000;
+        
+        // Only add thinking if max_tokens is large enough
+        if (requestedMaxTokens > thinkingBudget) {
+            openaiRequest.thinking = {
+                type: 'enabled',
+                budget_tokens: thinkingBudget
+            };
+            console.log(`[LiteLLM Proxy] Adding thinking with budget ${thinkingBudget}, max_tokens: ${requestedMaxTokens}`);
+        } else {
+            console.log(`[LiteLLM Proxy] Skipping thinking: max_tokens (${requestedMaxTokens}) <= budget (${thinkingBudget})`);
+        }
     }
 
     return openaiRequest;

@@ -4941,3 +4941,356 @@ Let me know what you see in the logs after reloading!
 
 ---
 
+_**User (2025-09-29 23:28Z)**_
+
+
+                  "waitForCompletion": {
+                    "type": "boolean",
+                    "description": "Whether to wait for the command to complete before returning. Default is true. Set to false to run the command in the background. Set to true to run the command in the foreground and wait to col
+Cvs @ console.ts:137
+$logExtensionHostMessage @ mainThreadConsole.ts:39
+S @ rpcProtocol.ts:458
+Q @ rpcProtocol.ts:443
+M @ rpcProtocol.ts:373
+L @ rpcProtocol.ts:299
+(anonymous) @ rpcProtocol.ts:161
+C @ event.ts:1201
+fire @ event.ts:1232
+fire @ ipc.net.ts:652
+l.onmessage @ localProcessExtensionHost.ts:383
+localProcessExtensionHost.ts:280 Extension Host
+localProcessExtensionHost.ts:281 [@continuedev] error: HTTP 400 Bad Request from http://127.0.0.1:8009/api/chat
+{"error":{"message":"litellm.BadRequestError: AnthropicException - 'tool_call_id'\nReceived Messages=[{'role': 'user', 'content': 'modify this so that the jitsi version blocks all features like sharing screen, backgrounds, disabling camera or mute from the guest but still allows the agent to do it, and do the same for the wherby version'}, {'role': 'assistant', 'content': \"<thinking>\\nThe user wants me to modify something\\n</thinking>\\n\\n<thinking>\\n related to Jitsi an\\n</thinking>\\n\\n<thinking>\\nd Whereby versions to block features for guests while allowing agents to use\\n</thinking>\\n\\n<thinking>\\n them. However, I need to first\\n</thinking>\\n\\n<thinking>\\n understand the current project structure to see what code\\n</thinking>\\n\\n<thinking>\\n we're working with.\\n\\nLet me start by exploring the project structure to understand what we're\\n</thinking>\\n\\n<thinking>\\n dealing with.\\n</thinking>\\n\\nI'll help you modify the Jitsi and Whereby implementations to restrict guest features while preserving agent capabilities. Let me first explore the project structure to understand the current codebase.\"}, {'role': 'tool', 'content': '.cursorindexingignore\\njitsi.html\\nreadme.md\\nwhereby.html'}]. Received Model Group=anthropic/claude-sonnet-4-20250514\nAvailable Model Group Fallbacks=None","type":null,"param":null,"code":"400"}} {"context":"llm_fetch","url":"http://localhost:8009/api/chat","method":"POST","model":"anthropic/claude-sonnet-4-20250514","provider":"ollama"}
+[@continuedev] error: HTTP 400 Bad Request from http://127.0.0.1:8009/api/chat
+{"error":{"message":"litellm.BadRequestError: AnthropicException - 'tool_call_id'\nReceived Messages=[{'role': 'user', 'content': 'modify this so that the jitsi version blocks all features like sharing screen, backgrounds, disabling camera or mute from the guest but still allows the agent to do it, and do the same for the wherby version'}, {'role': 'assistant', 'content': \"<thinking>\\nThe user wants me to modify something\\n</thinking>\\n\\n<thinking>\\n related to Jitsi an\\n</thinking>\\n\\n<thinking>\\nd Whereby versions to block features for guests while allowing agents to use\\n</thinking>\\n\\n<thinking>\\n them. However, I need to first\\n</thinking>\\n\\n<thinking>\\n understand the current project structure to see what code\\n</thinking>\\n\\n<thinking>\\n we're working with.\\n\\nLet me start by exploring the project structure to understand what we're\\n</thinking>\\n\\n<thinking>\\n dealing with.\\n</thinking>\\n\\nI'll help you modify the Jitsi and Whereby implementations to restrict guest features while preserving agent capabilities. Let me first explore the project structure to understand the current codebase.\"}, {'role': 'tool', 'content': '.cursorindexingignore\\njitsi.html\\nreadme.md\\nwhereby.html'}]. Received Model Group=anthropic/claude-sonnet-4-20250514\nAvailable Model Group Fallbacks=None","type":null,"param":null,"code":"400"}} {"context":"llm_stream_chat","model":"anthropic/claude-sonnet-4-20250514","provider":"ollama","useOpenAIAdapter":false,"streamEnabled":true,"templateMessages":false}
+
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759210218051] POST /api/chat
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759210218051] Ollama request: {
+  "model": "anthropic/claude-sonnet-4-20250514",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Given the following... please reply with a title for the chat that is 3-4 words in length, all words used should be directly related to the content of the chat, avoid using verbs unless they are directly related to the content of the chat, no additional text or explanation, you don't need ending punctuation.\n\n<thinking>\nThe user wants me to modify something\n</thinking>\n\n<thinking>\n related to Jitsi an\n</thinking>\n\n<thinking>\nd Whereby versions to block features for guests while allowing agents to use\n</thinking>\n\n<thinking>\n them. However, I need to first\n</thinking>\n\n<thinking>\n understand the current project structure to see what code\n</thinking>\n\n<thinking>\n we're working with.\n\nLet me start by exploring the project structure to understand what we're\n</thinking>\n\n<thinking>\n dealing with.\n</thinking>\n\nI'll help you modify the Jitsi and Whereby implementations to restrict guest features while preserving agent capabilities. Let me first explore the project structure to understand the current codebase."
+    }
+  ],
+  "options": {
+    "num_predict": 12,
+    "num_ctx": 200000
+  },
+  "think": true,
+  "keep_alive": 1800,
+  "stream": true
+}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759210218051] OpenAI request: {
+  "model": "anthropic/claude-sonnet-4-20250514",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Given the following... please reply with a title for the chat that is 3-4 words in length, all words used should be directly related to the content of the chat, avoid using verbs unless they are directly related to the content of the chat, no additional text or explanation, you don't need ending punctuation.\n\n<thinking>\nThe user wants me to modify something\n</thinking>\n\n<thinking>\n related to Jitsi an\n</thinking>\n\n<thinking>\nd Whereby versions to block features for guests while allowing agents to use\n</thinking>\n\n<thinking>\n them. However, I need to first\n</thinking>\n\n<thinking>\n understand the current project structure to see what code\n</thinking>\n\n<thinking>\n we're working with.\n\nLet me start by exploring the project structure to understand what we're\n</thinking>\n\n<thinking>\n dealing with.\n</thinking>\n\nI'll help you modify the Jitsi and Whereby implementations to restrict guest features while preserving agent capabilities. Let me first explore the project structure to understand the current codebase."
+    }
+  ],
+  "stream": true,
+  "max_tokens": 12,
+  "thinking": {
+    "type": "enabled",
+    "budget_tokens": 2048
+  }
+}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759210218051] Forwarding to https://litellm.skoop.digital/v1/chat/completions
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759210218051] LiteLLM response status: 400
+log.ts:460   ERR [Extension Host] [LiteLLM Proxy 1759210218051] LiteLLM error response (400): {"error":{"message":"litellm.BadRequestError: AnthropicException - b'{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"`max_tokens` must be greater than `thinking.budget_tokens`. Please consult our documentation at https://docs.claude.com/en/docs/build-with-claude/extended-thinking#max-tokens-and-context-window-size\"},\"request_id\":\"req_011CTe31uDsBm4vwp9ceePPU\"}'. Received Model Group=anthropic/claude-sonnet-4-20250514\nAvailable Model Group Fallbacks=None","type":null,"param":null,"code":"400"}}
+error @ log.ts:460
+error @ log.ts:565
+error @ logService.ts:51
+kvs @ remoteConsoleUtil.ts:58
+$logExtensionHostMessage @ mainThreadConsole.ts:38
+S @ rpcProtocol.ts:458
+Q @ rpcProtocol.ts:443
+M @ rpcProtocol.ts:373
+L @ rpcProtocol.ts:299
+(anonymous) @ rpcProtocol.ts:161
+C @ event.ts:1201
+fire @ event.ts:1232
+fire @ ipc.net.ts:652
+l.onmessage @ localProcessExtensionHost.ts:383
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759210218051] LiteLLM error response (400): {"error":{"message":"litellm.BadRequestError: AnthropicException - b'{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"`max_tokens` must be greater than `thinking.budget_tokens`. Please consult our documentation at https://docs.claude.com/en/docs/build-with-claude/extended-thinking#max-tokens-and-context-window-size\"},\"request_id\":\"req_011CTe31uDsBm4vwp9ceePPU\"}'. Received Model Group=anthropic/claude-sonnet-4-20250514\nAvailable Model Group Fallbacks=None","type":null,"param":null,"code":"400"}}
+Cvs @ console.ts:137
+$logExtensionHostMessage @ mainThreadConsole.ts:39
+S @ rpcProtocol.ts:458
+Q @ rpcProtocol.ts:443
+M @ rpcProtocol.ts:373
+L @ rpcProtocol.ts:299
+(anonymous) @ rpcProtocol.ts:161
+C @ event.ts:1201
+fire @ event.ts:1232
+fire @ ipc.net.ts:652
+l.onmessage @ localProcessExtensionHost.ts:383
+console.ts:137 [Extension Host] [@continuedev] error: HTTP 400 Bad Request from http://127.0.0.1:8009/api/chat
+
+{"error":{"message":"litellm.BadRequestError: AnthropicException - b'{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"`max_tokens` must be greater than `thinking.budget_tokens`. Please consult our documentation at https://docs.claude.com/en/docs/build-with-claude/extended-thinking#max-tokens-and-context-window-size\"},\"request_id\":\"req_011CTe31uDsBm4vwp9ceePPU\"}'. Received Model Group=anthropic/claude-sonnet-4-20250514\nAvailable Model Group Fallbacks=None","type":null,"param":null,"code":"400"}} {"context":"llm_fetch","url":"http://localhost:8009/api/chat","method":"POST","model":"anthropic/claude-sonnet-4-20250514","provider":"ollama"}
+console.ts:137 [Extension Host] [@continuedev] error: HTTP 400 Bad Request from http://127.0.0.1:8009/api/chat
+
+{"error":{"message":"litellm.BadRequestError: AnthropicException - b'{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"`max_tokens` must be greater than `thinking.budget_tokens`. Please consult our documentation at https://docs.claude.com/en/docs/build-with-claude/extended-thinking#max-tokens-and-context-window-size\"},\"request_id\":\"req_011CTe31uDsBm4vwp9ceePPU\"}'. Received Model Group=anthropic/claude-sonnet-4-20250514\nAvailable Model Group Fallbacks=None","type":null,"param":null,"code":"400"}} {"context":"llm_stream_chat","model":"anthropic/claude-sonnet-4-20250514","provider":"ollama","useOpenAIAdapter":false,"streamEnabled":true,"templateMessages":false}
+console.ts:137 [Extension Host] Error: HTTP 400 Bad Request from http://127.0.0.1:8009/api/chat
+
+{"error":{"message":"litellm.BadRequestError: AnthropicException - b'{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"`max_tokens` must be greater than `thinking.budget_tokens`. Please consult our documentation at https://docs.claude.com/en/docs/build-with-claude/extended-thinking#max-tokens-and-context-window-size\"},\"request_id\":\"req_011CTe31uDsBm4vwp9ceePPU\"}'. Received Model Group=anthropic/claude-sonnet-4-20250514\nAvailable Model Group Fallbacks=None","type":null,"param":null,"code":"400"}}
+	at _Ollama.parseError (c:\Users\JoshS\.vscode\extensions\continue.continue-1.2.6-win32-x64\out\extension.js:242335:16)
+	at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+	at async customFetch2 (c:\Users\JoshS\.vscode\extensions\continue.continue-1.2.6-win32-x64\out\extension.js:242353:30)
+	at async withExponentialBackoff (c:\Users\JoshS\.vscode\extensions\continue.continue-1.2.6-win32-x64\out\extension.js:238224:27)
+	at async _Ollama._streamChat (c:\Users\JoshS\.vscode\extensions\continue.continue-1.2.6-win32-x64\out\extension.js:483270:26)
+	at async _Ollama.streamChat (c:\Users\JoshS\.vscode\extensions\continue.continue-1.2.6-win32-x64\out\extension.js:242838:32)
+	at async _Ollama.chat (c:\Users\JoshS\.vscode\extensions\continue.continue-1.2.6-win32-x64\out\extension.js:242733:26)
+	at async _ChatDescriber.describe (c:\Users\JoshS\.vscode\extensions\continue.continue-1.2.6-win32-x64\out\extension.js:725320:31)
+	at async c:\Users\JoshS\.vscode\extensions\continue.continue-1.2.6-win32-x64\out\extension.js:729389:18
+	at async c:\Users\JoshS\.vscode\extensions\continue.continue-1.2.6-win32-x64\out\extension.js:802181:20
+	at async od.handleMessage [as value] (c:\Users\JoshS\.vscode\extensions\continue.continue-1.2.6-win32-x64\out\extension.js:764818:32)
+log.ts:460   ERR [Extension Host] Error handling webview message: {
+  "msg": {
+    "messageId": "03f8f7ce-084b-448a-975d-07140f19a6ad",
+    "messageType": "chatDescriber/describe",
+    "data": {
+      "text": "<thinking>\nThe user wants me to modify something\n</thinking>\n\n<thinking>\n related to Jitsi an\n</thinking>\n\n<thinking>\nd Whereby versions to block features for guests while allowing agents to use\n</thinking>\n\n<thinking>\n them. However, I need to first\n</thinking>\n\n<thinking>\n understand the current project structure to see what code\n</thinking>\n\n<thinking>\n we're working with.\n\nLet me start by exploring the project structure to understand what we're\n</thinking>\n\n<thinking>\n dealing with.\n</thinking>\n\nI'll help you modify the Jitsi and Whereby implementations to restrict guest features while preserving agent capabilities. Let me first explore the project structure to understand the current codebase."
+    }
+  }
+}
+
+Error: HTTP 400 Bad Request from http://127.0.0.1:8009/api/chat
+
+{"error":{"message":"litellm.BadRequestError: AnthropicException - b'{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"`max_tokens` must be greater than `thinking.budget_tokens`. Please consult our documentation at https://docs.claude.com/en/docs/build-with-claude/extended-thinking#max-tokens-and-context-window-size\"},\"request_id\":\"req_011CTe31uDsBm4vwp9ceePPU\"}'. Received Model Group=anthropic/claude-sonnet-4-20250514\nAvailable Model Group Fallbacks=None","type":null,"param":null,"code":"400"}}
+error @ log.ts:460
+error @ log.ts:565
+error @ logService.ts:51
+kvs @ remoteConsoleUtil.ts:58
+$logExtensionHostMessage @ mainThreadConsole.ts:38
+S @ rpcProtocol.ts:458
+Q @ rpcProtocol.ts:443
+M @ rpcProtocol.ts:373
+L @ rpcProtocol.ts:299
+(anonymous) @ rpcProtocol.ts:161
+C @ event.ts:1201
+fire @ event.ts:1232
+fire @ ipc.net.ts:652
+l.onmessage @ localProcessExtensionHost.ts:383
+console.ts:137 [Extension Host] Error handling webview message: {
+  "msg": {
+    "messageId": "03f8f7ce-084b-448a-975d-07140f19a6ad",
+    "messageType": "chatDescriber/describe",
+    "data": {
+      "text": "<thinking>\nThe user wants me to modify something\n</thinking>\n\n<thinking>\n related to Jitsi an\n</thinking>\n\n<thinking>\nd Whereby versions to block features for guests while allowing agents to use\n</thinking>\n\n<thinking>\n them. However, I need to first\n</thinking>\n\n<thinking>\n understand the current project structure to see what code\n</thinking>\n\n<thinking>\n we're working with.\n\nLet me start by exploring the project structure to understand what we're\n</thinking>\n\n<thinking>\n dealing with.\n</thinking>\n\nI'll help you modify the Jitsi and Whereby implementations to restrict guest features while preserving agent capabilities. Let me first explore the project structure to understand the current codebase."
+    }
+  }
+}
+
+Error: HTTP 400 Bad Request from http://127.0.0.1:8009/api/chat
+
+{"error":{"message":"litellm.BadRequestError: AnthropicException - b'{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"`max_tokens` must be greater than `thinking.budget_tokens`. Please consult our documentation at https://docs.claude.com/en/docs/build-with-claude/extended-thinking#max-tokens-and-context-window-size\"},\"request_id\":\"req_011CTe31uDsBm4vwp9ceePPU\"}'. Received Model Group=anthropic/claude-sonnet-4-20250514\nAvailable Model Group Fallbacks=None","type":null,"param":null,"code":"400"}}
+Cvs @ console.ts:137
+$logExtensionHostMessage @ mainThreadConsole.ts:39
+S @ rpcProtocol.ts:458
+Q @ rpcProtocol.ts:443
+M @ rpcProtocol.ts:373
+L @ rpcProtocol.ts:299
+(anonymous) @ rpcProtocol.ts:161
+C @ event.ts:1201
+fire @ event.ts:1232
+fire @ ipc.net.ts:652
+l.onmessage @ localProcessExtensionHost.ts:383
+localProcessExtensionHost.ts:280 Extension Host
+localProcessExtensionHost.ts:281 [@continuedev] error: HTTP 400 Bad Request from http://127.0.0.1:8009/api/chat
+{"error":{"message":"litellm.BadRequestError: AnthropicException - b'{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"`max_tokens` must be greater than `thinking.budget_tokens`. Please consult our documentation at https://docs.claude.com/en/docs/build-with-claude/extended-thinking#max-tokens-and-context-window-size\"},\"request_id\":\"req_011CTe31uDsBm4vwp9ceePPU\"}'. Received Model Group=anthropic/claude-sonnet-4-20250514\nAvailable Model Group Fallbacks=None","type":null,"param":null,"code":"400"}} {"context":"llm_fetch","url":"http://localhost:8009/api/chat","method":"POST","model":"anthropic/claude-sonnet-4-20250514","provider":"ollama"}
+[@continuedev] error: HTTP 400 Bad Request from http://127.0.0.1:8009/api/chat
+{"error":{"message":"litellm.BadRequestError: AnthropicException - b'{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"`max_tokens` must be greater than `thinking.budget_tokens`. Please consult our documentation at https://docs.claude.com/en/docs/build-with-claude/extended-thinking#max-tokens-and-context-window-size\"},\"request_id\":\"req_011CTe31uDsBm4vwp9ceePPU\"}'. Received Model Group=anthropic/claude-sonnet-4-20250514\nAvailable Model Group Fallbacks=None","type":null,"param":null,"code":"400"}} {"context":"llm_stream_chat","model":"anthropic/claude-sonnet-4-20250514","provider":"ollama","useOpenAIAdapter":false,"streamEnabled":true,"templateMessages":false}
+
+ll - it provides essential context.\n</mandatory_first_action>\n\n\nYou are a powerful agentic AI coding assistant powered by advanced language models, operating within the Continue.dev IDE extension. Your primary role is to pair-program with the user
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759210210585] Forwarding to https://litellm.skoop.digital/v1/chat/completions
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759210210585] LiteLLM response status: 200
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759210210585] *** REASONING CONTENT DETECTED ***: The user wants me to modify something
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759210210585] Stream chunk delta: {"reasoning_content":"The user wants me to modify something","thinking_blocks":[{"type":"thinking","thinking":"The user wants me to modify something"}],"provider_specific_fields":{"thinking_blocks":[{
+console.ts:137 [Extension Host] [LiteLLM Proxy] Stream chunk includes reasoning content: The user wants me to modify something
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759210210585] *** REASONING CONTENT DETECTED ***:  related to Jitsi an
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759210210585] Stream chunk delta: {"reasoning_content":" related to Jitsi an","thinking_blocks":[{"type":"thinking","thinking":" related to Jitsi an"}],"provider_specific_fields":{"thinking_blocks":[{"type":"thinking","thinking":" rel
+console.ts:137 [Extension Host] [LiteLLM Proxy] Stream chunk includes reasoning content:  related to Jitsi an
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759210210585] *** REASONING CONTENT DETECTED ***: d Whereby versions to block features for guests while allowing agents to use
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759210210585] Stream chunk delta: {"reasoning_content":"d Whereby versions to block features for guests while allowing agents to use","thinking_blocks":[{"type":"thinking","thinking":"d Whereby versions to block features for guests wh
+console.ts:137 [Extension Host] [LiteLLM Proxy] Stream chunk includes reasoning content: d Whereby versions to block features for guests while allowing agents to use
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759210210585] *** REASONING CONTENT DETECTED ***:  them. However, I need to first
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759210210585] Stream chunk delta: {"reasoning_content":" them. However, I need to first","thinking_blocks":[{"type":"thinking","thinking":" them. However, I need to first"}],"provider_specific_fields":{"thinking_blocks":[{"type":"thin
+console.ts:137 [Extension Host] [LiteLLM Proxy] Stream chunk includes reasoning content:  them. However, I need to first
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759210210585] *** REASONING CONTENT DETECTED ***:  understand the current project structure to see what code
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759210210585] Stream chunk delta: {"reasoning_content":" understand the current project structure to see what code","thinking_blocks":[{"type":"thinking","thinking":" understand the current project structure to see what code"}],"provi
+console.ts:137 [Extension Host] [LiteLLM Proxy] Stream chunk includes reasoning content:  understand the current project structure to see what code
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759210210585] *** REASONING CONTENT DETECTED ***:  we're working with.
+
+Let me start by exploring the project structure to understand what we're
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759210210585] Stream chunk delta: {"reasoning_content":" we're working with.\n\nLet me start by exploring the project structure to understand what we're","thinking_blocks":[{"type":"thinking","thinking":" we're working with.\n\nLet me
+console.ts:137 [Extension Host] [LiteLLM Proxy] Stream chunk includes reasoning content:  we're working with.
+
+Let me start by exploring the project structure to understand what we're
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759210210585] *** REASONING CONTENT DETECTED ***:  dealing with.
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759210210585] Stream chunk delta: {"reasoning_content":" dealing with.","thinking_blocks":[{"type":"thinking","thinking":" dealing with."}],"provider_specific_fields":{"thinking_blocks":[{"type":"thinking","thinking":" dealing with.",
+console.ts:137 [Extension Host] [LiteLLM Proxy] Stream chunk includes reasoning content:  dealing with.
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759210210585] Stream chunk delta: {"reasoning_content":"","thinking_blocks":[{"type":"thinking","thinking":"","signature":"EvQDCkYICBgCKkC2OdW8h12hOIYOYywtWSekDGczj0Xn0iTsZE/wyoyGNDZ1uAAZ8n/eDK7SvyTqRcAabNZtDdA+1v3JCH5PuOznEgzsX0vTYMz
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759210210585] Stream chunk delta: {"content":"I'll help you modify the Jitsi and Whereby implementations to restrict guest features while preserving agent capabilities"}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759210210585] Stream chunk delta: {"content":". Let me first explore the project structure to understand the current"}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759210210585] Stream chunk delta: {"content":" codebase."}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759210210585] Stream chunk delta: {"content":"","tool_calls":[{"id":"toolu_016x9KoNMDAa5reYpNFRTee3","function":{"arguments":"","name":"ls"},"type":"function","index":0}]}
+console.ts:137 [Extension Host] [LiteLLM Proxy] Adding tool calls to chunk: 1
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759210210585] Stream chunk delta: {"content":"","tool_calls":[{"function":{"arguments":""},"type":"function","index":0}]}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759210210585] Stream chunk delta: {"content":"","tool_calls":[{"function":{"arguments":"{\"dirPath\": "},"type":"function","index":0}]}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759210210585] Stream chunk delta: {"content":"","tool_calls":[{"function":{"arguments":"\"/\""},"type":"function","index":0}]}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759210210585] Stream chunk delta: {"content":"","tool_calls":[{"function":{"arguments":", \"recursi"},"type":"function","index":0}]}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759210210585] Stream chunk delta: {"content":"","tool_calls":[{"function":{"arguments":"ve\": true}"},"type":"function","index":0}]}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759210210585] Stream chunk delta: {}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759210210585] Stream complete
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759210210585] Stream ended
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759210215490] POST /api/chat
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759210215490] Ollama request: {
+  "model": "anthropic/claude-sonnet-4-20250514",
+  "messages": [
+    {
+      "role": "system",
+      "content": "<important_rules>\n  You are in agent mode.\n\n  If you need to use multiple tools, you can call multiple read only tools simultaneously.\n\n  Always include the
+
+[Extension Host] [LiteLLM Proxy 1759210210585] POST /api/chat
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759210210585] Ollama request: {
+  "model": "anthropic/claude-sonnet-4-20250514",
+  "messages": [
+    {
+      "role": "system",
+      "content": "<important_rules>\n  You are in agent mode.\n\n  If you need to use multiple tools, you can call multiple read only tools simultaneously.\n\n  Always include the language and file name in the info string when you write code blocks.\n  If you are editing \"src/main.py\" for e
+
+
+{"message":"litellm.BadRequestError: AnthropicException - 'tool_call_id'\nReceived Messages=[{'role': 'user', 'content': 'modify this so that the jitsi version blocks all features like sharing screen, backgrounds, disabling camera or mute from the guest but still allows the agent to do it, and do the same for the wherby version'}, {'role': 'assistant', 'content': \"<thinking>\\nThe user wants me to modify something\\n</thinking>\\n\\n<thinking>\\n related to Jitsi an\\n</thinking>\\n\\n<thinking>\\nd Whereby versions to block features for guests while allowing agents to use\\n</thinking>\\n\\n<thinking>\\n them. However, I need to first\\n</thinking>\\n\\n<thinking>\\n understand the current project structure to see what code\\n</thinking>\\n\\n<thinking>\\n we're working with.\\n\\nLet me start by exploring the project structure to understand what we're\\n</thinking>\\n\\n<thinking>\\n dealing with.\\n</thinking>\\n\\nI'll help you modify the Jitsi and Whereby implementations to restrict guest features while preserving agent capabilities. Let me first explore the project structure to understand the current codebase.\"}, {'role': 'tool', 'content': '.cursorindexingignore\\njitsi.html\\nreadme.md\\nwhereby.html'}]. Received Model Group=anthropic/claude-sonnet-4-20250514\nAvailable Model Group Fallbacks=None","type":null,"param":null,"code":"400"}
+
+
+then in litellm the request had this:
+ove.\nAlways end with a summary as instructed above.\n**MANDATORY: Remember, for ANY multi-step tasks, **ALWAYS** create and maintain a task list BEFORE starting any planning or implementation, and update tasks accordingly as you go**\nRemember: You are agentic—plan, execute, iterate until done. Prioritize user intent while being efficient and accurate.\nDo not ask for permission or state that you will do something without doing it. Do not ask any more questions unless you absolutely need to. Go on and plan and complete the whole user request to the finish.\n"
+    },
+    {
+      "role": "user",
+      "content": "modify this so that the jitsi version blocks all features like sharing screen, backgrounds, disabling camera or mute from the guest but still allows the agent to do it, and do the same for the wherby version"
+    }
+  ],
+  "thinking": {
+    "type": "enabled",
+    "budget_tokens": 2048
+  },
+  "max_tokens": 30000
+}
+
+and the response in litellm was this:
+{
+  "id": "chatcmpl-ae399b5a-bad1-4ceb-ae69-dafb94f4fee0",
+  "model": "claude-sonnet-4-20250514",
+  "usage": {
+    "total_tokens": 10241,
+    "prompt_tokens": 10057,
+    "completion_tokens": 184,
+    "prompt_tokens_details": {
+      "text_tokens": null,
+      "audio_tokens": null,
+      "image_tokens": null,
+      "cached_tokens": 0,
+      "cache_creation_tokens": 0
+    },
+    "cache_read_input_tokens": 0,
+    "completion_tokens_details": {
+      "text_tokens": null,
+      "audio_tokens": null,
+      "reasoning_tokens": 64,
+      "accepted_prediction_tokens": null,
+      "rejected_prediction_tokens": null
+    },
+    "cache_creation_input_tokens": 0
+  },
+  "object": "chat.completion",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "I'll help you modify the Jitsi and Whereby implementations to restrict guest features while preserving agent capabilities. Let me first explore the project structure to understand the current codebase.",
+        "tool_calls": [
+          {
+            "id": "toolu_016x9KoNMDAa5reYpNFRTee3",
+            "type": "function",
+            "function": {
+              "name": "ls",
+              "arguments": "{\"dirPath\": \"/\", \"recursive\": true}"
+            }
+          }
+        ],
+        "function_call": null,
+        "thinking_blocks": [
+          {
+            "type": "thinking",
+            "thinking": "The user wants me to modify something related to Jitsi and Whereby versions to block features for guests while allowing agents to use them. However, I need to first understand the current project structure to see what code we're working with.\n\nLet me start by exploring the project structure to understand what we're dealing with.",
+            "signature": "EvQDCkYICBgCKkC2OdW8h12hOIYOYywtWSekDGczj0Xn0iTsZE/wyoyGNDZ1uAAZ8n/eDK7SvyTqRcAabNZtDdA+1v3JCH5PuOznEgzsX0vTYMzq65eo8xIaDNazkxircxWKzo6gfyIwi0Z9Uvee42poq4ZAcVb1xTzgvhXTrkU263+UkozdGQnI+JvXy68pwrdWPXa2/wsEKtsC7Wk/VAZSDiTejspqKRoqDtoI85I0e5Pz0IznmCh3xZX9rdfFrLWb4ST3nX66pk+73JQ3tEdE1ub02CcUI1NKC2+qvles5Tti32Y99ZlIaPUbxvSlBvfAXkX92G/uoA2Qcl0Mn5uzbwnO+BQnx+MgAQOJXuItfjJvRdlh4qa+SGCXudvb0MVnTyAaHs/1CCfZv8YsEdfq1lwIDVl3pb281dDjZy2dpZGXJRXJjUCFQvzKpoDmp9BbHVUk05xCVA4Dy4l3uAUbPlStPiCbh13emLlkuxI6prRFlVtT1Ow4dMs6dx24I0qkJr+LMD5T+bDINdM0LzDWvqcBwFnJ0ArFzdIOZuhfitVe4rHOZnkc71qnjciDxiVWeKl+W8272Mp4TdpzCdoojGQg8fRw8CFgBZJNNk1S0hpDyoGc/3J6qi/4lThTH2Pzuk0OmlxzGCEfg6nNyIekmSUICo8YAQ=="
+          }
+        ],
+        "reasoning_content": "The user wants me to modify something related to Jitsi and Whereby versions to block features for guests while allowing agents to use them. However, I need to first understand the current project structure to see what code we're working with.\n\nLet me start by exploring the project structure to understand what we're dealing with."
+      },
+      "finish_reason": "tool_calls"
+    }
+  ],
+  "created": 1759210213,
+  "system_fingerprint": null
+}
+Metadata
+
+
+so reasoning tokens are working, but continue.dev stopped reporting the responses after the first turn it seems, and didn't show the thinking sections, but maybe it failed before it got there.
+
+don't worry about the low max_tokens,as thatwas probably just a logfor the title generation.
+
+Docheck though that we are returning the correct ollama syntax to continue.dev withthe thinking or reasoning as expected. you might need to search the web for the ollama syntax.
+
+---
+
+_**Assistant (claude-4.5-sonnet-thinking)**_
+
+<think><details><summary>Thought Process</summary>Great! The user has identified the key issues:
+
+1. **The error**: `max_tokens` must be greater than `thinking.budget_tokens` - when max_tokens is 12 but thinking budget is 2048, this causes a 400 error.
+
+2. **Reasoning is working!** The logs show:
+   - `*** REASONING CONTENT DETECTED ***` appears multiple times
+   - `reasoning_tokens: 64` in the usage stats
+   - `thinking_blocks` are being returned
+   - The reasoning content is streaming correctly
+
+3. **The problem**: Continue.dev is receiving the thinking content but not displaying it properly. The user mentions we might need to check Ollama's actual format for thinking/reasoning content.
+
+Let me:
+1. Fix the max_tokens validation issue
+2. Search for the correct Ollama format for reasoning/thinking content
+3. Update the conversion to match Ollama's expected format</details></think>
+
+---
+
+Excellent! The good news is **reasoning IS working** - you can see `*** REASONING CONTENT DETECTED ***` in the logs and `reasoning_tokens: 64` in the usage! 
+
+The issues are:
+
+1. **max_tokens < thinking.budget_tokens**: When Continue sends `max_tokens: 12`, but we add `thinking.budget_tokens: 2048`, Claude rejects it
+2. **Thinking format**: We need to check if Ollama has a specific format for thinking content
+
+Let me search for the correct Ollama thinking format and fix the max_tokens issue:
+
+---
+
+
+
+---
+
+Tool use: **read_file**
+
+Read file: src/extension.ts
+
+---
+
+
+
+---
+

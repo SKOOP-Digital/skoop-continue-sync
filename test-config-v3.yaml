@@ -254,7 +254,7 @@ Agents:
           reasoningBudgetTokens: 2048
       - name: "claude-sonnet-4-5-o"
         provider: ollama
-        model: anthropic/claude-sonnet-4-5
+        model: anthropic/claude-sonnet-4-20250514
         apiBase: http://localhost:8009/
         roles:
           - chat
