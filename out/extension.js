@@ -1024,7 +1024,11 @@ async function forwardToLiteLLM(url, openaiRequest, res, requestId, isStreaming)
                 const doneMessage = {
                     model: openaiRequest.model,
                     created_at: new Date().toISOString(),
-                    done: true
+                    done: true,
+                    message: {
+                        role: 'assistant',
+                        content: ''
+                    }
                 };
                 res.write(JSON.stringify(doneMessage) + '\n');
                 res.end();
