@@ -1003,14 +1003,26 @@ async function forwardToLiteLLM(url, openaiRequest, res, requestId, isStreaming)
                                 messageStartSent = true;
                             }
                             anthropicEvents.forEach(event => {
-                                // Write SSE event in Anthropic's exact format
-                                const eventString = `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`;
-                                res.write(eventString);
-                                // Log tool_use events for debugging
-                                if (event.type === 'content_block_start' && event.content_block?.type === 'tool_use') {
-                                    console.log(`[LiteLLM Proxy ${requestId}] ⚙️ TOOL_USE START:`, event.content_block.name);
+                                const eventType = event.type;
+                                // Determine what to send in the data field based on event type
+                                let eventData;
+                                if (eventType === 'message_start') {
+                                    // For message_start, data is the message object
+                                    eventData = event.message;
                                 }
-                                if (event.type === 'message_delta' && event.delta?.stop_reason === 'tool_use') {
+                                else {
+                                    // For other events, data is everything except type
+                                    const { type, ...rest } = event;
+                                    eventData = rest;
+                                }
+                                // Write SSE event in Anthropic's exact format
+                                res.write(`event: ${eventType}\n`);
+                                res.write(`data: ${JSON.stringify(eventData)}\n\n`);
+                                // Log tool_use events for debugging
+                                if (eventType === 'content_block_start' && eventData.content_block?.type === 'tool_use') {
+                                    console.log(`[LiteLLM Proxy ${requestId}] ⚙️ TOOL_USE START:`, eventData.content_block.name);
+                                }
+                                if (eventType === 'message_delta' && eventData.delta?.stop_reason === 'tool_use') {
                                     console.log(`[LiteLLM Proxy ${requestId}] 🛑 STOP_REASON: tool_use - Continue should execute tools now!`);
                                 }
                             });
