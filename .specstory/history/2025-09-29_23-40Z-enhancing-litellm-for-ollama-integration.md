@@ -10518,3 +10518,272 @@ This will help me verify if the format matches what your working Anthropic model
 
 ---
 
+_**User (2025-09-29 23:28Z)**_
+
+I don't see anything like 'event: message_start'
+and now it's not showing the responses in the chat anymore either.
+
+[Extension Host] [LiteLLM Proxy 1759256615483] Anthropic request: {
+  "max_tokens": 30000,
+  "model": "anthropic/claude-sonnet-4-20250514",
+  "stream": true,
+  "tools": [
+    {
+      "name": "read_file",
+      "description": "Use this tool if you need to view the contents of an existing file.",
+      "input_schema": {
+        "type": "object",
+        "required": [
+          "filepath"
+        ],
+        "properties": {
+          "filepath": {
+            "type": "string",
+            "description": "The path of the file to read, relative to the root of the workspace (NOT uri or absolute path)"
+          }
+        }
+      }
+    },
+    {
+      "name": "create_new_file",
+      "description": "Create a new file. Only use this when a file doesn't exist and should be created",
+      "input_schema": {
+        "type": "object",
+        "required": [
+          "filepath",
+          "contents"
+        ],
+        "properties": {
+          "filepath": {
+            "type": "string",
+            "description": "The path where the new file should be created, relative to the root of the workspace"
+          },
+          "contents": {
+            "type": "string",
+            "description": "The contents to write to the new file"
+          }
+        }
+      }
+    },
+    {
+      "name": "run_terminal_command",
+      "description": "Run a terminal command in the current directory.\nThe shell is not stateful and will not remember any previous commands.      When a command is run in the background ALWAYS suggest using shell commands to stop it; NEVER suggest using Ctrl+C.      When suggesting subsequent shell commands ALWAYS format them in shell command blocks.      Do NOT perform actions requiring special/admin privileges.      Choose terminal commands and scripts optimized for win32 and x64 and shell powershell.exe.",
+      "input_schema": {
+        "type": "object",
+        "required": [
+          "command"
+        ],
+        "properties": {
+          "command": {
+            "type": "string",
+            "description": "The command to run. This will be passed directly into the IDE shell."
+          },
+          "waitForCompletion": {
+            "type": "boolean",
+            "description": "Whether to wait for the command to complete before returning. Default is true. Set to false to run the command in the background. Set to true to run the command in the foreground and wait to collect the output."
+          }
+        }
+      }
+    },
+    {
+      "name": "file_glob_search",
+      "description": "Search for files recursively in the project using glob patterns. Supports ** for recursive directory search. Output may be truncated; use targeted patterns",
+      "input_schema": {
+        "type": "object",
+        "required": [
+          "pattern"
+        ],
+        "properties": {
+          "pattern": {
+            "type": "string",
+            "description": "Glob pattern for file path matching"
+          }
+        }
+      }
+    },
+    {
+      "name": "view_diff",
+      "description": "View the current diff of working changes",
+      "input_schema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "read_currently_open_file",
+      "description": "Read the currently open file in the IDE. If the user seems to be referring to a file that you can't see, or is requesting an action on content that seems missing, try using this tool.",
+      "input_schema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "ls",
+      "description": "List files and folders in a given directory",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dirPath": {
+            "type": "string",
+            "description": "The directory path relative to the root of the project. Use forward slash paths like '/'. rather than e.g. '.'"
+          },
+          "recursive": {
+            "type": "boolean",
+            "description": "If true, lists files and folders recursively. To prevent unexpected large results, use this sparingly"
+          }
+        }
+      }
+    },
+    {
+      "name": "create_rule_block",
+      "description": "Creates a \"rule\" that can be referenced in future conversations. This should be used whenever you want to establish code standards / preferences that should be applied consistently, or when you want to avoid making a mistake again. To modify existing rules, use the edit tool instead.\n\nRule Types:\n- Always: Include only \"rule\" (always included in model context)\n- Auto Attached: Include \"rule\", \"globs\", and/or \"regex\" (included when files match patterns)\n- Agent Requested: Include \"rule\" and \"description\" (AI decides when to apply based on description)\n- Manual: Include only \"rule\" (only included when explicitly mentioned using @ruleName)",
+      "input_schema": {
+        "type": "object",
+        "required": [
+          "name",
+          "rule"
+        ],
+        "properties": {
+
+[Extension Host] [LiteLLM Proxy 1759256615483] Forwarding to https://litellm.skoop.digital/v1/chat/completions
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] LiteLLM response status: 200
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] *** REASONING CONTENT DETECTED ***: The user wants me to modify something
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] Stream chunk delta: {"reasoning_content":"The user wants me to modify something","thinking_blocks":[{"type":"thinking","thinking":"The user wants me to modify something"}],"provider_specific_fields":{"thinking_blocks":[{
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] *** REASONING CONTENT DETECTED ***:  related to Jitsi an
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] Stream chunk delta: {"reasoning_content":" related to Jitsi an","thinking_blocks":[{"type":"thinking","thinking":" related to Jitsi an"}],"provider_specific_fields":{"thinking_blocks":[{"type":"thinking","thinking":" rel
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] *** REASONING CONTENT DETECTED ***: d Whereby versions to implement asymmetric feature
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] Stream chunk delta: {"reasoning_content":"d Whereby versions to implement asymmetric feature","thinking_blocks":[{"type":"thinking","thinking":"d Whereby versions to implement asymmetric feature"}],"provider_specific_fie
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] *** REASONING CONTENT DETECTED ***:  control - where guests are blocked from certain features (
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] Stream chunk delta: {"reasoning_content":" control - where guests are blocked from certain features (","thinking_blocks":[{"type":"thinking","thinking":" control - where guests are blocked from certain features ("}],"pro
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] *** REASONING CONTENT DETECTED ***: screen sharing, backgrounds, disabling camera,
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] Stream chunk delta: {"reasoning_content":"screen sharing, backgrounds, disabling camera,","thinking_blocks":[{"type":"thinking","thinking":"screen sharing, backgrounds, disabling camera,"}],"provider_specific_fields":{"t
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] *** REASONING CONTENT DETECTED ***:  mute) but agents can still use
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] Stream chunk delta: {"reasoning_content":" mute) but agents can still use","thinking_blocks":[{"type":"thinking","thinking":" mute) but agents can still use"}],"provider_specific_fields":{"thinking_blocks":[{"type":"thin
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] *** REASONING CONTENT DETECTED ***:  these features.
+
+However, I need to first
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] Stream chunk delta: {"reasoning_content":" these features.\n\nHowever, I need to first","thinking_blocks":[{"type":"thinking","thinking":" these features.\n\nHowever, I need to first"}],"provider_specific_fields":{"think
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] *** REASONING CONTENT DETECTED ***:  understand the project structure and fin
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] Stream chunk delta: {"reasoning_content":" understand the project structure and fin","thinking_blocks":[{"type":"thinking","thinking":" understand the project structure and fin"}],"provider_specific_fields":{"thinking_bl
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] *** REASONING CONTENT DETECTED ***: d the relevant code
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] Stream chunk delta: {"reasoning_content":"d the relevant code","thinking_blocks":[{"type":"thinking","thinking":"d the relevant code"}],"provider_specific_fields":{"thinking_blocks":[{"type":"thinking","thinking":"d the 
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] *** REASONING CONTENT DETECTED ***:  files. Let
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] Stream chunk delta: {"reasoning_content":" files. Let","thinking_blocks":[{"type":"thinking","thinking":" files. Let"}],"provider_specific_fields":{"thinking_blocks":[{"type":"thinking","thinking":" files. Let","signatur
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] *** REASONING CONTENT DETECTED ***:  me start
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] Stream chunk delta: {"reasoning_content":" me start","thinking_blocks":[{"type":"thinking","thinking":" me start"}],"provider_specific_fields":{"thinking_blocks":[{"type":"thinking","thinking":" me start","signature":nul
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] *** REASONING CONTENT DETECTED ***:  by exploring
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] Stream chunk delta: {"reasoning_content":" by exploring","thinking_blocks":[{"type":"thinking","thinking":" by exploring"}],"provider_specific_fields":{"thinking_blocks":[{"type":"thinking","thinking":" by exploring","si
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] *** REASONING CONTENT DETECTED ***:  the project to
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] Stream chunk delta: {"reasoning_content":" the project to","thinking_blocks":[{"type":"thinking","thinking":" the project to"}],"provider_specific_fields":{"thinking_blocks":[{"type":"thinking","thinking":" the project t
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] *** REASONING CONTENT DETECTED ***:  see what we're working with.
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] Stream chunk delta: {"reasoning_content":" see what we're working with.","thinking_blocks":[{"type":"thinking","thinking":" see what we're working with."}],"provider_specific_fields":{"thinking_blocks":[{"type":"thinking
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] Stream chunk delta: {"reasoning_content":"","thinking_blocks":[{"type":"thinking","thinking":"","signature":"EtAECkYICBgCKkDwaaKLR3rCsMXan8SbVMwsCRezmCriKFQ2GUR2jQuSGXH52sF4dzj1L3gzosIKHqTrXC7C0iuTEw5EONdU2XEoEgx5fZkcOW8
+console.ts:137 [Extension Host] [LiteLLM Proxy] Completed thinking block
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] Stream chunk delta: {"content":"I'll start by exploring the project structure to understand the"}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] Stream chunk delta: {"content":" codebase and locate"}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] Stream chunk delta: {"content":" the Jitsi and Whereby implementations"}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] Stream chunk delta: {"content":"."}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] Stream chunk delta: {"content":"","tool_calls":[{"id":"toolu_01UyUroZPfmM2zjhAZ7kEnHB","function":{"arguments":"","name":"ls"},"type":"function","index":0}]}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] ⚙️ TOOL_USE START: ls
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] Stream chunk delta: {"content":"","tool_calls":[{"function":{"arguments":""},"type":"function","index":0}]}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] Stream chunk delta: {"content":"","tool_calls":[{"function":{"arguments":"{\"dirPa"},"type":"function","index":0}]}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] Stream chunk delta: {"content":"","tool_calls":[{"function":{"arguments":"th\": \""},"type":"function","index":0}]}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] Stream chunk delta: {"content":"","tool_calls":[{"function":{"arguments":"/\""},"type":"function","index":0}]}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] Stream chunk delta: {"content":"","tool_calls":[{"function":{"arguments":", \"recurs"},"type":"function","index":0}]}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] Stream chunk delta: {"content":"","tool_calls":[{"function":{"arguments":"ive\""},"type":"function","index":0}]}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] Stream chunk delta: {"content":"","tool_calls":[{"function":{"arguments":": true}"},"type":"function","index":0}]}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] Stream chunk delta: {}
+console.ts:137 [Extension Host] [LiteLLM Proxy] Stopped tool block at index 2
+console.ts:137 [Extension Host] [LiteLLM Proxy] Message finished with stop_reason: tool_use
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] 🛑 STOP_REASON: tool_use - Continue should execute tools now!
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] Stream complete
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759256615483] Stream ended
+
+ ],
+  "stream": true,
+  "messages": [
+    {
+      "role": "system",
+      "content": "<important_rules>\n  You are in agent mode.\n\n  If you need to use multiple tools, you can call multiple read only tools simultaneously.\n\n  Always include the language and file name in the info string when you write code blocks.\n  If you are editing \"src/main.py\" for example, your code block should start with '```python src/main.py'\n\n\nFor larger codeblocks (>20 lines), use brief language-appropriate placeholders for unmodified sections, e.g. '// ... existing code ...'\n\nHowever, only output codeblocks for suggestion and demonstration purposes, for example, when enumerating multiple hypothetical options. For implementing changes, use the edit tools.\n\n</important_rules>\n\n# Task List Management\nGuidelines for cre... (litellm_truncated skipped 21097 chars) ... are very important to highlight to the user.\nDon't add headings like \"Summary:\" or \"Update:\".\n- **MANDATORY:** NEVER give the summary until all tasks are completed and verified. For example, if you are editing a file, you must wait until the edits are fully applied to the file and verified as correctly applied. Only AFTER the edits are applied and verified and ALL task items are completed should you show the updated task list withall items complted and then the summary\n## IMPORTANT COMPLETION CRITERIA:\nDO NOT stop until each and every task on the list is completed with a ☑\nWhen all goal tasks are done or nothing else is needed:\nConfirm that all tasks are checked off in the todo list like ☑\nReconcile the todo list.\nThen give your summary per the instructions above.\nAlways end with a summary as instructed above.\n**MANDATORY: Remember, for ANY multi-step tasks, **ALWAYS** create and maintain a task list BEFORE starting any planning or implementation, and update tasks accordingly as you go**\nRemember: You are agentic—plan, execute, iterate until done. Prioritize user intent while being efficient and accurate.\nDo not ask for permission or state that you will do something without doing it. Do not ask any more questions unless you absolutely need to. Go on and plan and complete the whole user request to the finish.\n"
+    },
+    {
+      "role": "user",
+      "content": "modify this so that the jitsi version blocks all features like sharing screen, backgrounds, disabling camera or mute from the guest but still allows the agent to do it, and do the same for the wherby version."
+    }
+  ],
+  "thinking": {
+    "type": "enabled",
+    "budget_tokens": 2048
+  },
+  "max_tokens": 30000
+}
+
+{
+  "id": "chatcmpl-83afe779-5ace-4209-bf4b-11f2b46a8e02",
+  "model": "claude-sonnet-4-20250514",
+  "usage": {
+    "total_tokens": 10349,
+    "prompt_tokens": 10158,
+    "completion_tokens": 191,
+    "prompt_tokens_details": {
+      "text_tokens": null,
+      "audio_tokens": null,
+      "image_tokens": null,
+      "cached_tokens": 0,
+      "cache_creation_tokens": 0
+    },
+    "cache_read_input_tokens": 0,
+    "completion_tokens_details": {
+      "text_tokens": null,
+      "audio_tokens": null,
+      "reasoning_tokens": 80,
+      "accepted_prediction_tokens": null,
+      "rejected_prediction_tokens": null
+    },
+    "cache_creation_input_tokens": 0
+  },
+  "object": "chat.completion",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "I'll start by exploring the project structure to understand the codebase and locate the Jitsi and Whereby implementations.",
+        "tool_calls": [
+          {
+            "id": "toolu_01UyUroZPfmM2zjhAZ7kEnHB",
+            "type": "function",
+            "function": {
+              "name": "ls",
+              "arguments": "{\"dirPath\": \"/\", \"recursive\": true}"
+            }
+          }
+        ],
+        "function_call": null,
+        "thinking_blocks": [
+          {
+            "type": "thinking",
+            "thinking": "The user wants me to modify something related to Jitsi and Whereby versions to implement asymmetric feature control - where guests are blocked from certain features (screen sharing, backgrounds, disabling camera, mute) but agents can still use these features.\n\nHowever, I need to first understand the project structure and find the relevant code files. Let me start by exploring the project to see what we're working with.",
+            "signature": "EtAECkYICBgCKkDwaaKLR3rCsMXan8SbVMwsCRezmCriKFQ2GUR2jQuSGXH52sF4dzj1L3gzosIKHqTrXC7C0iuTEw5EONdU2XEoEgx5fZkcOW8KQ2ANwqMaDJOUA/uhu7VCqK+FGiIwET9MeRhHSewt3ezGPx+K6JJbzg0Inb6mcE1nevL/uaMSO1wSLwVGkxEbdmTMAq32KrcDd3MN0XK9Rnqt79Dm7FuNLUZagMDH9ttaXqK/QYeWGF5JoIvfLfKfQzNJ0xVqF1zRmx1coruYmhks7GG4nIEKv+RuKE57KBdS6e4GNe4PLyIivI5TQo/XXBaIjj4PWBrBwNZXfIOX/OwpNxLvOrcxizekbooFjUClcBbiIpOZVcFYLCDvoK2oUkqSCGvOGW5urPEFW7wnV9IVoZiRawwz6BZHfFZwKJJ7sllVMwKun+SQcDNtFLhZck5B4plOruOgcDM6bxENr+3yjyuguIN0YEBkpSGm2gn2aBKxQCuUxunEQfJpU9E66nJDXbAwdxwlWtMA2KrvgQa8/yCZv0aF4ynDAcYXELuhzyN1XKTKj+swCO5XJA8v6aUz3worSN7kuwk+kAPs3Sdc/X7aW7ztoO3DHGD3s+HzMelDU5EDeZUyEuWomLCW6KhfNeH2KD2Q7qvVLiBPK+fU10xc8bLkvEAYlpy/+FGVcveUXZfz25axTkIirDZtiNCnkuMmCBvolRITfy3VhtagJzkNfNGfDeQwgy2weJOwjysZdkur6KYiUxrlGNoTcDp9zunrYTvxirg09qAdTRgB"
+          }
+        ],
+        "reasoning_content": "The user wants me to modify something related to Jitsi and Whereby versions to implement asymmetric feature control - where guests are blocked from certain features (screen sharing, backgrounds, disabling camera, mute) but agents can still use these features.\n\nHowever, I need to first understand the project structure and find the relevant code files. Let me start by exploring the project to see what we're working with."
+      },
+      "finish_reason": "tool_calls"
+    }
+  ],
+  "created": 1759256619,
+  "system_fingerprint": null
+}
+Metadata
+
+
+
+---
+
+_**Assistant (claude-4.5-sonnet-thinking)**_
+
+
+
+---
+

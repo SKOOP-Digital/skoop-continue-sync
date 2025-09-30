@@ -1279,6 +1279,9 @@ async function forwardToLiteLLM(
                                 messageStartSent = true;
                             }
                             
+                            // Log how many events we're about to send
+                            console.log(`[LiteLLM Proxy ${requestId}] 📤 Sending ${anthropicEvents.length} SSE events`);
+                            
                             anthropicEvents.forEach(event => {
                                 const eventType = event.type;
                                 
@@ -1294,8 +1297,11 @@ async function forwardToLiteLLM(
                                 }
                                 
                                 // Write SSE event in Anthropic's exact format
-                                res.write(`event: ${eventType}\n`);
-                                res.write(`data: ${JSON.stringify(eventData)}\n\n`);
+                                const sseEvent = `event: ${eventType}\ndata: ${JSON.stringify(eventData)}\n\n`;
+                                res.write(sseEvent);
+                                
+                                // Log every event being sent
+                                console.log(`[LiteLLM Proxy ${requestId}] 📨 SSE: event=${eventType}, data=${JSON.stringify(eventData).substring(0, 100)}`);
                                 
                                 // Log tool_use events for debugging
                                 if (eventType === 'content_block_start' && eventData.content_block?.type === 'tool_use') {
