@@ -1281,8 +1281,16 @@ async function forwardToLiteLLM(
                             
                             anthropicEvents.forEach(event => {
                                 // Write SSE event in Anthropic's exact format
-                                res.write(`event: ${event.type}\n`);
-                                res.write(`data: ${JSON.stringify(event)}\n\n`);
+                                const eventString = `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`;
+                                res.write(eventString);
+                                
+                                // Log tool_use events for debugging
+                                if (event.type === 'content_block_start' && event.content_block?.type === 'tool_use') {
+                                    console.log(`[LiteLLM Proxy ${requestId}] ⚙️ TOOL_USE START:`, event.content_block.name);
+                                }
+                                if (event.type === 'message_delta' && event.delta?.stop_reason === 'tool_use') {
+                                    console.log(`[LiteLLM Proxy ${requestId}] 🛑 STOP_REASON: tool_use - Continue should execute tools now!`);
+                                }
                             });
                         } catch (e) {
                             console.error(`[LiteLLM Proxy ${requestId}] Error parsing stream chunk:`, e);

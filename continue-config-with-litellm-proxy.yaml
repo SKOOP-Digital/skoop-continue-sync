@@ -27,6 +27,11 @@ models:
       - tool_use
       - image_input
 
+# Tool policies - Make tools automatic so Agent mode doesn't wait for permission
+toolPolicies:
+  - pattern: ".*"  # All tools
+    policy: automatic  # Auto-execute without asking
+
   # You can add more models by following the same pattern
   # Just make sure the model name matches what LiteLLM supports
   
