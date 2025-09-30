@@ -7804,71 +7804,51 @@ console.ts:137 [Extension Host] [LiteLLM Proxy 1759213221037] Stream ended
 
 its doing the thing again whee its not showingin the chat the responses
 
+Iam using the base url: apiBase: http://localhost:8009/v1
+
+and i'd liek to keep the streaming ability if possible.
+
 ---
 
 _**Assistant (claude-4.5-sonnet-thinking)**_
 
-<think><details><summary>Thought Process</summary>The user is saying that after switching to Anthropic format, it's still not showing responses in the Continue.dev chat, even though the logs show everything is working (thinking blocks detected, streaming working, etc.).
 
-The issue is likely with how we're formatting the Anthropic SSE (Server-Sent Events) response. Let me check what the actual Anthropic API format looks like and make sure we're following it correctly.
-
-Looking at the logs:
-- The proxy is receiving Anthropic requests correctly
-- Converting to OpenAI format correctly
-- Getting responses from LiteLLM with thinking blocks
-- Streaming thinking blocks
-
-But the response isn't appearing in Continue.dev chat.
-
-The problem is likely in how we're sending the SSE events. Anthropic uses a specific SSE format that Continue.dev expects. Let me look at the actual Anthropic API documentation to see the correct event format.
-
-Based on Anthropic's documentation, the SSE events should be:
-1. `message_start` - Start of message
-2. `content_block_start` - Start of a content block (text, thinking, tool_use)
-3. `content_block_delta` - Delta updates for the content block
-4. `content_block_stop` - End of a content block
-5. `message_delta` - Message-level updates (like stop_reason)
-6. `message_stop` - End of message
-
-I need to make sure we're sending the proper event structure.</details></think>
 
 ---
 
-I see the issue - we're sending Anthropic-style events, but we might not be formatting them correctly for Continue.dev's expectations. Let me check the Anthropic SSE event format and fix it:
+
 
 ---
 
-Tool use: **web_search**
 
-<details>
-            <summary>Searched web `Anthropic API SSE streaming event format message_start content_block_delta` • **1** results</summary>
-        
-| Title | URL | Chunk |
-|-------|-----|-------|
-| Web Search Results |  | LiteLLM, starting from version 1.63.0, introduces support for 'thinking' and 'reasoning content' across various providers, including Deepseek, Anthropic API, Bedrock, Vertex AI, OpenRouter, XAI, Google AI Studio, Perplexity, Mistral AI, and Groq. ([docs.litellm.ai](https://docs.litellm.ai/docs/reasoning_content?utm_source=openai))
-
-**Key Features:**
-
-- **Reasoning Content:** Standardizes the `reasoning_content` in responses and `thinking_blocks` in assistant messages.
-
-- **Tool Calling with `thinking`:** Enables the use of `thinking` blocks by Anthropic with tool calling.
-
-- **Model Compatibility:** Allows switching between Anthropic and Deepseek models by setting `drop_params=True` to drop 'thinking' blocks when necessary.
-
-- **Parameter Passing:** Supports passing the `thinking` parameter to Anthropic models.
-
-- **Model Support Check:** Provides a utility function `litellm.supports_reasoning(model="")` to check if a model supports reasoning.
-
-For detailed implementation examples and further information, refer to the LiteLLM documentation on 'Thinking' / 'Reasoning Content'. ([docs.litellm.ai](https://docs.litellm.ai/docs/reasoning_content?utm_source=openai))  |
-
-</details>
 
 ---
 
-<think><details><summary>Thought Process</summary>The web search didn't give me the specific Anthropic SSE format. Let me think about what might be wrong. Looking at the logs again, I can see:
 
-1. The proxy is receiving requests correctly
-2. Converting to OpenAI correctly</details></think>
+
+---
+
+
+
+---
+
+
+
+---
+
+
+
+---
+
+
+
+---
+
+
+
+---
+
+
 
 ---
 

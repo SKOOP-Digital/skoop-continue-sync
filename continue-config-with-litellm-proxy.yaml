@@ -9,7 +9,7 @@ models:
   - name: "claude-sonnet-4"
     provider: anthropic  # Use anthropic provider for native thinking support!
     model: anthropic/claude-sonnet-4-20250514
-    apiBase: http://localhost:8009  # Continue adds /messages automatically
+    apiBase: http://localhost:8009
     apiKey: "dummy"  # Not used but required by Continue.dev
     roles:
       - chat

@@ -256,7 +256,7 @@ Agents:
         provider: anthropic
         model: anthropic/claude-sonnet-4-20250514
         apiKey: "{{ $node["Webhook"].json["headers"]["apikey"] }}"
-        apiBase: http://localhost:8009/
+        apiBase: http://localhost:8009/v1
         roles:
           - chat
           - edit
