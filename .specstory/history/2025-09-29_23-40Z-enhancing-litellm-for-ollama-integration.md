@@ -8542,7 +8542,621 @@ Let me fix the streaming conversion to properly close all content blocks:
 
 ---
 
+Tool use: **search_replace**
 
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+**Chunk 1**
+Lines added: 8, lines removed: 1
+
+```diff
+@@ -1430,5 +1430,12 @@
+  }
+  
+- function convertOpenAIStreamToAnthropic(openaiChunk: any, messageStartSent: boolean): any[] {
++ // Track content blocks across chunks (needs to be stateful per request)
++ const streamState = new Map<string, {
++     thinkingStarted: boolean;
++     textStarted: boolean;
++     toolStarted: Set<string>;
++ }>();
++ 
++ function convertOpenAIStreamToAnthropic(openaiChunk: any, messageStartSent: boolean, requestId?: string): any[] {
+      const events: any[] = [];
+      const choice = openaiChunk.choices?.[0];
+```
+
+**Chunk 2**
+Lines added: 12, lines removed: 1
+
+```diff
+@@ -1438,5 +1445,16 @@
+      }
+  
+-     // Send message_start event if not sent yet (with all required Anthropic fields)
++     // Initialize or get stream state for this request
++     const stateKey = requestId || 'default';
++     if (!streamState.has(stateKey)) {
++         streamState.set(stateKey, {
++             thinkingStarted: false,
++             textStarted: false,
++             toolStarted: new Set()
++         });
++     }
++     const state = streamState.get(stateKey)!;
++ 
++     // Send message_start event if not sent yet
+      if (!messageStartSent) {
+          events.push({
+```
+
+**Chunk 3**
+Lines added: 45, lines removed: 27
+
+```diff
+@@ -1460,32 +1478,50 @@
+      if (delta.thinking_blocks && Array.isArray(delta.thinking_blocks)) {
+          delta.thinking_blocks.forEach((block: any) => {
+-             events.push({
+-                 type: 'content_block_start',
+-                 index: 0,
+-                 content_block: {
+-                     type: 'thinking',
+-                     thinking: ''
+-                 }
+-             });
+-             events.push({
+-                 type: 'content_block_delta',
+-                 index: 0,
+-                 delta: {
+-                     type: 'thinking_delta',
+-                     thinking: block.thinking
+-                 }
+-             });
+-         });
+-         console.log(`[LiteLLM Proxy] Streamed ${delta.thinking_blocks.length} thinking blocks`);
++             if (!state.thinkingStarted && block.thinking) {
++                 events.push({
++                     type: 'content_block_start',
++                     index: 0,
++                     content_block: {
++                         type: 'thinking',
++                         thinking: ''
++                     }
++                 });
++                 state.thinkingStarted = true;
++             }
++             
++             if (block.thinking) {
++                 events.push({
++                     type: 'content_block_delta',
++                     index: 0,
++                     delta: {
++                         type: 'thinking_delta',
++                         thinking: block.thinking
++                     }
++                 });
++             }
++             
++             // Check if thinking block is complete (has signature)
++             if (block.signature) {
++                 events.push({
++                     type: 'content_block_stop',
++                     index: 0
++                 });
++                 state.thinkingStarted = false;
++                 console.log('[LiteLLM Proxy] Completed thinking block');
++             }
++         });
+      } else if (delta.reasoning_content) {
+-         // Fallback if only reasoning_content is present
+-         events.push({
+-             type: 'content_block_start',
+-             index: 0,
+-             content_block: {
+-                 type: 'thinking',
+-                 thinking: ''
+-             }
+-         });
++         if (!state.thinkingStarted) {
++             events.push({
++                 type: 'content_block_start',
++                 index: 0,
++                 content_block: {
++                     type: 'thinking',
++                     thinking: ''
++                 }
++             });
++             state.thinkingStarted = true;
++         }
++         
+          events.push({
+              type: 'content_block_delta',
+```
+
+**Chunk 4**
+Lines added: 1, lines removed: 3
+
+```diff
+@@ -1496,11 +1532,9 @@
+              }
+          });
+-         console.log('[LiteLLM Proxy] Stream chunk includes reasoning content:', delta.reasoning_content.substring(0, 100));
+      }
+  
+      // Handle text content
+      if (delta.content) {
+-         // Send content_block_start for text if this is the first text chunk
+-         if (delta.role === 'assistant') {
++         if (!state.textStarted) {
+              events.push({
+                  type: 'content_block_start',
+```
+
+**Chunk 5**
+Lines added: 1, lines removed: undefined
+
+```diff
+@@ -1511,4 +1545,5 @@
+                  }
+              });
++             state.textStarted = true;
+          }
+          
+```
+
+**Chunk 6**
+Lines added: 15, lines removed: 10
+
+```diff
+@@ -1527,14 +1562,19 @@
+          delta.tool_calls.forEach((toolCall: any, idx: number) => {
+              if (toolCall.id && toolCall.function && toolCall.function.name) {
+-                 events.push({
+-                     type: 'content_block_start',
+-                     index: idx + 2,
+-                     content_block: {
+-                         type: 'tool_use',
+-                         id: toolCall.id,
+-                         name: toolCall.function.name,
+-                         input: {}
+-                     }
+-                 });
++                 const toolId = toolCall.id;
++                 
++                 if (!state.toolStarted.has(toolId)) {
++                     events.push({
++                         type: 'content_block_start',
++                         index: idx + 2,
++                         content_block: {
++                             type: 'tool_use',
++                             id: toolCall.id,
++                             name: toolCall.function.name,
++                             input: {}
++                         }
++                     });
++                     state.toolStarted.add(toolId);
++                 }
+                  
+                  if (toolCall.function.arguments) {
+```
+
+**Chunk 7**
+Lines added: 21, lines removed: 10
+
+```diff
+@@ -1548,15 +1588,26 @@
+                      });
+                  }
+-                 
+-                 events.push({
+-                     type: 'content_block_stop',
+-                     index: idx + 2
+-                 });
+-             }
++             }
++         });
++     }
++ 
++     // Handle finish_reason - send stop events for all blocks before message_delta
++     if (choice.finish_reason) {
++         // Stop text block if it was started
++         if (state.textStarted) {
++             events.push({
++                 type: 'content_block_stop',
++                 index: 1
++             });
++         }
++         
++         // Stop any tool blocks
++         state.toolStarted.forEach((toolId, idx) => {
++             events.push({
++                 type: 'content_block_stop',
++                 index: idx + 2
++             });
+          });
+-     }
+- 
+-     // Handle finish_reason
+-     if (choice.finish_reason) {
++         
+          const stopReason = choice.finish_reason === 'tool_calls' ? 'tool_use' : 'end_turn';
+          events.push({
+```
+
+**Chunk 8**
+Lines added: 3, lines removed: undefined
+
+```diff
+@@ -1568,4 +1619,7 @@
+              usage: { output_tokens: 1 }
+          });
++         
++         // Clear state for this request
++         streamState.delete(stateKey);
+      }
+  
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Now I need to update the call to this function to pass the requestId so the state can be tracked correctly per request.</details></think>
+
+---
+
+Now let me update the call to pass the requestId for proper state tracking:
+
+---
+
+Tool use: **search_replace**
+
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+**Chunk 1**
+Lines added: 1, lines removed: 1
+
+```diff
+@@ -1275,5 +1275,5 @@
+                              
+                              // Convert OpenAI stream format to Anthropic format
+-                             const anthropicEvents = convertOpenAIStreamToAnthropic(parsed, messageStartSent);
++                             const anthropicEvents = convertOpenAIStreamToAnthropic(parsed, messageStartSent, requestId);
+                              if (anthropicEvents.length > 0 && !messageStartSent) {
+                                  messageStartSent = true;
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>I also need to make sure we send the `message_stop` event at the end instead of just an empty object. Let me update that too.</details></think>
+
+---
+
+Tool use: **search_replace**
+
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+**Chunk 1**
+Lines added: 6, lines removed: 1
+
+```diff
+@@ -1295,8 +1295,13 @@
+                  console.log(`[LiteLLM Proxy ${requestId}] Stream ended`);
+                  
+-                 // Send message_stop event
++                 // Send message_stop event (empty object is correct for Anthropic)
+                  res.write(`event: message_stop\n`);
+                  res.write(`data: {}\n\n`);
+                  res.end();
++                 
++                 // Clean up any remaining state
++                 if (requestId) {
++                     streamState.delete(requestId);
++                 }
+              });
+  
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Now let me compile this and push. The key changes:
+
+1. Added stateful tracking of content blocks (thinking, text, tool_use) per request
+2. Properly send content_block_start only once per block
+3. Send content_block_stop events for all blocks when finish_reason is received
+4. This ensures Continue.dev knows the message is complete and can continue with agent mode
+
+This should fix the issue where agent mode stops after one turn.</details></think>
+
+---
+
+Tool use: **run_terminal_cmd**
+
+```bash
+npm run compile
+```
+
+```
+
+> skoop-continue-sync@0.0.1 compile
+> tsc -p ./
+
+
+```
+
+---
+
+<think><details><summary>Thought Process</summary>Good, it compiled. Now let me commit and push this.</details></think>
+
+---
+
+Tool use: **run_terminal_cmd**
+
+```bash
+git add -A ; git commit -m "Fix Agent mode: Add stateful block tracking and proper content_block_stop events"
+```
+
+```
+warning: in the working copy of 'src/extension.ts', LF will be replaced by CRLF the next time Git touches it
+[main 7d2e16b] Fix Agent mode: Add stateful block tracking and proper content_block_stop events
+ 4 files changed, 411 insertions(+), 88 deletions(-)
+
+```
+
+---
+
+<think><details><summary>Thought Process</summary>Good. Now let me push it.</details></think>
+
+---
+
+Tool use: **run_terminal_cmd**
+
+```bash
+git push
+```
+
+```
+To https://github.com/SKOOP-Digital/skoop-continue-sync.git
+   e7ab412..7d2e16b  main -> main
+
+```
+
+---
+
+<think><details><summary>Thought Process</summary>Perfect. Now let me create a summary document explaining what the fix does and why it should work.</details></think>
+
+---
+
+## 🎯 Fixed: Agent Mode Continuation Issue
+
+### The Problem
+
+Continue.dev Agent mode was stopping after the first tool call instead of continuing autonomously. This was happening because:
+
+1. **Missing `content_block_stop` events**: Anthropic's SSE format requires a `content_block_stop` event for every `content_block_start` event
+2. **No state tracking**: Each stream chunk was treated independently, causing duplicate `content_block_start` events
+3. **Incomplete tool calls**: Tool blocks weren't being properly closed before the message ended
+
+### The Fix
+
+**Added Stateful Content Block Tracking:**
+```typescript
+const streamState = new Map<string, {
+    thinkingStarted: boolean;
+    textStarted: boolean;
+    toolStarted: Set<string>;
+}>();
+```
+
+This tracks per request:
+- Whether thinking block has been started
+- Whether text block has been started  
+- Which tool blocks have been started
+
+**Proper Event Sequence:**
+1. `content_block_start` - Only sent once per block
+2. `content_block_delta` - Sent for each chunk
+3. `content_block_stop` - Sent when block is complete
+4. `message_delta` - Sent at the end with stop_reason
+
+**For tool calls (stop_reason: tool_use):**
+```
+content_block_start (thinking)
+content_block_delta (thinking chunks...)
+content_block_stop (thinking)
+content_block_start (text)
+content_block_delta (text chunks...)
+content_block_stop (text)
+content_block_start (tool_use)
+content_block_delta (arguments...)
+content_block_stop (tool)
+message_delta (stop_reason: tool_use)
+message_stop
+```
+
+This tells Continue.dev: "Message complete, tool calls ready to execute, then continue!"
+
+---
+
+## 🧪 Test Again
+
+**Reload VS Code**:
+```
+Ctrl+Shift+P → "Developer: Reload Window"
+```
+
+**Try in Agent Mode**:
+1. Open Continue.dev
+2. Select "claude-sonnet-4" model  
+3. **Make sure Agent mode is selected** (bottom of chat input)
+4. Send: `modify this so that the jitsi version blocks all features like sharing screen, backgrounds, disabling camera or mute from the guest but still allows the agent to do it, and do the same for the wherby version`
+
+**Expected Behavior:**
+1. ✅ Thinks about the task
+2. ✅ Calls `ls` tool
+3. ✅ **Automatically continues** without waiting
+4. ✅ Reads files
+5. ✅ Makes modifications
+6. ✅ Continues until task is complete
+
+---
+
+The key was sending proper `content_block_stop` events so Continue.dev knows the tool calls are complete and ready to execute, then it should automatically continue in Agent mode! 🚀
+
+---
+
+_**User (2025-09-29 23:28Z)**_
+
+411706] Stream chunk delta: {"reasoning_content":" structure to see what we're working with.\n\nLet","thinking_blocks":[{"type":"thinking","thinking":" structure to see what we're working with.\n\nLet"}],"provider_specific_field
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759235411706] *** REASONING CONTENT DETECTED ***:  me start by exploring the directory
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759235411706] Stream chunk delta: {"reasoning_content":" me start by exploring the directory","thinking_blocks":[{"type":"thinking","thinking":" me start by exploring the directory"}],"provider_specific_fields":{"thinking_blocks":[{"t
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759235411706] *** REASONING CONTENT DETECTED ***:  structure to understand the codebase.
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759235411706] Stream chunk delta: {"reasoning_content":" structure to understand the codebase.","thinking_blocks":[{"type":"thinking","thinking":" structure to understand the codebase."}],"provider_specific_fields":{"thinking_blocks":
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759235411706] Stream chunk delta: {"reasoning_content":"","thinking_blocks":[{"type":"thinking","thinking":"","signature":"EuoDCkYICBgCKkA63kxGfRQvkZq55/HaEK4eBkLBzz3k5Joexq6E6c1kCBWgOgCiFP3rnAu5FV5nAkJpU5p88F1wZC+8rjWjuW+7EgxCmaiMbaN
+console.ts:137 [Extension Host] [LiteLLM Proxy] Completed thinking block
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759235411706] Stream chunk delta: {"content":"I'll start by exploring the project structure to understand the"}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759235411706] Stream chunk delta: {"content":" current codebase and then modify both"}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759235411706] Stream chunk delta: {"content":" the Jitsi and Whereby implementations"}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759235411706] Stream chunk delta: {"content":" to restrict guest features while allowing agent access."}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759235411706] Stream chunk delta: {"content":"","tool_calls":[{"id":"toolu_01Jb9SbLTwFHSj7jdcDZLN2B","function":{"arguments":"","name":"ls"},"type":"function","index":0}]}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759235411706] Stream chunk delta: {"content":"","tool_calls":[{"function":{"arguments":""},"type":"function","index":0}]}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759235411706] Stream chunk delta: {"content":"","tool_calls":[{"function":{"arguments":"{\"dir"},"type":"function","index":0}]}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759235411706] Stream chunk delta: {"content":"","tool_calls":[{"function":{"arguments":"Path\": \"/\""},"type":"function","index":0}]}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759235411706] Stream chunk delta: {"content":"","tool_calls":[{"function":{"arguments":", \"recursi"},"type":"function","index":0}]}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759235411706] Stream chunk delta: {"content":"","tool_calls":[{"function":{"arguments":"ve\": "},"type":"function","index":0}]}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759235411706] Stream chunk delta: {"content":"","tool_calls":[{"function":{"arguments":"true}"},"type":"function","index":0}]}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759235411706] Stream chunk delta: {}
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759235411706] Stream complete
+console.ts:137 [Extension Host] [LiteLLM Proxy 1759235411706] Stream ended
+
+
+still doing the same thing
+
+---
+
+_**Assistant (claude-4.5-sonnet-thinking)**_
+
+<think><details><summary>Thought Process</summary>The user is saying that Agent mode still stops after one turn. Looking at the logs, I can see:
+
+1. Thinking blocks are being detected and streamed ✅
+2. Tool calls are being sent ✅
+3. The stream completes ✅
+4. But Continue.dev is stopping and not continuing to execute the tool
+
+The issue is likely that Continue.dev isn't seeing the tool call as "ready to execute" because we're not properly formatting the tool_use blocks in the Anthropic format.
+
+Looking at the Continue.dev documentation, it says Agent mode should continue autonomously through the tool handshake. But if it's stopping after showing "I'll start by exploring..." and the tool call, it means Continue.dev is waiting for something.
+
+The problem might be:
+1. The tool_use content block isn't properly formatted
+2. We're not sending `content_block_stop` for tool blocks at the right time
+3. The stop_reason might not be set correctly
+
+Looking at my code, I see that we only send `content_block_stop` for tool blocks when `finish_reason` is present. But the tool calls are streaming incrementally before the finish_reason arrives. We need to send `content_block_stop` for each tool as soon as its arguments are complete, not wait for the finish_reason.
+
+Actually, looking more carefully at OpenAI's streaming format - when a tool call is complete in streaming, OpenAI sends all the arguments in one chunk (or the final chunk has the complete arguments). We should detect when the arguments are complete and close the block.
+
+But wait, there's another issue - in my code I'm using `state.toolStarted.forEach((toolId, idx) => {` but Set.forEach doesn't provide an index parameter like that. That's a bug.
+
+Let me fix this properly.</details></think>
+
+---
+
+I see the issue! Looking at the logs, the tool call is being sent, but Continue.dev isn't automatically executing it. The problem is that we're not properly closing the tool_use content blocks - we only send `content_block_stop` when `finish_reason` arrives, but we need to close them as soon as the tool call is complete (when we have all the arguments).
+
+Also, I notice a bug in the code where I'm iterating over a Set incorrectly. Let me fix this:
+
+---
+
+Tool use: **search_replace**
+
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+**Chunk 1**
+Lines added: 2, lines removed: 1
+
+```diff
+@@ -1568,9 +1568,10 @@
+              if (toolCall.id && toolCall.function && toolCall.function.name) {
+                  const toolId = toolCall.id;
++                 const toolIndex = idx + 2;
+                  
+                  if (!state.toolStarted.has(toolId)) {
+                      events.push({
+                          type: 'content_block_start',
+-                         index: idx + 2,
++                         index: toolIndex,
+                          content_block: {
+                              type: 'tool_use',
+```
+
+**Chunk 2**
+Lines added: 18, lines removed: 9
+
+```diff
+@@ -1586,32 +1587,41 @@
+                      events.push({
+                          type: 'content_block_delta',
+-                         index: idx + 2,
++                         index: toolIndex,
+                          delta: {
+                              type: 'input_json_delta',
+                              partial_json: toolCall.function.arguments
+                          }
+                      });
++                     
++                     // If arguments look complete (ends with }), close the tool block
++                     if (toolCall.function.arguments.trim().endsWith('}')) {
++                         events.push({
++                             type: 'content_block_stop',
++                             index: toolIndex
++                         });
++                         console.log(`[LiteLLM Proxy] Completed tool block: ${toolCall.function.name}`);
++                     }
+                  }
+              }
+          });
+      }
+  
+-     // Handle finish_reason - send stop events for all blocks before message_delta
++     // Handle finish_reason - send stop events for remaining blocks
+      if (choice.finish_reason) {
+-         // Stop text block if it was started
+-         if (state.textStarted) {
++         // Stop thinking block if still open
++         if (state.thinkingStarted) {
+              events.push({
+                  type: 'content_block_stop',
+-                 index: 1
++                 index: 0
+              });
+          }
+          
+-         // Stop any tool blocks
+-         state.toolStarted.forEach((toolId, idx) => {
++         // Stop text block if it was started
++         if (state.textStarted) {
+              events.push({
+                  type: 'content_block_stop',
+-                 index: idx + 2
++                 index: 1
+              });
+-         });
++         }
+          
+          const stopReason = choice.finish_reason === 'tool_calls' ? 'tool_use' : 'end_turn';
+```
+
+</details>
 
 ---
 

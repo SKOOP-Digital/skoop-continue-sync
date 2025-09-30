@@ -1567,11 +1567,12 @@ function convertOpenAIStreamToAnthropic(openaiChunk: any, messageStartSent: bool
         delta.tool_calls.forEach((toolCall: any, idx: number) => {
             if (toolCall.id && toolCall.function && toolCall.function.name) {
                 const toolId = toolCall.id;
+                const toolIndex = idx + 2;
                 
                 if (!state.toolStarted.has(toolId)) {
                     events.push({
                         type: 'content_block_start',
-                        index: idx + 2,
+                        index: toolIndex,
                         content_block: {
                             type: 'tool_use',
                             id: toolCall.id,
@@ -1585,7 +1586,7 @@ function convertOpenAIStreamToAnthropic(openaiChunk: any, messageStartSent: bool
                 if (toolCall.function.arguments) {
                     events.push({
                         type: 'content_block_delta',
-                        index: idx + 2,
+                        index: toolIndex,
                         delta: {
                             type: 'input_json_delta',
                             partial_json: toolCall.function.arguments
@@ -1598,6 +1599,14 @@ function convertOpenAIStreamToAnthropic(openaiChunk: any, messageStartSent: bool
 
     // Handle finish_reason - send stop events for all blocks before message_delta
     if (choice.finish_reason) {
+        // Stop thinking block if still open
+        if (state.thinkingStarted) {
+            events.push({
+                type: 'content_block_stop',
+                index: 0
+            });
+        }
+        
         // Stop text block if it was started
         if (state.textStarted) {
             events.push({
@@ -1606,12 +1615,15 @@ function convertOpenAIStreamToAnthropic(openaiChunk: any, messageStartSent: bool
             });
         }
         
-        // Stop any tool blocks
-        state.toolStarted.forEach((toolId, idx) => {
+        // Stop all tool blocks
+        let toolIdx = 0;
+        state.toolStarted.forEach(() => {
             events.push({
                 type: 'content_block_stop',
-                index: idx + 2
+                index: toolIdx + 2
             });
+            console.log(`[LiteLLM Proxy] Stopped tool block at index ${toolIdx + 2}`);
+            toolIdx++;
         });
         
         const stopReason = choice.finish_reason === 'tool_calls' ? 'tool_use' : 'end_turn';
@@ -1623,6 +1635,8 @@ function convertOpenAIStreamToAnthropic(openaiChunk: any, messageStartSent: bool
             },
             usage: { output_tokens: 1 }
         });
+        
+        console.log(`[LiteLLM Proxy] Message finished with stop_reason: ${stopReason}`);
         
         // Clear state for this request
         streamState.delete(stateKey);
