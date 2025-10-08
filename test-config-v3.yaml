@@ -53,7 +53,7 @@ Agents:
         model: "nate/instinct"
         apiBase: "http://localhost:1234/v1/"
         roles:
-          - "autocomplete"
+          - autocomplete
         defaultCompletionOptions:
           temperature: 0.1
           maxTokens: 1024
