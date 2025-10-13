@@ -59,7 +59,7 @@ The extension includes automatic update checking to keep your installation curre
 You can configure auto-update behavior in VS Code settings:
 
 - `Skoop Continue Sync: Enable Auto Updates` - Enable/disable automatic update checks
-- `Skoop Continue Sync: Update Check Interval` - Set check frequency (10-3600 seconds)
+- `Skoop Continue Sync: Refresh Interval` - Set check frequency for both config and extension updates (10-3600 seconds)
 - `Skoop Continue Sync: Check For Updates` - Manually trigger an update check
 - `Skoop Continue Sync: Install Update` - Install available updates
 

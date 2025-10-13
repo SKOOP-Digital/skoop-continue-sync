@@ -108,12 +108,12 @@
           "default": true,
           "description": "Enable automatic checking for extension updates"
         },
-        "skoop-continue-sync.updateCheckInterval": {
+        "skoop-continue-sync.refreshInterval": {
           "type": "number",
           "default": 10,
           "minimum": 10,
           "maximum": 3600,
-          "description": "Interval in seconds between update checks (minimum 10 seconds)"
+          "description": "Interval in seconds between automatic refresh checks for both config and extension updates (minimum 10 seconds)"
         },
         "skoop-continue-sync.checkForUpdates": {
           "type": "boolean",
