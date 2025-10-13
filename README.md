@@ -31,7 +31,7 @@ After installation, you need to configure your team API key in VS Code settings:
 1.  Open VS Code Settings (`Ctrl+,`).
 2.  Search for `Skoop Continue Sync`.
 3.  In the `Skoop-continue-sync: Api Key` field, enter the key provided to you.
-4.  Run the "Apply Team Continue Settings" command from the Command Palette (`Ctrl+Shift+P`).
+4.  Run the "Apply Team Continue Settings" command from the settings or command palette (`Ctrl+Shift+P`).
 
 ### Team Keys
 

@@ -40,6 +40,14 @@
       {
         "command": "skoop-continue-sync.clearAllConfigs",
         "title": "Clear All Continue Configurations"
+      },
+      {
+        "command": "skoop-continue-sync.checkForUpdates",
+        "title": "Check for Extension Updates"
+      },
+      {
+        "command": "skoop-continue-sync.installUpdate",
+        "title": "Install Extension Update"
       }
     ],
     "keybindings": [
@@ -53,6 +61,18 @@
         "command": "skoop-continue-sync.clearAllConfigs",
         "key": "ctrl+shift+s ctrl+shift+c",
         "mac": "cmd+shift+s cmd+shift+c",
+        "when": "workspaceFolderCount != 0"
+      },
+      {
+        "command": "skoop-continue-sync.checkForUpdates",
+        "key": "ctrl+shift+s ctrl+shift+u",
+        "mac": "cmd+shift+s cmd+shift+u",
+        "when": "workspaceFolderCount != 0"
+      },
+      {
+        "command": "skoop-continue-sync.installUpdate",
+        "key": "ctrl+shift+s ctrl+shift+i",
+        "mac": "cmd+shift+s cmd+shift+i",
         "when": "workspaceFolderCount != 0"
       }
     ],
@@ -74,6 +94,28 @@
           "type": "boolean",
           "default": false,
           "description": "Set to true to clear all Continue configurations (will reset to false after clearing)"
+        },
+        "skoop-continue-sync.enableAutoUpdates": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable automatic checking for extension updates"
+        },
+        "skoop-continue-sync.updateCheckInterval": {
+          "type": "number",
+          "default": 10,
+          "minimum": 10,
+          "maximum": 3600,
+          "description": "Interval in seconds between update checks (minimum 10 seconds)"
+        },
+        "skoop-continue-sync.checkForUpdates": {
+          "type": "boolean",
+          "default": false,
+          "description": "Set to true to manually check for extension updates (will reset to false after checking)"
+        },
+        "skoop-continue-sync.installUpdate": {
+          "type": "boolean",
+          "default": false,
+          "description": "Set to true to install available extension update (will reset to false after installation)"
         }
       }
     }

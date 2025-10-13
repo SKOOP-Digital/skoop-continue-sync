@@ -669,7 +669,234 @@ Lines added: 2, lines removed: undefined
 
 ---
 
-<think><details><summary>Thought Process</summary>The permissions should be added. But let me also check the repository URL in package.json to make sure it's pointing to the right repository. The user mentioned "SKOOP-Digital" in their question, but</details></think>
+<think><details><summary>Thought Process</summary>The permissions should be added. But let me also check the repository URL in package.json to make sure it's pointing to the right repository. The user mentioned "SKOOP-Digital" in their question, but the package.json might still have "JoshS".</details></think>
+
+---
+
+Tool use: **read_file**
+
+Read file: package.json
+
+---
+
+<think><details><summary>Thought Process</summary>The repository URL is still pointing to "JoshS/skoop-continue-sync" but the user mentioned "SKOOP-Digital/skoop-continue-sync". This could be causing issues if the workflow is running in a different repository. However, the main issue is likely the permissions.
+</details></think>
+
+---
+
+Tool use: **search_replace**
+
+
+<details><summary>Edit file: package.json</summary>
+
+**Chunk 1**
+Lines added: 1, lines removed: 1
+
+```diff
+@@ -6,5 +6,5 @@
+    "repository": {
+      "type": "git",
+-     "url": "https://github.com/JoshS/skoop-continue-sync"
++     "url": "https://github.com/SKOOP-Digital/skoop-continue-sync"
+    },
+    "engines": {
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>The permissions fix should resolve the 403 error. However, if the issue persists, there are a few other potential causes:
+
+
+## Investigating Persistent Issues  
+- The 403 error may persist even after fixing permissions, indicating other potential causes.</details></think>
+
+---
+
+Tool use: **search_replace**
+
+
+<details><summary>Edit file: .github/workflows/build.yml</summary>
+
+**Chunk 1**
+Lines added: 2, lines removed: 1
+
+```diff
+@@ -11,5 +11,6 @@
+      runs-on: ubuntu-latest
+      permissions:
+-       contents: write  # Required to create releases
++       contents: write  # Required to create releases and upload assets
++       issues: write    # Required for generating release notes
+  
+      steps:
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>I've added the necessary permissions. Now let me provide some additional troubleshooting information for the user in case this still doesn't work. The issue could also be:
+</details></think>
+
+---
+
+Perfect! I've fixed the permissions issue and updated the repository URL. The 403 error was caused by insufficient permissions for the `GITHUB_TOKEN`. Here's what I changed:
+
+## ✅ **Fixed Permissions**
+Added the necessary permissions to the workflow:
+```yaml
+permissions:
+  contents: write  # Required to create releases and upload assets
+  issues: write    # Required for generating release notes
+```
+
+## ✅ **Updated Repository URL**
+Changed the repository URL in `package.json` to match your SKOOP-Digital repository.
+
+## 🔧 **If You Still Get 403 Errors**
+
+If the permissions fix doesn't resolve it, try these troubleshooting steps:
+
+### **Option 1: Check Repository Settings**
+1. Go to your repository settings → **Actions** → **General**
+2. Under "Workflow permissions", make sure "Read and write permissions" is selected
+3. Check if there are any branch protection rules preventing releases
+
+### **Option 2: Use a Personal Access Token**
+If the above doesn't work, you can use a Personal Access Token instead:
+
+1. Create a [Personal Access Token](https://github.com/settings/tokens) with `repo` scope
+2. Add it as a repository secret named `RELEASE_TOKEN`
+3. Update the workflow to use the token:
+
+```yaml
+- name: Create GitHub Release
+  if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+  uses: softprops/action-gh-release@v1
+  with:
+    tag_name: v${{ github.run_number }}
+    name: Release ${{ github.run_number }}
+    body: |
+      Automated release ${{ github.run_number }}
+
+      ## Changes
+      - Automated build from commit ${{ github.sha }}
+    files: skoop-continue-sync.vsix
+    generate_release_notes: true
+  env:
+    GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+```
+
+### **Option 3: Verify Repository Context**
+Make sure the workflow is running in the `SKOOP-Digital/skoop-continue-sync` repository, not the `JoshS` one.
+
+## 📋 **Current Status**
+
+With the permissions added, your workflow should now:
+1. ✅ Build and package the extension
+2. ✅ Rename to static filename `skoop-continue-sync.vsix`  
+3. ✅ Create a new release automatically on pushes to `main`
+4. ✅ Upload the `.vsix` file to the release
+5. ✅ Make it available at: `https://github.com/SKOOP-Digital/skoop-continue-sync/releases/latest/download/skoop-continue-sync.vsix`
+
+Try pushing to the `main` branch again and the release creation should work! 🎉
+
+---
+
+_**User (2025-10-13 13:04Z)**_
+
+Ok, now can you add an auto update  functionality, something where it checks for any new version of the extension from the repo on the same interval as the configuration checks, (currently 10 seconds which I will raise after testing) and if it finds one it installs or asks to install, and then if needed asks to restart the extensions or vscode or whatever is needed. It should ask this as a popup type notification. You should also add some check for updates button / install updates button or similar in the extension settings 
+
+---
+
+_**Assistant (grok-code-fast-1)**_
+
+<think><details><summary>Thought Process</summary>The user wants me to add auto-update functionality to the VS Code extension. This is quite complex and involves several parts:
+
+
+## Planning auto-update feature
+
+- The task is to add auto-update functionality to the VS Code extension, which involves multiple components.
+- This includes checking for new versions from the repository on a configurable interval.</details></think>
+
+---
+
+Tool use: **todo_write**
+
+## Todo List
+
+- [ ] Add version checking from GitHub releases API
+- [ ] Implement periodic update checks alongside config refresh
+- [ ] Add popup notifications for update availability
+- [ ] Add check/install update buttons to extension settings
+- [ ] Implement extension installation and restart handling
+- [ ] Add update-related configuration options
+
+---
+
+<think><details><summary>Thought Process</summary>Now let me start implementing this. First, I need to understand the current extension structure and then add the auto-update functionality.
+</details></think>
+
+---
+
+Tool use: **todo_write**
+
+## Todo List
+
+- [-] Add version checking from GitHub releases API
+- [ ] Implement periodic update checks alongside config refresh
+- [ ] Add popup notifications for update availability
+- [ ] Add check/install update buttons to extension settings
+- [ ] Implement extension installation and restart handling
+- [ ] Add update-related configuration options
+
+---
+
+<think><details><summary>Thought Process</summary>Let me start by implementing the version checking functionality. I need to add functions to:
+</details></think>
+
+---
+
+Tool use: **read_file**
+
+Read file: src/extension.ts
+
+---
+
+<think><details><summary>Thought Process</summary>Now I need to add the auto-update functionality. Let me start by adding the version checking functions and then integrate them into the existing refresh logic. I'll add:
+</details></think>
+
+---
+
+Tool use: **search_replace**
+
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+**Chunk 1**
+Lines added: 6, lines removed: undefined
+
+```diff
+@@ -8,4 +8,10 @@
+  let refreshTimer: ReturnType<typeof setInterval> | null = null;
+  let isOnline = true;
++ 
++ // Global state for auto-update
++ let lastUpdateCheck = 0;
++ let updateCheckTimer: ReturnType<typeof setInterval> | null = null;
++ let latestVersion: string | null = null;
++ let updateAvailable = false;
+  
+  export function activate(context: vscode.ExtensionContext) {
+```
+
+</details>
+
+---
+
+
 
 ---
 
