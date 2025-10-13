@@ -47,7 +47,11 @@ jobs:
         REPO_OWNER="SKOOP-Digital"  # Repository owner
         BUILD_NUMBER=${{ github.run_number }}
         NEW_VERSION="${BASE_VERSION}.${BUILD_NUMBER}"
+        TAG_VERSION="v${BASE_VERSION}.${BUILD_NUMBER}"
         echo "Updating version to ${NEW_VERSION}"
+        echo "Release tag will be ${TAG_VERSION}"
+        echo "NEW_VERSION=${NEW_VERSION}" >> $GITHUB_ENV
+        echo "TAG_VERSION=${TAG_VERSION}" >> $GITHUB_ENV
 
         # Update package.json
         sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"${NEW_VERSION}\"/" package.json
@@ -77,15 +81,17 @@ jobs:
       if: github.ref == 'refs/heads/main' && github.event_name == 'push'
       uses: softprops/action-gh-release@v1
       with:
-        tag_name: v${{ github.run_number }}
-        name: Release ${{ github.run_number }}
+        tag_name: ${{ env.TAG_VERSION }}
+        name: Release ${{ github.run_number }} (v${{ env.NEW_VERSION }})
         body: |
           Automated release ${{ github.run_number }}
 
           ## Changes
           - Automated build from commit ${{ github.sha }}
-          - Version: 0.1.${{ github.run_number }}
+          - Version: ${{ env.NEW_VERSION }}
         files: skoop-continue-sync.vsix
         generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ github.token }}
+        TAG_VERSION: ${{ env.TAG_VERSION }}
+        NEW_VERSION: ${{ env.NEW_VERSION }}

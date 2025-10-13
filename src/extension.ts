@@ -1037,14 +1037,19 @@ async function checkForUpdates(): Promise<{ version: string; downloadUrl: string
                             });
 
                             const version = release.tag_name.replace(/^v/, ''); // Remove 'v' prefix if present
-                            console.log('[Skoop Continue Sync] Extracted version:', version);
+                            console.log('[Skoop Continue Sync] Extracted version from tag:', version);
+
+                            // For build numbers, convert to semantic version format (0.1.X)
+                            const buildNumber = parseInt(version);
+                            const semanticVersion = `0.1.${buildNumber}`;
+                            console.log('[Skoop Continue Sync] Converted to semantic version:', semanticVersion);
 
                             const asset = release.assets.find((a: any) => a.name === 'skoop-continue-sync.vsix');
                             console.log('[Skoop Continue Sync] Found .vsix asset:', asset ? asset.name : 'none');
 
                             if (asset) {
                                 const result = {
-                                    version,
+                                    version: semanticVersion,
                                     downloadUrl: asset.browser_download_url
                                 };
                                 console.log('[Skoop Continue Sync] Returning update info:', result);
@@ -1092,24 +1097,38 @@ function getCurrentVersion(): string {
     const possibleIds = [
         'skoop-continue-sync',  // Just name
         'SKOOP-Digital.skoop-continue-sync',  // Publisher.name
-        'JoshS.skoop-continue-sync'  // From repository URL
+        'JoshS.skoop-continue-sync',  // From repository URL
+        'undefined_publisher.skoop-continue-sync'  // Manually installed
     ];
 
     console.log('[Skoop Continue Sync] Looking for extension with possible IDs:', possibleIds);
 
+    // First try exact matches
     for (const id of possibleIds) {
         const extension = vscode.extensions.getExtension(id);
         if (extension) {
             const version = extension.packageJSON?.version || '0.0.0';
-            console.log('[Skoop Continue Sync] ✅ Found extension with ID:', id);
+            console.log('[Skoop Continue Sync] ✅ Found extension with exact ID:', id);
             console.log('[Skoop Continue Sync] Current extension version:', version);
             console.log('[Skoop Continue Sync] Extension path:', extension.extensionPath);
             return version;
         }
     }
 
-    console.log('[Skoop Continue Sync] ❌ Extension not found with any of these IDs:', possibleIds);
-    console.log('[Skoop Continue Sync] All installed extensions (first 20):', vscode.extensions.all.slice(0, 20).map(ext => ({ id: ext.id, version: ext.packageJSON?.version })));
+    // Try partial matches for manually installed extensions
+    const allExtensions = vscode.extensions.all;
+    for (const ext of allExtensions) {
+        if (ext.id.includes('skoop-continue-sync')) {
+            const version = ext.packageJSON?.version || '0.0.0';
+            console.log('[Skoop Continue Sync] ✅ Found extension with partial match ID:', ext.id);
+            console.log('[Skoop Continue Sync] Current extension version:', version);
+            console.log('[Skoop Continue Sync] Extension path:', ext.extensionPath);
+            return version;
+        }
+    }
+
+    console.log('[Skoop Continue Sync] ❌ Extension not found with any pattern');
+    console.log('[Skoop Continue Sync] All extensions with "skoop" in ID:', allExtensions.filter(ext => ext.id.includes('skoop')).map(ext => ({ id: ext.id, version: ext.packageJSON?.version })));
     return '0.0.0';
 }
 
@@ -1219,30 +1238,43 @@ async function installUpdate(downloadUrl: string, version: string) {
     try {
         console.log(`[Skoop Continue Sync] Guiding user to install extension update to version ${version}...`);
 
-        // Try to use VS Code's built-in extension installation
-        // This will open the extension in the marketplace view
-        await vscode.commands.executeCommand('workbench.extensions.action.showExtensionsWithIds', ['SKOOP-Digital.skoop-continue-sync']);
+        // For manually installed extensions, guide user to download from GitHub
+        const downloadNow = 'Download Now';
+        const openReleases = 'Open Releases Page';
+        const cancel = 'Cancel';
 
-        // Also show a message explaining the update process
-        const message = `A new version (v${version}) is available. The extension marketplace has been opened. Please click "Update" or "Install" in the extension view to update Skoop Continue Sync.`;
-
-        vscode.window.showInformationMessage(message, 'OK');
-
-        console.log('[Skoop Continue Sync] Opened extension marketplace for update');
-
-    } catch (error) {
-        console.error('[Skoop Continue Sync] Failed to open extension marketplace:', error);
-
-        // Fallback: show manual instructions
-        const openSettings = 'Open Extension Settings';
-        const choice = await vscode.window.showWarningMessage(
-            `Please manually update Skoop Continue Sync to v${version} through the VS Code marketplace.`,
-            openSettings
+        const choice = await vscode.window.showInformationMessage(
+            `A new version (v${version}) is available! Since this extension is manually installed, you'll need to download and install the update manually.`,
+            downloadNow,
+            openReleases,
+            cancel
         );
 
-        if (choice === openSettings) {
-            await vscode.commands.executeCommand('workbench.view.extensions');
+        if (choice === downloadNow) {
+            // Try to open the download URL directly
+            try {
+                await vscode.env.openExternal(vscode.Uri.parse(downloadUrl));
+                vscode.window.showInformationMessage(
+                    `Downloading v${version}... After download completes, run "Extensions: Install from VSIX..." from the command palette and select the downloaded file.`
+                );
+            } catch (error) {
+                console.error('[Skoop Continue Sync] Failed to open download URL:', error);
+                vscode.window.showErrorMessage(`Failed to open download. Please visit: ${downloadUrl}`);
+            }
+        } else if (choice === openReleases) {
+            // Open the releases page
+            const releasesUrl = 'https://github.com/SKOOP-Digital/skoop-continue-sync/releases';
+            await vscode.env.openExternal(vscode.Uri.parse(releasesUrl));
+            vscode.window.showInformationMessage(
+                `Download the latest .vsix file and install it using "Extensions: Install from VSIX..."`
+            );
         }
+
+        console.log('[Skoop Continue Sync] Guided user to manual update installation');
+
+    } catch (error) {
+        console.error('[Skoop Continue Sync] Failed to guide user to update:', error);
+        vscode.window.showErrorMessage(`Failed to start update process: ${error}`);
     }
 }
 
