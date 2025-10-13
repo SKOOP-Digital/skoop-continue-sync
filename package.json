@@ -124,6 +124,11 @@
           "type": "boolean",
           "default": false,
           "description": "Set to true to install available extension update (will reset to false after installation)"
+        },
+        "skoop-continue-sync.verboseLogging": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable verbose debug logging for troubleshooting"
         }
       }
     }

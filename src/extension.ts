@@ -14,30 +14,24 @@ let updateCheckTimer: ReturnType<typeof setInterval> | null = null;
 let latestVersion: string | null = null;
 let updateAvailable = false;
 
+// Logging utility
+function log(message: string, verboseOnly: boolean = false) {
+    if (!verboseOnly || vscode.workspace.getConfiguration('skoop-continue-sync').get('verboseLogging', false)) {
+        console.log(`[Skoop Continue Sync] ${message}`);
+    }
+}
+
 export function activate(context: vscode.ExtensionContext) {
-    console.log('[Skoop Continue Sync] Extension activated successfully!');
-    console.log('[Skoop Continue Sync] Current workspace:', vscode.workspace.rootPath);
-    console.log('[Skoop Continue Sync] Process environment:', {
-        HOME: process.env.HOME,
-        USERPROFILE: process.env.USERPROFILE,
-        APPDATA: process.env.APPDATA
-    });
+    log('Extension activated successfully!');
 
-    // Debug: Check extension detection
-    console.log('[Skoop Continue Sync] === EXTENSION DEBUG INFO ===');
-    console.log('[Skoop Continue Sync] All installed extensions count:', vscode.extensions.all.length);
-    console.log('[Skoop Continue Sync] All extension IDs:', vscode.extensions.all.map(ext => ext.id).slice(0, 10)); // First 10
-
-    // Check current extension detection
+    // Check current extension detection (verbose only)
     const currentVersion = getCurrentVersion();
-    console.log('[Skoop Continue Sync] Detected current version:', currentVersion);
+    log(`Current version: ${currentVersion}`, true);
 
-    // Check update settings
+    // Check update settings (verbose only)
     const enableAutoUpdates = vscode.workspace.getConfiguration('skoop-continue-sync').get('enableAutoUpdates', true);
-    const updateCheckInterval = vscode.workspace.getConfiguration('skoop-continue-sync').get('updateCheckInterval', 10);
-    console.log('[Skoop Continue Sync] Auto-updates enabled:', enableAutoUpdates);
-    console.log('[Skoop Continue Sync] Update check interval:', updateCheckInterval);
-    console.log('[Skoop Continue Sync] === END DEBUG INFO ===');
+    const refreshInterval = vscode.workspace.getConfiguration('skoop-continue-sync').get('refreshInterval', 10);
+    log(`Auto-updates: ${enableAutoUpdates}, Refresh interval: ${refreshInterval}s`, true);
 
     // Check for required extensions
     const requiredExtensions = [
@@ -155,21 +149,21 @@ export function activate(context: vscode.ExtensionContext) {
     });
 
     const forceUpdateCheckDisposable = vscode.commands.registerCommand('skoop-continue-sync.forceUpdateCheck', async () => {
-        console.log('[Skoop Continue Sync] Force update check command triggered - DEBUG COMMAND');
+        log('Force update check triggered', true);
         try {
             // Force update check by temporarily resetting lastUpdateCheck
             const originalLastUpdateCheck = lastUpdateCheck;
             lastUpdateCheck = 0; // Force the check
             await checkAndNotifyUpdates();
             lastUpdateCheck = originalLastUpdateCheck; // Restore original value
-            console.log('[Skoop Continue Sync] Force update check completed');
+            log('Force update check completed', true);
         } catch (error) {
             console.error('[Skoop Continue Sync] Force update check failed:', error);
         }
     });
 
     const updateStatusDisposable = vscode.commands.registerCommand('skoop-continue-sync.updateStatus', async () => {
-        console.log('[Skoop Continue Sync] Update status command triggered - DEBUG COMMAND');
+        log('Update status command triggered', true);
 
         const currentVersion = getCurrentVersion();
         const enableAutoUpdates = vscode.workspace.getConfiguration('skoop-continue-sync').get('enableAutoUpdates', true);
@@ -187,12 +181,12 @@ export function activate(context: vscode.ExtensionContext) {
             extensionContextAvailable: !!extensionContext
         };
 
-        console.log('[Skoop Continue Sync] Update status:', status);
+        log(`Status: v${currentVersion}, auto=${enableAutoUpdates}, interval=${refreshInterval}s`, true);
         vscode.window.showInformationMessage(`Update Status: ${JSON.stringify(status, null, 2)}`);
     });
 
     context.subscriptions.push(applySettingsDisposable, clearConfigDisposable, checkUpdatesDisposable, installUpdateDisposable, forceUpdateCheckDisposable, updateStatusDisposable);
-    console.log('[Skoop Continue Sync] Commands registered: skoop-continue-sync.applyTeamSettings, skoop-continue-sync.clearAllConfigs, skoop-continue-sync.checkForUpdates, skoop-continue-sync.installUpdate, skoop-continue-sync.forceUpdateCheck, skoop-continue-sync.updateStatus');
+    log('All commands registered successfully', true);
 }
 
 interface ModelConfig {
@@ -759,32 +753,16 @@ async function clearAllContinueConfigs() {
 
 // Setup configuration change listeners for manual triggers
 function setupConfigurationListeners(context: vscode.ExtensionContext) {
-    console.log('[Skoop Continue Sync] Setting up configuration listeners...');
+    log('Setting up configuration listeners...', true);
 
     const onDidChangeConfiguration = vscode.workspace.onDidChangeConfiguration(async (event) => {
-        console.log('[Skoop Continue Sync] Configuration change detected');
-
-        // Log all changed configurations for debugging
-        const allConfigs = [
-            'skoop-continue-sync.apiKey',
-            'skoop-continue-sync.applyConfig',
-            'skoop-continue-sync.clearConfig',
-            'skoop-continue-sync.enableAutoUpdates',
-            'skoop-continue-sync.refreshInterval',
-            'skoop-continue-sync.checkForUpdates',
-            'skoop-continue-sync.installUpdate'
-        ];
-
-        const changedConfigs = allConfigs.filter(config => event.affectsConfiguration(config));
-        if (changedConfigs.length > 0) {
-            console.log('[Skoop Continue Sync] Changed configurations:', changedConfigs);
-        }
+        log('Configuration change detected', true);
 
         // Check for applyConfig trigger
         if (event.affectsConfiguration('skoop-continue-sync.applyConfig')) {
             const applyConfig = vscode.workspace.getConfiguration('skoop-continue-sync').get('applyConfig', false);
             if (applyConfig) {
-                console.log('[Skoop Continue Sync] Apply config trigger detected via settings');
+                log('Apply config trigger detected via settings', true);
 
                 // Execute the same command as the command palette
                 try {
@@ -806,7 +784,7 @@ function setupConfigurationListeners(context: vscode.ExtensionContext) {
         if (event.affectsConfiguration('skoop-continue-sync.clearConfig')) {
             const clearConfig = vscode.workspace.getConfiguration('skoop-continue-sync').get('clearConfig', false);
             if (clearConfig) {
-                console.log('[Skoop Continue Sync] Clear config trigger detected via settings');
+                log('Clear config trigger detected via settings', true);
 
                 // Execute the same command as the command palette
                 try {
@@ -827,10 +805,8 @@ function setupConfigurationListeners(context: vscode.ExtensionContext) {
         // Check for checkForUpdates trigger
         if (event.affectsConfiguration('skoop-continue-sync.checkForUpdates')) {
             const checkForUpdates = vscode.workspace.getConfiguration('skoop-continue-sync').get('checkForUpdates', false);
-            console.log('[Skoop Continue Sync] checkForUpdates setting changed to:', checkForUpdates);
+            log(`Check for updates trigger: ${checkForUpdates}`, true);
             if (checkForUpdates) {
-                console.log('[Skoop Continue Sync] Check for updates trigger detected via settings');
-
                 // Execute the check for updates command
                 try {
                     await vscode.commands.executeCommand('skoop-continue-sync.checkForUpdates');
@@ -841,7 +817,6 @@ function setupConfigurationListeners(context: vscode.ExtensionContext) {
                 // Reset the trigger back to false
                 try {
                     await vscode.workspace.getConfiguration('skoop-continue-sync').update('checkForUpdates', false, vscode.ConfigurationTarget.Global);
-                    console.log('[Skoop Continue Sync] Reset checkForUpdates setting to false');
                 } catch (resetError) {
                     console.error('[Skoop Continue Sync] Error resetting checkForUpdates setting:', resetError);
                 }
@@ -851,10 +826,8 @@ function setupConfigurationListeners(context: vscode.ExtensionContext) {
         // Check for installUpdate trigger
         if (event.affectsConfiguration('skoop-continue-sync.installUpdate')) {
             const installUpdate = vscode.workspace.getConfiguration('skoop-continue-sync').get('installUpdate', false);
-            console.log('[Skoop Continue Sync] installUpdate setting changed to:', installUpdate);
+            log(`Install update trigger: ${installUpdate}`, true);
             if (installUpdate) {
-                console.log('[Skoop Continue Sync] Install update trigger detected via settings');
-
                 // Execute the install update command
                 try {
                     await vscode.commands.executeCommand('skoop-continue-sync.installUpdate');
@@ -865,7 +838,6 @@ function setupConfigurationListeners(context: vscode.ExtensionContext) {
                 // Reset the trigger back to false
                 try {
                     await vscode.workspace.getConfiguration('skoop-continue-sync').update('installUpdate', false, vscode.ConfigurationTarget.Global);
-                    console.log('[Skoop Continue Sync] Reset installUpdate setting to false');
                 } catch (resetError) {
                     console.error('[Skoop Continue Sync] Error resetting installUpdate setting:', resetError);
                 }
@@ -875,8 +847,7 @@ function setupConfigurationListeners(context: vscode.ExtensionContext) {
         // Check for refreshInterval change
         if (event.affectsConfiguration('skoop-continue-sync.refreshInterval')) {
             const newInterval = vscode.workspace.getConfiguration('skoop-continue-sync').get('refreshInterval', 10);
-            console.log('[Skoop Continue Sync] Refresh interval changed to:', newInterval, 'seconds');
-            console.log('[Skoop Continue Sync] Restarting both timers with new interval');
+            log(`Refresh interval changed to: ${newInterval}s`, true);
             startConfigRefreshTimer();
             startUpdateCheckTimer();
         }
@@ -884,7 +855,7 @@ function setupConfigurationListeners(context: vscode.ExtensionContext) {
         // Check for enableAutoUpdates change
         if (event.affectsConfiguration('skoop-continue-sync.enableAutoUpdates')) {
             const enableAutoUpdates = vscode.workspace.getConfiguration('skoop-continue-sync').get('enableAutoUpdates', true);
-            console.log(`[Skoop Continue Sync] Auto-updates ${enableAutoUpdates ? 'enabled' : 'disabled'}`);
+            log(`Auto-updates ${enableAutoUpdates ? 'enabled' : 'disabled'}`, true);
             if (enableAutoUpdates) {
                 startUpdateCheckTimer();
             } else {
@@ -905,12 +876,10 @@ function startConfigRefreshTimer() {
     }
 
     const refreshInterval = vscode.workspace.getConfiguration('skoop-continue-sync').get('refreshInterval', 10) * 1000;
-    const refreshIntervalSeconds = refreshInterval / 1000;
 
-    console.log(`[Skoop Continue Sync] Config refresh timer: reading setting 'refreshInterval' = ${refreshIntervalSeconds} seconds`);
-    console.log(`[Skoop Continue Sync] Starting config refresh timer with ${refreshIntervalSeconds} second interval`);
+    log(`Starting config refresh timer (${refreshInterval / 1000}s interval)`, true);
     refreshTimer = setInterval(() => {
-        console.log('[Skoop Continue Sync] Periodic config refresh check...');
+        log('Periodic config refresh check...', true);
         checkAndRefreshConfig();
     }, refreshInterval);
 }
@@ -925,17 +894,15 @@ function startUpdateCheckTimer() {
 
     const enableAutoUpdates = vscode.workspace.getConfiguration('skoop-continue-sync').get('enableAutoUpdates', true);
     if (!enableAutoUpdates) {
-        console.log('[Skoop Continue Sync] Auto-updates disabled, not starting update check timer');
+        log('Auto-updates disabled, not starting update check timer', true);
         return;
     }
 
     const refreshInterval = vscode.workspace.getConfiguration('skoop-continue-sync').get('refreshInterval', 10) * 1000;
-    const refreshIntervalSeconds = refreshInterval / 1000;
 
-    console.log(`[Skoop Continue Sync] Update check timer: reading setting 'refreshInterval' = ${refreshIntervalSeconds} seconds`);
-    console.log(`[Skoop Continue Sync] Starting update check timer with ${refreshIntervalSeconds} second interval`);
+    log(`Starting update check timer (${refreshInterval / 1000}s interval)`, true);
     updateCheckTimer = setInterval(() => {
-        console.log('[Skoop Continue Sync] Periodic update check...');
+        log('Periodic update check...', true);
         checkAndNotifyUpdates();
     }, refreshInterval);
 }
@@ -943,7 +910,7 @@ function startUpdateCheckTimer() {
 // Stop the update check timer
 function stopUpdateCheckTimer() {
     if (updateCheckTimer) {
-        console.log('[Skoop Continue Sync] Stopping update check timer');
+        log('Stopping update check timer', true);
         clearInterval(updateCheckTimer);
         updateCheckTimer = null;
     }
@@ -951,7 +918,7 @@ function stopUpdateCheckTimer() {
 
 // Setup automatic config refresh and update checking
 function setupAutomaticRefresh(context: vscode.ExtensionContext) {
-    console.log('[Skoop Continue Sync] Setting up automatic config refresh and update checking...');
+    log('Setting up automatic refresh and update checking...', true);
 
     // Store context globally for use in automatic refresh
     extensionContext = context;
@@ -959,18 +926,9 @@ function setupAutomaticRefresh(context: vscode.ExtensionContext) {
     // Load last refresh time from global state
     lastConfigRefresh = context.globalState.get('lastConfigRefresh', 0);
     lastUpdateCheck = context.globalState.get('lastUpdateCheck', 0);
-    console.log('[Skoop Continue Sync] Last config refresh:', new Date(lastConfigRefresh).toISOString());
-    console.log('[Skoop Continue Sync] Last update check:', new Date(lastUpdateCheck).toISOString());
-
-    // Log current update settings
-    const enableAutoUpdates = vscode.workspace.getConfiguration('skoop-continue-sync').get('enableAutoUpdates', true);
-    const refreshInterval = vscode.workspace.getConfiguration('skoop-continue-sync').get('refreshInterval', 10);
-    console.log('[Skoop Continue Sync] Auto-updates enabled:', enableAutoUpdates);
-    console.log('[Skoop Continue Sync] Refresh interval setting read as:', refreshInterval, 'seconds');
-    console.log('[Skoop Continue Sync] This interval applies to both config refresh and extension update checks');
 
     // Check for updates and config on startup
-        checkAndRefreshConfig();
+    checkAndRefreshConfig();
     checkAndNotifyUpdates();
 
     // Start both timers with configurable intervals
@@ -980,10 +938,10 @@ function setupAutomaticRefresh(context: vscode.ExtensionContext) {
     // Listen for when VS Code becomes active again (user comes back online)
     const onDidChangeWindowState = vscode.window.onDidChangeWindowState((state) => {
         if (state.focused && !isOnline) {
-            console.log('[Skoop Continue Sync] VS Code regained focus, checking if refresh needed...');
+            log('VS Code regained focus, checking if refresh needed...', true);
             isOnline = true;
-            checkAndRefreshConfig(); // Check if refresh needed based on time interval
-            checkAndNotifyUpdates(); // Check if update check needed based on time interval
+            checkAndRefreshConfig();
+            checkAndNotifyUpdates();
         } else if (!state.focused) {
             isOnline = false;
         }
@@ -1000,14 +958,14 @@ let extensionContext: vscode.ExtensionContext | null = null;
 // Check if config needs to be refreshed and do it if necessary
 async function checkAndRefreshConfig() {
     if (!extensionContext) {
-        console.log('[Skoop Continue Sync] Extension context not available, skipping automatic refresh');
+        log('Extension context not available, skipping automatic refresh', true);
         return;
     }
 
     const apiKey = vscode.workspace.getConfiguration('skoop-continue-sync').get('apiKey', '');
     // Only refresh if credentials are configured
     if (!apiKey) {
-        console.log('[Skoop Continue Sync] Skipping automatic refresh - API key not configured');
+        log('Skipping automatic refresh - API key not configured', true);
         return;
     }
 
@@ -1015,18 +973,18 @@ async function checkAndRefreshConfig() {
     const refreshInterval = vscode.workspace.getConfiguration('skoop-continue-sync').get('refreshInterval', 10) * 1000;
 
     if (now - lastConfigRefresh > refreshInterval) {
-        console.log(`[Skoop Continue Sync] More than ${refreshInterval / 1000} seconds since last refresh, refreshing config...`);
+        log('Refreshing config...', true);
         try {
             await applyTeamSettings();
             lastConfigRefresh = now;
             // Save to global state
             await extensionContext.globalState.update('lastConfigRefresh', lastConfigRefresh);
-            console.log('[Skoop Continue Sync] Automatic config refresh completed');
+            log('Config refresh completed', true);
         } catch (error) {
-            console.error('[Skoop Continue Sync] Automatic config refresh failed:', error);
+            console.error('[Skoop Continue Sync] Config refresh failed:', error);
         }
     } else {
-        console.log(`[Skoop Continue Sync] Config is still fresh (less than ${refreshInterval / 1000} seconds old), skipping automatic refresh`);
+        log(`Config still fresh (${Math.round((refreshInterval - (now - lastConfigRefresh)) / 1000)}s remaining)`, true);
     }
 }
 
@@ -1212,14 +1170,14 @@ function compareVersions(version1: string, version2: string): number {
 // Check and notify about updates
 async function checkAndNotifyUpdates() {
     if (!extensionContext) {
-        console.log('[Skoop Continue Sync] Extension context not available, skipping update check');
+        log('Extension context not available, skipping update check', true);
         return;
     }
 
     // Check if auto-updates are enabled
     const enableAutoUpdates = vscode.workspace.getConfiguration('skoop-continue-sync').get('enableAutoUpdates', true);
     if (!enableAutoUpdates) {
-        console.log('[Skoop Continue Sync] Auto-updates disabled, skipping update check');
+        log('Auto-updates disabled, skipping update check', true);
         return;
     }
 
@@ -1227,7 +1185,7 @@ async function checkAndNotifyUpdates() {
     const refreshInterval = vscode.workspace.getConfiguration('skoop-continue-sync').get('refreshInterval', 10) * 1000;
 
     if (now - lastUpdateCheck > refreshInterval) {
-        console.log('[Skoop Continue Sync] Checking for extension updates...');
+        log('Checking for extension updates...', true);
 
         try {
             const updateInfo = await checkForUpdates();
@@ -1236,13 +1194,12 @@ async function checkAndNotifyUpdates() {
             if (updateInfo) {
                 const currentVersion = getCurrentVersion();
                 const comparison = compareVersions(updateInfo.version, currentVersion);
-                console.log(`[Skoop Continue Sync] Version comparison: "${updateInfo.version}" vs "${currentVersion}" = ${comparison}`);
 
                 if (comparison > 0) {
                     // Check if this version was previously ignored
                     const ignoredVersion = extensionContext.globalState.get('ignoredVersion');
                     if (ignoredVersion === updateInfo.version) {
-                        console.log(`[Skoop Continue Sync] Version ${updateInfo.version} was previously ignored, skipping notification`);
+                        log(`Version ${updateInfo.version} was previously ignored`, true);
                         return;
                     }
 
@@ -1250,7 +1207,7 @@ async function checkAndNotifyUpdates() {
                     latestVersion = updateInfo.version;
                     updateAvailable = true;
 
-                    console.log(`[Skoop Continue Sync] New version available: ${updateInfo.version} (current: ${currentVersion})`);
+                    log(`New version available: ${updateInfo.version} (current: ${currentVersion})`, true);
 
                     // Show notification
                     const updateNow = 'Update Now';
@@ -1268,21 +1225,21 @@ async function checkAndNotifyUpdates() {
                         await installUpdate(updateInfo.downloadUrl, updateInfo.version);
                     } else if (choice === remindLater) {
                         // Will check again on next interval
-                        console.log('[Skoop Continue Sync] User chose to be reminded later');
+                        log('User chose to be reminded later', true);
                     } else if (choice === ignore) {
                         // Don't show again for this version
                         await extensionContext.globalState.update('ignoredVersion', updateInfo.version);
                         updateAvailable = false;
-                        console.log(`[Skoop Continue Sync] User ignored version ${updateInfo.version}`);
+                        log(`User ignored version ${updateInfo.version}`, true);
                     }
                 } else if (comparison === 0) {
-                    console.log('[Skoop Continue Sync] Extension is up to date');
+                    log('Extension is up to date', true);
                     updateAvailable = false;
                 } else {
-                    console.log('[Skoop Continue Sync] Current version is newer than latest release');
+                    log('Current version is newer than latest release', true);
                 }
             } else {
-                console.log('[Skoop Continue Sync] No update information available');
+                log('No update information available', true);
             }
 
             // Save update check time
@@ -1291,14 +1248,14 @@ async function checkAndNotifyUpdates() {
             console.error('[Skoop Continue Sync] Update check failed:', error);
         }
     } else {
-        console.log('[Skoop Continue Sync] Update check is still fresh, skipping');
+        log(`Update check still fresh (${Math.round((refreshInterval - (now - lastUpdateCheck)) / 1000)}s remaining)`, true);
     }
 }
 
 // Install extension update
 async function installUpdate(downloadUrl: string, version: string) {
     try {
-        console.log(`[Skoop Continue Sync] Guiding user to install extension update to version ${version}...`);
+        log(`Guiding user to install extension update to version ${version}...`, true);
 
         // For manually installed extensions, guide user to download from GitHub
         const downloadNow = 'Download Now';
@@ -1332,7 +1289,7 @@ async function installUpdate(downloadUrl: string, version: string) {
             );
         }
 
-        console.log('[Skoop Continue Sync] Guided user to manual update installation');
+        log('Guided user to manual update installation', true);
 
     } catch (error) {
         console.error('[Skoop Continue Sync] Failed to guide user to update:', error);
@@ -1342,16 +1299,14 @@ async function installUpdate(downloadUrl: string, version: string) {
 
 // Manual update check (for settings UI)
 async function manualUpdateCheck() {
-    console.log('[Skoop Continue Sync] Manual update check triggered');
+    log('Manual update check triggered', true);
 
     try {
         const updateInfo = await checkForUpdates();
-        console.log('[Skoop Continue Sync] Manual update check result:', updateInfo);
 
         if (updateInfo) {
             const currentVersion = getCurrentVersion();
             const comparison = compareVersions(updateInfo.version, currentVersion);
-            console.log(`[Skoop Continue Sync] Manual check - Version comparison: "${updateInfo.version}" vs "${currentVersion}" = ${comparison}`);
 
             if (comparison > 0) {
                 const install = 'Install Update';
@@ -1370,7 +1325,7 @@ async function manualUpdateCheck() {
             vscode.window.showWarningMessage('Could not check for updates. Please try again later.');
         }
     } catch (error) {
-        console.error('[Skoop Continue Sync] Error in manual update check:', error);
+        console.error('[Skoop Continue Sync] Manual update check failed:', error);
         vscode.window.showErrorMessage(`Update check failed: ${error}`);
     }
 }

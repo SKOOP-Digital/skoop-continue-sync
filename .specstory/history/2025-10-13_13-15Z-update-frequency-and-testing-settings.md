@@ -8273,3 +8273,45 @@ Would you like me to help you prepare any specific part of this process? 🚀
 
 ---
 
+_**User (2025-10-13 13:04Z)**_
+
+ok, clean up the logs now, maybe add a variable in the codebase to enable these logs again if needed
+
+---
+
+_**Assistant (grok-code-fast-1)**_
+
+<think><details><summary>Thought Process</summary>The user wants me to clean up the extensive logging that I added for debugging purposes, but keep a way to enable them again if needed. I should:
+</details></think>
+
+---
+
+Tool use: **search_replace**
+
+
+<details><summary>Edit file: package.json</summary>
+
+**Chunk 1**
+Lines added: 5, lines removed: undefined
+
+```diff
+@@ -125,4 +125,9 @@
+            "default": false,
+            "description": "Set to true to install available extension update (will reset to false after installation)"
++         },
++         "skoop-continue-sync.verboseLogging": {
++           "type": "boolean",
++           "default": false,
++           "description": "Enable verbose debug logging for troubleshooting"
+          }
+        }
+```
+
+</details>
+
+---
+
+
+
+---
+
