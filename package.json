@@ -110,10 +110,10 @@
         },
         "skoop-continue-sync.refreshInterval": {
           "type": "number",
-          "default": 10,
-          "minimum": 10,
-          "maximum": 3600,
-          "description": "Interval in seconds between automatic refresh checks for both config and extension updates (minimum 10 seconds)"
+          "default": 86400,
+          "minimum": 300, 
+          "maximum": 999999,
+          "description": "Interval in seconds between automatic refresh checks for both config and extension updates (minimum 300 seconds)"
         },
         "skoop-continue-sync.checkForUpdates": {
           "type": "boolean",
