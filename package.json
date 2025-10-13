@@ -111,9 +111,9 @@
         "skoop-continue-sync.updateCheckInterval": {
           "type": "number",
           "default": 10,
-          "minimum": 5,
+          "minimum": 10,
           "maximum": 3600,
-          "description": "Interval in seconds between update checks (minimum 5 seconds)"
+          "description": "Interval in seconds between update checks (minimum 10 seconds)"
         },
         "skoop-continue-sync.checkForUpdates": {
           "type": "boolean",
