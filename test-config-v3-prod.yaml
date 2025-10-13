@@ -264,14 +264,6 @@ settings:
             reasoning: true
             reasoningBudgetTokens: 800
 
-
-      mcpServers:
-        - name: DeepWiki MCP
-          type: streamable-http
-          url: https://mcp.deepwiki.com/mcp
-        - name: Context7 MCP
-          type: streamable-http
-          url: https://mcp.context7.com/mcp
       rules:
         - name: "Use Task Lists for Multi-Step Tasks"
           alwaysApply: true
