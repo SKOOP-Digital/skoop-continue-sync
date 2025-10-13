@@ -3286,23 +3286,89 @@ the repo is ownwed and stored in SKOOP-Digital fyi
 
 _**Assistant (grok-code-fast-1)**_
 
-
-
----
-
-
+<think><details><summary>Thought Process</summary>The user is clarifying that the repository is owned and stored in SKOOP-Digital. I need to update the repository URL in package.json and also the owner in the GitHub API call in the extension.ts file to use 'SKOOP-Digital' instead of what it currently has.
+</details></think>
 
 ---
 
+Tool use: **read_file**
 
-
----
-
-
+Read file: package.json
 
 ---
 
+<think><details><summary>Thought Process</summary>The package.json already has the correct repository URL for SKOOP-Digital. Now let me check the extension.ts file to see what owner it's using for the GitHub API call.</details></think>
 
+---
+
+Tool use: **grep**
+
+<details>
+<summary>Grep for "const owner =" in "src/extension.ts" • 1 match</summary>
+
+Output mode: content
+
+
+| Content | Line |
+|------|------|
+| `const owner = 'SKOOP-Digital';` | L974 |
+
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Perfect! The extension.ts file already has the correct owner set to 'SKOOP-Digital'. So both the package.json repository URL and the GitHub API owner are already correctly set to SKOOP-Digital. The user was just confirming this.
+</details></think>
+
+---
+
+Tool use: **run_terminal_cmd**
+
+```bash
+echo "Current configuration is correct for SKOOP-Digital repository"
+```
+
+```
+Current configuration is correct for SKOOP-Digital repository
+
+```
+
+---
+
+<think><details><summary>Thought Process</summary>The user confirmed that the repository is owned by SKOOP-Digital, and I've verified that both the package.json repository URL and the GitHub API owner in extension.ts are already correctly set to 'SKOOP-Digital'. 
+</details></think>
+
+---
+
+Perfect! Both the `package.json` repository URL and the GitHub API calls in the extension are already correctly configured for the `SKOOP-Digital/skoop-continue-sync` repository.
+
+## ✅ **Repository Configuration Confirmed**
+
+- **Package.json repository URL**: `https://github.com/SKOOP-Digital/skoop-continue-sync` ✓
+- **GitHub API owner**: `SKOOP-Digital` ✓
+- **Repository name**: `skoop-continue-sync` ✓
+
+## 🔄 **For Auto-Update to Work**
+
+The `SKOOP-Digital/skoop-continue-sync` repository needs:
+
+1. **GitHub Releases** with version tags (e.g., `v1.0.0`, `v1.1.0`)
+2. **VSIX Asset** named `skoop-continue-sync.vsix` attached to each release
+3. **Latest Release** marked as the most recent version
+
+## 🧪 **Testing the Auto-Update**
+
+Once you have releases in the `SKOOP-Digital` repository:
+
+1. **Install the updated extension** (the packaged `.vsix` file I created)
+2. **Open Developer Console** (`Help` → `Toggle Developer Tools`)
+3. **Run "Force Update Check"** command to test immediately
+4. **Check logs** for GitHub API responses and version comparisons
+
+The extension will now properly check `https://api.github.com/repos/SKOOP-Digital/skoop-continue-sync/releases/latest` for updates!
+
+**Note**: If you still have issues, it might be that the repository doesn't have public releases yet, or the `.vsix` file isn't named exactly `skoop-continue-sync.vsix` in the release assets. 🎯
 
 ---
 
