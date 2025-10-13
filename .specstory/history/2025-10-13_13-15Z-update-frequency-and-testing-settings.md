@@ -3886,7 +3886,459 @@ The auto update functioonality is still not working, none of the updat check or 
 
 _**Assistant (grok-code-fast-1)**_
 
+<think><details><summary>Thought Process</summary>The user is saying the auto-update functionality isn't working. Let me think about this:
 
+
+## Investigating auto-update issue  
+- The user reports the auto-update feature isn't functioning as expected.  
+- The extension was installed manually using a .vsix file, not through the marketplace.  
+- Auto-update settings need to be checked to see if they're configured correctly.  
+- This setup might affect how updates are detected or applied automatically.</details></think>
+
+---
+
+Tool use: **grep**
+
+<details>
+<summary>Grep for "console\.log.*\[Skoop Continue Sync\].*activated" in "src/extension.ts" • 1 match</summary>
+
+Output mode: content
+
+
+| Content | Line |
+|------|------|
+| `console.log('[Skoop Continue Sync] Extension activated successfully!');` | L18 |
+
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>The activation log is there. Let me check if there are any issues with the extension ID detection or the update checking logic. The user said "none of the update check or install settings seem to do anything" - this suggests the settings listeners aren't working.
+</details></think>
+
+---
+
+Tool use: **search_replace**
+
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+**Chunk 1**
+Lines added: 16, lines removed: undefined
+
+```diff
+@@ -23,4 +23,20 @@
+          APPDATA: process.env.APPDATA
+      });
++ 
++     // Debug: Check extension detection
++     console.log('[Skoop Continue Sync] === EXTENSION DEBUG INFO ===');
++     console.log('[Skoop Continue Sync] All installed extensions count:', vscode.extensions.all.length);
++     console.log('[Skoop Continue Sync] All extension IDs:', vscode.extensions.all.map(ext => ext.id).slice(0, 10)); // First 10
++ 
++     // Check current extension detection
++     const currentVersion = getCurrentVersion();
++     console.log('[Skoop Continue Sync] Detected current version:', currentVersion);
++ 
++     // Check update settings
++     const enableAutoUpdates = vscode.workspace.getConfiguration('skoop-continue-sync').get('enableAutoUpdates', true);
++     const updateCheckInterval = vscode.workspace.getConfiguration('skoop-continue-sync').get('updateCheckInterval', 10);
++     console.log('[Skoop Continue Sync] Auto-updates enabled:', enableAutoUpdates);
++     console.log('[Skoop Continue Sync] Update check interval:', updateCheckInterval);
++     console.log('[Skoop Continue Sync] === END DEBUG INFO ===');
+  
+      // Check for required extensions
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Now let me add some debug logging to the settings listeners to see if they're being triggered. The user said "none of the update check or install settings seem to do anything" which suggests the onDidChangeConfiguration listeners aren't firing.</details></think>
+
+---
+
+Tool use: **search_replace**
+
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+**Chunk 1**
+Lines added: 2, lines removed: undefined
+
+```diff
+@@ -740,4 +740,6 @@
+  
+      const onDidChangeConfiguration = vscode.workspace.onDidChangeConfiguration(async (event) => {
++         console.log('[Skoop Continue Sync] Configuration changed:', event.affectsConfiguration('skoop-continue-sync'));
++ 
+          // Check for applyConfig trigger
+          if (event.affectsConfiguration('skoop-continue-sync.applyConfig')) {
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Let me also add some debug logging to the manual update check and status functions to see if they're being called. Also, I want to make sure the force update check command is working.</details></think>
+
+---
+
+Tool use: **search_replace**
+
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+**Chunk 1**
+Lines added: 26, lines removed: 19
+
+```diff
+@@ -1242,26 +1242,33 @@
+      console.log('[Skoop Continue Sync] Manual update check triggered');
+  
+-     const updateInfo = await checkForUpdates();
++     try {
++         const updateInfo = await checkForUpdates();
++         console.log('[Skoop Continue Sync] Manual update check result:', updateInfo);
+  
+-     if (updateInfo) {
+-         const currentVersion = getCurrentVersion();
+-         const comparison = compareVersions(updateInfo.version, currentVersion);
++         if (updateInfo) {
++             const currentVersion = getCurrentVersion();
++             const comparison = compareVersions(updateInfo.version, currentVersion);
++             console.log('[Skoop Continue Sync] Version comparison:', { current: currentVersion, latest: updateInfo.version, comparison });
+  
+-         if (comparison > 0) {
+-             const install = 'Install Update';
+-             const choice = await vscode.window.showInformationMessage(
+-                 `New version available: v${updateInfo.version} (current: v${currentVersion})`,
+-                 install
+-             );
++             if (comparison > 0) {
++                 const install = 'Install Update';
++                 const choice = await vscode.window.showInformationMessage(
++                     `New version available: v${updateInfo.version} (current: v${currentVersion})`,
++                     install
++                 );
+  
+-             if (choice === install) {
+-                 await installUpdate(updateInfo.downloadUrl, updateInfo.version);
+-             }
+-         } else {
+-             vscode.window.showInformationMessage('Your extension is up to date!');
+-         }
+-     } else {
+-         vscode.window.showWarningMessage('Could not check for updates. Please try again later.');
+-     }
++                 if (choice === install) {
++                     await installUpdate(updateInfo.downloadUrl, updateInfo.version);
++                 }
++             } else {
++                 vscode.window.showInformationMessage('Your extension is up to date!');
++             }
++         } else {
++             vscode.window.showWarningMessage('Could not check for updates. Please try again later.');
++         }
++     } catch (error) {
++         console.error('[Skoop Continue Sync] Error in manual update check:', error);
++         vscode.window.showErrorMessage(`Update check failed: ${error}`);
++     }
+  }
+  
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Now let me add some debug logging to the force update check command and the update status command to see if they're being called.</details></think>
+
+---
+
+Tool use: **search_replace**
+
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+**Chunk 1**
+Lines added: 8, lines removed: 3
+
+```diff
+@@ -144,10 +144,15 @@
+  
+      const forceUpdateCheckDisposable = vscode.commands.registerCommand('skoop-continue-sync.forceUpdateCheck', async () => {
+-         console.log('[Skoop Continue Sync] Force update check command triggered');
+-         await checkAndNotifyUpdates();
++         console.log('[Skoop Continue Sync] Force update check command triggered - DEBUG COMMAND');
++         try {
++             await checkAndNotifyUpdates();
++             console.log('[Skoop Continue Sync] Force update check completed');
++         } catch (error) {
++             console.error('[Skoop Continue Sync] Force update check failed:', error);
++         }
+      });
+  
+      const updateStatusDisposable = vscode.commands.registerCommand('skoop-continue-sync.updateStatus', async () => {
+-         console.log('[Skoop Continue Sync] Update status command triggered');
++         console.log('[Skoop Continue Sync] Update status command triggered - DEBUG COMMAND');
+  
+          const currentVersion = getCurrentVersion();
+```
+
+**Chunk 2**
+Lines added: 2, lines removed: 1
+
+```diff
+@@ -162,5 +167,6 @@
+              latestVersion,
+              lastUpdateCheck: new Date(lastUpdateCheck).toISOString(),
+-             updateCheckTimerRunning: !!updateCheckTimer
++             updateCheckTimerRunning: !!updateCheckTimer,
++             extensionContextAvailable: !!extensionContext
+          };
+  
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Now let me also make sure the getCurrentVersion function has better debug logging to see if it can find the extension.</details></think>
+
+---
+
+Tool use: **search_replace**
+
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+**Chunk 1**
+Lines added: 6, lines removed: 3
+
+```diff
+@@ -1095,17 +1095,20 @@
+          'JoshS.skoop-continue-sync'  // From repository URL
+      ];
++ 
++     console.log('[Skoop Continue Sync] Looking for extension with possible IDs:', possibleIds);
+  
+      for (const id of possibleIds) {
+          const extension = vscode.extensions.getExtension(id);
+          if (extension) {
+              const version = extension.packageJSON?.version || '0.0.0';
+-             console.log('[Skoop Continue Sync] Found extension with ID:', id);
++             console.log('[Skoop Continue Sync] ✅ Found extension with ID:', id);
+              console.log('[Skoop Continue Sync] Current extension version:', version);
++             console.log('[Skoop Continue Sync] Extension path:', extension.extensionPath);
+              return version;
+          }
+      }
+  
+-     console.log('[Skoop Continue Sync] Extension not found with any of these IDs:', possibleIds);
+-     console.log('[Skoop Continue Sync] All installed extensions:', vscode.extensions.all.map(ext => ext.id));
++     console.log('[Skoop Continue Sync] ❌ Extension not found with any of these IDs:', possibleIds);
++     console.log('[Skoop Continue Sync] All installed extensions (first 20):', vscode.extensions.all.slice(0, 20).map(ext => ({ id: ext.id, version: ext.packageJSON?.version })));
+      return '0.0.0';
+  }
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Now let me compile and package the extension with all the debug logging so the user can test it and see what's happening.</details></think>
+
+---
+
+Tool use: **run_terminal_cmd**
+
+```bash
+npm run compile
+```
+
+```
+
+> skoop-continue-sync@0.1.0 compile
+> tsc -p ./
+
+
+```
+
+---
+
+<think><details><summary>Thought Process</summary>Good, it compiles. Now let me package it.</details></think>
+
+---
+
+Tool use: **run_terminal_cmd**
+
+```bash
+npm run package:static
+```
+
+```
+
+> skoop-continue-sync@0.1.0 package:static
+> npm run package && npm run package:rename
+
+
+> skoop-continue-sync@0.1.0 package
+> npx @vscode/vsce package --no-dependencies
+
+Executing prepublish script 'npm run vscode:prepublish'...
+
+> skoop-continue-sync@0.1.0 vscode:prepublish
+> npm run compile
+
+
+> skoop-continue-sync@0.1.0 compile
+> tsc -p ./
+
+ INFO  Files included in the VSIX:
+skoop-continue-sync-0.1.0.vsix
+├─ [Content_Types].xml 
+├─ extension.vsixmanifest 
+└─ extension/
+   ├─ .cursorindexingignore [0.11 KB]
+   ├─ LICENSE.txt [0 KB]
+   ├─ package.json [4.77 KB]
+   ├─ readme.md [6.94 KB]
+   ├─ test-config-v2.yaml [7.67 KB]
+   ├─ test-config-v3-prod.yaml [34.21 KB]
+   ├─ test-config-v3.yaml [35.94 KB]
+   ├─ test-config.yaml [7.95 KB]
+   ├─ tsconfig.json [0.43 KB]
+   ├─ .specstory/
+   │  ├─ .gitignore [0.05 KB]
+   │  ├─ .what-is-this.md [3.37 KB]
+   │  ├─ notes.md [2.54 KB]
+   │  ├─ price_list.md [0.5 KB]
+   │  ├─ prompt-create-prompt.md [91.88 KB]
+   │  └─ history/ (15 files) [3.07 MB]
+   └─ out/
+      └─ extension.js [59.54 KB]
+
+=> Run vsce ls --tree to see all included files.
+
+ DONE  Packaged: C:\Users\JoshS\Documents\GitHub\skoop-continue-sync\skoop-continue-sync-0.1.0.vsix (32 files, 660.69 KB)
+
+> skoop-continue-sync@0.1.0 package:rename
+> node -e "const fs = require('fs'); const pkg = require('./package.json'); const oldName = 'skoop-continue-sync-' + pkg.version + '.vsix'; const newName = 'skoop-continue-sync.vsix'; if (fs.existsSync(oldName)) { fs.renameSync(oldName, newName); console.log('Renamed ' + oldName + ' to ' + newName); }"
+
+Renamed skoop-continue-sync-0.1.0.vsix to skoop-continue-sync.vsix
+
+```
+
+---
+
+<think><details><summary>Thought Process</summary>Perfect! Now the extension is packaged with all the debug logging. Let me provide the user with instructions on how to test and debug the auto-update functionality.</details></think>
+
+---
+
+## 🔍 **Enhanced Debug Version Ready**
+
+I've added comprehensive debug logging to help identify why the auto-update functionality isn't working. The extension is now packaged with detailed logging that will show you exactly what's happening.
+
+## 🧪 **How to Test & Debug**
+
+### **Step 1: Install the Debug Version**
+1. Install the new `skoop-continue-sync.vsix` file
+2. Open VS Code Developer Console: `Help` → `Toggle Developer Tools`
+3. Reload VS Code window: `Ctrl+Shift+P` → "Developer: Reload Window"
+
+### **Step 2: Check Initial Logs**
+When the extension activates, you should see extensive debug info:
+```
+[Skoop Continue Sync] Extension activated successfully!
+[Skoop Continue Sync] === EXTENSION DEBUG INFO ===
+[Skoop Continue Sync] All installed extensions count: X
+[Skoop Continue Sync] All extension IDs: [...]
+[Skoop Continue Sync] Detected current version: 0.1.0
+[Skoop Continue Sync] Auto-updates enabled: true
+[Skoop Continue Sync] Update check interval: 10
+```
+
+### **Step 3: Test Manual Commands**
+Try these commands from the Command Palette (`Ctrl+Shift+P`):
+
+1. **`Skoop Continue Sync: Show Update Status (Debug)`**
+   - Should show current state and trigger debug logs
+
+2. **`Skoop Continue Sync: Force Update Check (Debug)`**
+   - Should immediately try to check for updates
+
+3. **`Skoop Continue Sync: Check for Extension Updates`**
+   - Manual update check via command
+
+### **Step 4: Test Settings**
+In VS Code Settings (`Ctrl+,`), search for "Skoop Continue Sync" and try:
+- Toggle `Skoop Continue Sync: Enable Auto Updates`
+- Change `Skoop Continue Sync: Update Check Interval`
+- Toggle `Skoop Continue Sync: Check For Updates` (should trigger check)
+
+### **Step 5: Watch the Console Logs**
+Look for these debug messages:
+
+#### **Extension Detection**
+```
+[Skoop Continue Sync] Looking for extension with possible IDs: [...]
+[Skoop Continue Sync] ✅ Found extension with ID: skoop-continue-sync
+[Skoop Continue Sync] Current extension version: 0.1.0
+```
+
+#### **Settings Changes**
+```
+[Skoop Continue Sync] Configuration changed: true
+[Skoop Continue Sync] checkForUpdates setting changed to: true
+```
+
+#### **Update Checks**
+```
+[Skoop Continue Sync] Making request to: https://api.github.com/repos/SKOOP-Digital/skoop-continue-sync/releases/latest
+[Skoop Continue Sync] GitHub API response status: 200
+[Skoop Continue Sync] Found .vsix asset: skoop-continue-sync.vsix
+```
+
+## 🚨 **Likely Issues to Check**
+
+### **1. Extension ID Not Found**
+If you see:
+```
+[Skoop Continue Sync] ❌ Extension not found with any of these IDs
+```
+The extension might be installed with a different ID. The debug logs will show all installed extension IDs.
+
+### **2. GitHub API Failing**
+If you see:
+```
+[Skoop Continue Sync] GitHub API response status: 404
+```
+The repository might not have any releases yet.
+
+### **3. Settings Not Triggering**
+If you don't see:
+```
+[Skoop Continue Sync] Configuration changed: true
+```
+The settings listeners aren't working.
+
+### **4. No Auto-Updates**
+If you don't see periodic update checks, the timer might not be starting.
+
+## 📊 **Expected Behavior**
+
+With the debug version, you should see:
+- ✅ Extension activation logs on startup
+- ✅ Settings change detection when you modify settings
+- ✅ GitHub API calls when checking for updates
+- ✅ Version comparison results
+- ✅ Clear error messages if something fails
+
+**Please install the debug version, check the console logs, and let me know what you see!** This will tell us exactly where the auto-update functionality is failing. 🔧
+
+The logs will be very verbose now, so you'll know exactly what's happening at each step.
 
 ---
 
