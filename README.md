@@ -41,35 +41,21 @@ For now, you can use one of the following keys:
 -   `josh_m:sk-Xko8_N_iN3Q_Mrda5imWQw`
 -   `shahzad_h:sk-fzTwcJQwGcWbvKmb0-7-Iw`
 
-The configuration is fetched from the following n8n workflow:
+The configuration is fetched from the following n8n workflows:
 [https://n8n.skoopsignage.dev/workflow/uBcGGDcJkoTGSHDa](https://n8n.skoopsignage.dev/workflow/uBcGGDcJkoTGSHDa)
 
 ## Auto-Updates
 
-The extension includes automatic update checking to keep your installation current:
-
-- **Automatic Checks**: Every 10 seconds (configurable) the extension checks for new releases
-- **Smart Notifications**: When a new version is available, you'll get a popup notification
-- **Easy Updates**: Click "Update Now" to open the VS Code marketplace for installation
-- **Version Display**: The extension shows proper semantic version numbers (e.g., 0.1.42)
-- **Repository Requirement**: The update repository must be **public** for the API to work
+The extension includes automatic update checking to keep your installation current.
 
 ### Update Settings
 
 You can configure auto-update behavior in VS Code settings:
 
 - `Skoop Continue Sync: Enable Auto Updates` - Enable/disable automatic update checks
-- `Skoop Continue Sync: Refresh Interval` - Set check frequency for both config and extension updates (10-3600 seconds)
+- `Skoop Continue Sync: Refresh Interval` - Set check frequency for both config and extension updates
 - `Skoop Continue Sync: Check For Updates` - Manually trigger an update check
 - `Skoop Continue Sync: Install Update` - Install available updates
-
-### Versioning
-
-The extension uses semantic versioning: `0.1.X` where X is the build number from automated releases. Each push to the main branch automatically creates a new release with an incremented version number.
-
-### Repository Access
-
-**Important**: The GitHub repository must be **public** for auto-updates to work, as the extension accesses the GitHub API without authentication. If you need to keep the repository private, the auto-update feature will not function.
 
 ## Usage
 
@@ -80,6 +66,41 @@ Once the extension is installed and configured, it will automatically sync the t
 3.  The extension will fetch the latest configuration and apply it.
 
 You can also clear all configurations by running the `Clear All Continue Configurations` command.
+
+## Model Options
+
+### Main Models:
+
+### Autocomplete Models
+Fast, specialized models for code completion:
+- **Codestral** (Mistral) - Lightning-fast autocomplete with 250ms debounce
+- **Mercury Coder** (Inception) - Optimized for next-edit predictions
+- **Instinct-LMStudio** - Local model via LM Studio for offline use
+
+### Chat & Edit Models
+Full-featured models for conversation and code editing:
+- **Grok-4-Fast-Reasoning** (xAI) - Balanced reasoning with 2M context, $0.20 input/$0.50 output
+- **Grok-4-Fast-Non-Reasoning** (xAI) - Fast responses, $0.20 input/$0.50 output
+- **Grok-Code-Fast-1** (xAI) - Code-optimized, $0.20 input/$0.50 output
+- **GLM-4.6** - Advanced reasoning with thinking tokens, $0.60 input/$2.20 output
+- **Gemini-2.5-Pro** (Google) - Large context model, $1.25-2.50 input/$10-15 output
+- **GPT-5** (OpenAI) - Enterprise-grade, $1.25 input/$10 output
+- **Claude-Sonnet-4-5** (Anthropic) - Premium reasoning, $3-3.75 input/$15 output
+- **Qwen3-Coder-30B** (Local via LM Studio) - Local coding specialist
+- **DeepSeek-R1-0528-Qwen3-8B** (Local via LM Studio) - Local reasoning model
+
+### Specialized Models
+- **Morph Fast Apply** (OpenAI) - Optimized for code application tasks
+- **Morph Embedding v2** - High-quality code embeddings
+- **Morph Rerank v2** - Advanced code reranking
+
+### Recommendations
+- **For general coding**: Grok-4-Fast-Reasoning or GLM-4.6 (excellent balance of speed and quality)
+- **For complex reasoning**: Claude-Sonnet-4-5 or GPT-5 (premium performance)
+- **For local/offline use**: Instinct-LMStudio or Qwen3-Coder-30B via LM Studio
+- **For cost efficiency**: Grok models offer the best value for most coding tasks
+
+*Pricing shown is per 1M tokens. Cached input pricing available for supported models.
 
 ## How It Works: The Configuration File
 
