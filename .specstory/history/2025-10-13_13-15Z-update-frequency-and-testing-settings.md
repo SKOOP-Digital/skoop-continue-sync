@@ -6894,3 +6894,16 @@ The confusion is resolved - one setting now controls all automatic refresh inter
 
 ---
 
+_**User (2025-10-13 13:04Z)**_
+
+its still checking like every 10 seconds even though i have set check to 300 seconds, also make sure that this time  setting controls the update checks for both the extension update and the configuration check update
+
+---
+
+_**Assistant (grok-code-fast-1)**_
+
+<think><details><summary>Thought Process</summary>The user is saying that even though they set the refresh interval to 300 seconds, it's still checking every 10 seconds. This suggests that the setting change isn't being properly detected or applied. Let me check the code to see what might be wrong.
+</details></think>
+
+---
+

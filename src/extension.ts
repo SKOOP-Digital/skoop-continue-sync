@@ -758,7 +758,23 @@ function setupConfigurationListeners(context: vscode.ExtensionContext) {
     console.log('[Skoop Continue Sync] Setting up configuration listeners...');
 
     const onDidChangeConfiguration = vscode.workspace.onDidChangeConfiguration(async (event) => {
-        console.log('[Skoop Continue Sync] Configuration changed:', event.affectsConfiguration('skoop-continue-sync'));
+        console.log('[Skoop Continue Sync] Configuration change detected');
+
+        // Log all changed configurations for debugging
+        const allConfigs = [
+            'skoop-continue-sync.apiKey',
+            'skoop-continue-sync.applyConfig',
+            'skoop-continue-sync.clearConfig',
+            'skoop-continue-sync.enableAutoUpdates',
+            'skoop-continue-sync.refreshInterval',
+            'skoop-continue-sync.checkForUpdates',
+            'skoop-continue-sync.installUpdate'
+        ];
+
+        const changedConfigs = allConfigs.filter(config => event.affectsConfiguration(config));
+        if (changedConfigs.length > 0) {
+            console.log('[Skoop Continue Sync] Changed configurations:', changedConfigs);
+        }
 
         // Check for applyConfig trigger
         if (event.affectsConfiguration('skoop-continue-sync.applyConfig')) {
@@ -854,7 +870,9 @@ function setupConfigurationListeners(context: vscode.ExtensionContext) {
 
         // Check for refreshInterval change
         if (event.affectsConfiguration('skoop-continue-sync.refreshInterval')) {
-            console.log('[Skoop Continue Sync] Refresh interval changed, restarting both timers');
+            const newInterval = vscode.workspace.getConfiguration('skoop-continue-sync').get('refreshInterval', 10);
+            console.log('[Skoop Continue Sync] Refresh interval changed to:', newInterval, 'seconds');
+            console.log('[Skoop Continue Sync] Restarting both timers with new interval');
             startConfigRefreshTimer();
             startUpdateCheckTimer();
         }
@@ -883,8 +901,10 @@ function startConfigRefreshTimer() {
     }
 
     const refreshInterval = vscode.workspace.getConfiguration('skoop-continue-sync').get('refreshInterval', 10) * 1000;
+    const refreshIntervalSeconds = refreshInterval / 1000;
 
-    console.log(`[Skoop Continue Sync] Starting config refresh timer with ${refreshInterval / 1000} second interval`);
+    console.log(`[Skoop Continue Sync] Config refresh timer: reading setting 'refreshInterval' = ${refreshIntervalSeconds} seconds`);
+    console.log(`[Skoop Continue Sync] Starting config refresh timer with ${refreshIntervalSeconds} second interval`);
     refreshTimer = setInterval(() => {
         console.log('[Skoop Continue Sync] Periodic config refresh check...');
         checkAndRefreshConfig();
@@ -906,8 +926,10 @@ function startUpdateCheckTimer() {
     }
 
     const refreshInterval = vscode.workspace.getConfiguration('skoop-continue-sync').get('refreshInterval', 10) * 1000;
+    const refreshIntervalSeconds = refreshInterval / 1000;
 
-    console.log(`[Skoop Continue Sync] Starting update check timer with ${refreshInterval / 1000} second interval`);
+    console.log(`[Skoop Continue Sync] Update check timer: reading setting 'refreshInterval' = ${refreshIntervalSeconds} seconds`);
+    console.log(`[Skoop Continue Sync] Starting update check timer with ${refreshIntervalSeconds} second interval`);
     updateCheckTimer = setInterval(() => {
         console.log('[Skoop Continue Sync] Periodic update check...');
         checkAndNotifyUpdates();
@@ -940,7 +962,8 @@ function setupAutomaticRefresh(context: vscode.ExtensionContext) {
     const enableAutoUpdates = vscode.workspace.getConfiguration('skoop-continue-sync').get('enableAutoUpdates', true);
     const refreshInterval = vscode.workspace.getConfiguration('skoop-continue-sync').get('refreshInterval', 10);
     console.log('[Skoop Continue Sync] Auto-updates enabled:', enableAutoUpdates);
-    console.log('[Skoop Continue Sync] Refresh interval:', refreshInterval, 'seconds (applies to both config and extension updates)');
+    console.log('[Skoop Continue Sync] Refresh interval setting read as:', refreshInterval, 'seconds');
+    console.log('[Skoop Continue Sync] This interval applies to both config refresh and extension update checks');
 
     // Check for updates and config on startup
         checkAndRefreshConfig();
