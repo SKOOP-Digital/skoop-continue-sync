@@ -7,6 +7,7 @@ A VS Code extension that synchronizes Continue.dev settings for team members by 
 - **Centralized Configuration**: All settings are loaded from a secure n8n webhook.
 - **Automatic Refresh**: Configuration is automatically refreshed every 24 hours to ensure settings are always up-to-date.
 - **Manual Sync**: A command is available to manually trigger a configuration refresh at any time.
+- **Auto-Update**: Extension automatically checks for updates and notifies users when new versions are available.
 - **Team-Managed Agents**: Pre-defined agents for tasks like code review, bug fixing, and documentation are deployed to all team members.
 - **Standardized Models**: Ensures all team members use the same models with consistent settings and roles.
 - **Global Rules & Prompts**: Enforces team-wide coding standards and provides standardized prompts.
@@ -42,6 +43,29 @@ For now, you can use one of the following keys:
 
 The configuration is fetched from the following n8n workflow:
 [https://n8n.skoopsignage.dev/workflow/uBcGGDcJkoTGSHDa](https://n8n.skoopsignage.dev/workflow/uBcGGDcJkoTGSHDa)
+
+## Auto-Updates
+
+The extension includes automatic update checking to keep your installation current:
+
+- **Automatic Checks**: Every 10 seconds (configurable) the extension checks for new releases
+- **Smart Notifications**: When a new version is available, you'll get a popup notification
+- **Easy Updates**: Click "Update Now" to open the VS Code marketplace for installation
+- **Version Display**: The extension shows proper semantic version numbers (e.g., 0.1.42)
+
+### Update Settings
+
+You can configure auto-update behavior in VS Code settings:
+
+- `Skoop Continue Sync: Enable Auto Updates` - Enable/disable automatic update checks
+- `Skoop Continue Sync: Update Check Interval` - Set check frequency (10-3600 seconds)
+- `Skoop Continue Sync: Check For Updates` - Manually trigger an update check
+- `Skoop Continue Sync: Install Update` - Install available updates
+
+### Versioning
+
+The extension uses semantic versioning: `0.1.X` where X is the build number from automated releases. Each push to the main branch automatically creates a new release with an incremented version number.
+
 ## Usage
 
 Once the extension is installed and configured, it will automatically sync the team's `continue.dev` settings. You can also manually trigger a sync:

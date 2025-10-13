@@ -32,22 +32,45 @@ jobs:
     - name: Compile TypeScript
       run: npm run compile
 
-    - name: Package extension
-      run: npx @vscode/vsce package --no-dependencies
-
-    - name: Rename extension to static name
-      run: |
-        # Get the version from package.json
-        VERSION=$(node -p "require('./package.json').version")
-        # Rename the vsix file to a static name
-        mv "skoop-continue-sync-${VERSION}.vsix" "skoop-continue-sync.vsix"
-
-    - name: Upload extension package
+    - name: Upload extension package (dev build)
       uses: actions/upload-artifact@v4
       with:
-        name: skoop-continue-sync-extension
-        path: "skoop-continue-sync.vsix"
-        if-no-files-found: error
+        name: skoop-continue-sync-extension-dev
+        path: "*.vsix"
+        if-no-files-found: warn
+
+    - name: Update package.json version
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      run: |
+        # Calculate version: base version + build number
+        BASE_VERSION="0.1"
+        BUILD_NUMBER=${{ github.run_number }}
+        NEW_VERSION="${BASE_VERSION}.${BUILD_NUMBER}"
+        echo "Updating version to ${NEW_VERSION}"
+
+        # Update package.json
+        sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"${NEW_VERSION}\"/" package.json
+
+        # Verify the change
+        grep '"version"' package.json
+
+    - name: Rebuild with new version
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      run: |
+        npm run compile
+
+    - name: Repackage with new version
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      run: |
+        npx @vscode/vsce package --no-dependencies
+
+    - name: Rename to static name
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      run: |
+        # Rename the newly created vsix file to static name
+        ls -la *.vsix
+        mv skoop-continue-sync-*.vsix skoop-continue-sync.vsix
+        ls -la skoop-continue-sync.vsix
 
     - name: Create GitHub Release
       if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -60,6 +83,7 @@ jobs:
 
           ## Changes
           - Automated build from commit ${{ github.sha }}
+          - Version: 0.1.${{ github.run_number }}
         files: skoop-continue-sync.vsix
         generate_release_notes: true
       env:

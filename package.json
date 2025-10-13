@@ -2,7 +2,7 @@
   "name": "skoop-continue-sync",
   "displayName": "Skoop Continue Sync",
   "description": "Extension to synchronize Continue.dev settings for team members",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/SKOOP-Digital/skoop-continue-sync"
@@ -113,7 +113,7 @@
           "default": 10,
           "minimum": 10,
           "maximum": 3600,
-          "description": "Interval in test seconds between update checks (minimum 10 seconds)"
+          "description": "Interval in seconds between update checks (minimum 10 seconds)"
         },
         "skoop-continue-sync.checkForUpdates": {
           "type": "boolean",
