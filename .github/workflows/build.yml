@@ -32,9 +32,32 @@ jobs:
     - name: Package extension
       run: npx @vscode/vsce package --no-dependencies
 
+    - name: Rename extension to static name
+      run: |
+        # Get the version from package.json
+        VERSION=$(node -p "require('./package.json').version")
+        # Rename the vsix file to a static name
+        mv "skoop-continue-sync-${VERSION}.vsix" "skoop-continue-sync.vsix"
+
     - name: Upload extension package
       uses: actions/upload-artifact@v4
       with:
         name: skoop-continue-sync-extension
-        path: "*.vsix"
+        path: "skoop-continue-sync.vsix"
         if-no-files-found: error
+
+    - name: Create GitHub Release
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ github.run_number }}
+        name: Release ${{ github.run_number }}
+        body: |
+          Automated release ${{ github.run_number }}
+
+          ## Changes
+          - Automated build from commit ${{ github.sha }}
+        files: skoop-continue-sync.vsix
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ github.token }}

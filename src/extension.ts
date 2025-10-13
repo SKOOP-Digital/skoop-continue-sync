@@ -732,11 +732,11 @@ function setupAutomaticRefresh(context: vscode.ExtensionContext) {
     // Check if we need to refresh on startup
     checkAndRefreshConfig();
 
-    // Set up periodic refresh (every 24 hours)
+    // Set up periodic refresh (every 10 seconds for testing)
     refreshTimer = setInterval(() => {
         console.log('[Skoop Continue Sync] Periodic config refresh check...');
         checkAndRefreshConfig();
-    }, 24 * 60 * 60 * 1000); // 24 hours
+    }, 10 * 1000); // 10 seconds for testing
 
     // Listen for when VS Code becomes active again (user comes back online)
     const onDidChangeWindowState = vscode.window.onDidChangeWindowState((state) => {
@@ -772,10 +772,10 @@ async function checkAndRefreshConfig() {
     }
 
     const now = Date.now();
-    const oneDay = 24 * 60 * 60 * 1000;
+    const tenSeconds = 10 * 1000; // 10 seconds for testing
 
-    if (now - lastConfigRefresh > oneDay) {
-        console.log('[Skoop Continue Sync] More than 24 hours since last refresh, refreshing config...');
+    if (now - lastConfigRefresh > tenSeconds) {
+        console.log('[Skoop Continue Sync] More than 10 seconds since last refresh, refreshing config...');
         try {
             await applyTeamSettings();
             lastConfigRefresh = now;
@@ -786,7 +786,7 @@ async function checkAndRefreshConfig() {
             console.error('[Skoop Continue Sync] Automatic config refresh failed:', error);
         }
     } else {
-        console.log('[Skoop Continue Sync] Config is still fresh, skipping automatic refresh');
+        console.log('[Skoop Continue Sync] Config is still fresh (less than 10 seconds old), skipping automatic refresh');
     }
 }
 

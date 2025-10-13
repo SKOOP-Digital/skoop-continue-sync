@@ -83,7 +83,9 @@
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "lint": "eslint src --ext ts",
-    "package": "npx @vscode/vsce package"
+    "package": "npx @vscode/vsce package --no-dependencies",
+    "package:rename": "node -e \"const fs = require('fs'); const pkg = require('./package.json'); const oldName = 'skoop-continue-sync-' + pkg.version + '.vsix'; const newName = 'skoop-continue-sync.vsix'; if (fs.existsSync(oldName)) { fs.renameSync(oldName, newName); console.log('Renamed ' + oldName + ' to ' + newName); }\"",
+    "package:static": "npm run package && npm run package:rename"
   },
   "devDependencies": {
     "@types/node": "16.x",
