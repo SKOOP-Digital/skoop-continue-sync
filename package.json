@@ -48,6 +48,14 @@
       {
         "command": "skoop-continue-sync.installUpdate",
         "title": "Install Extension Update"
+      },
+      {
+        "command": "skoop-continue-sync.forceUpdateCheck",
+        "title": "Force Update Check (Debug)"
+      },
+      {
+        "command": "skoop-continue-sync.updateStatus",
+        "title": "Show Update Status (Debug)"
       }
     ],
     "keybindings": [
@@ -105,7 +113,7 @@
           "default": 10,
           "minimum": 10,
           "maximum": 3600,
-          "description": "Interval test in seconds between update checks (minimum 10 seconds)"
+          "description": "Interval in seconds between update checks (minimum 10 seconds)"
         },
         "skoop-continue-sync.checkForUpdates": {
           "type": "boolean",

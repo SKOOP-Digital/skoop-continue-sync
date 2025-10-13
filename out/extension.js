@@ -132,8 +132,29 @@ function activate(context) {
             vscode.window.showErrorMessage('Could not retrieve update information. Please try checking for updates first.');
         }
     });
-    context.subscriptions.push(applySettingsDisposable, clearConfigDisposable, checkUpdatesDisposable, installUpdateDisposable);
-    console.log('[Skoop Continue Sync] Commands registered: skoop-continue-sync.applyTeamSettings, skoop-continue-sync.clearAllConfigs, skoop-continue-sync.checkForUpdates, skoop-continue-sync.installUpdate');
+    const forceUpdateCheckDisposable = vscode.commands.registerCommand('skoop-continue-sync.forceUpdateCheck', async () => {
+        console.log('[Skoop Continue Sync] Force update check command triggered');
+        await checkAndNotifyUpdates();
+    });
+    const updateStatusDisposable = vscode.commands.registerCommand('skoop-continue-sync.updateStatus', async () => {
+        console.log('[Skoop Continue Sync] Update status command triggered');
+        const currentVersion = getCurrentVersion();
+        const enableAutoUpdates = vscode.workspace.getConfiguration('skoop-continue-sync').get('enableAutoUpdates', true);
+        const updateCheckInterval = vscode.workspace.getConfiguration('skoop-continue-sync').get('updateCheckInterval', 10);
+        const status = {
+            currentVersion,
+            enableAutoUpdates,
+            updateCheckInterval,
+            updateAvailable,
+            latestVersion,
+            lastUpdateCheck: new Date(lastUpdateCheck).toISOString(),
+            updateCheckTimerRunning: !!updateCheckTimer
+        };
+        console.log('[Skoop Continue Sync] Update status:', status);
+        vscode.window.showInformationMessage(`Update Status: ${JSON.stringify(status, null, 2)}`);
+    });
+    context.subscriptions.push(applySettingsDisposable, clearConfigDisposable, checkUpdatesDisposable, installUpdateDisposable, forceUpdateCheckDisposable, updateStatusDisposable);
+    console.log('[Skoop Continue Sync] Commands registered: skoop-continue-sync.applyTeamSettings, skoop-continue-sync.clearAllConfigs, skoop-continue-sync.checkForUpdates, skoop-continue-sync.installUpdate, skoop-continue-sync.forceUpdateCheck, skoop-continue-sync.updateStatus');
 }
 exports.activate = activate;
 // Fetch configuration from HTTP endpoint
@@ -593,6 +614,7 @@ function setupConfigurationListeners(context) {
         // Check for checkForUpdates trigger
         if (event.affectsConfiguration('skoop-continue-sync.checkForUpdates')) {
             const checkForUpdates = vscode.workspace.getConfiguration('skoop-continue-sync').get('checkForUpdates', false);
+            console.log('[Skoop Continue Sync] checkForUpdates setting changed to:', checkForUpdates);
             if (checkForUpdates) {
                 console.log('[Skoop Continue Sync] Check for updates trigger detected via settings');
                 // Execute the check for updates command
@@ -605,6 +627,7 @@ function setupConfigurationListeners(context) {
                 // Reset the trigger back to false
                 try {
                     await vscode.workspace.getConfiguration('skoop-continue-sync').update('checkForUpdates', false, vscode.ConfigurationTarget.Global);
+                    console.log('[Skoop Continue Sync] Reset checkForUpdates setting to false');
                 }
                 catch (resetError) {
                     console.error('[Skoop Continue Sync] Error resetting checkForUpdates setting:', resetError);
@@ -614,6 +637,7 @@ function setupConfigurationListeners(context) {
         // Check for installUpdate trigger
         if (event.affectsConfiguration('skoop-continue-sync.installUpdate')) {
             const installUpdate = vscode.workspace.getConfiguration('skoop-continue-sync').get('installUpdate', false);
+            console.log('[Skoop Continue Sync] installUpdate setting changed to:', installUpdate);
             if (installUpdate) {
                 console.log('[Skoop Continue Sync] Install update trigger detected via settings');
                 // Execute the install update command
@@ -626,6 +650,7 @@ function setupConfigurationListeners(context) {
                 // Reset the trigger back to false
                 try {
                     await vscode.workspace.getConfiguration('skoop-continue-sync').update('installUpdate', false, vscode.ConfigurationTarget.Global);
+                    console.log('[Skoop Continue Sync] Reset installUpdate setting to false');
                 }
                 catch (resetError) {
                     console.error('[Skoop Continue Sync] Error resetting installUpdate setting:', resetError);
@@ -688,6 +713,11 @@ function setupAutomaticRefresh(context) {
     lastUpdateCheck = context.globalState.get('lastUpdateCheck', 0);
     console.log('[Skoop Continue Sync] Last config refresh:', new Date(lastConfigRefresh).toISOString());
     console.log('[Skoop Continue Sync] Last update check:', new Date(lastUpdateCheck).toISOString());
+    // Log current update settings
+    const enableAutoUpdates = vscode.workspace.getConfiguration('skoop-continue-sync').get('enableAutoUpdates', true);
+    const updateCheckInterval = vscode.workspace.getConfiguration('skoop-continue-sync').get('updateCheckInterval', 10);
+    console.log('[Skoop Continue Sync] Auto-updates enabled:', enableAutoUpdates);
+    console.log('[Skoop Continue Sync] Update check interval:', updateCheckInterval, 'seconds');
     // Check for updates and config on startup
     checkAndRefreshConfig();
     checkAndNotifyUpdates();
@@ -763,6 +793,8 @@ async function checkForUpdates() {
         console.log('[Skoop Continue Sync] Checking for extension updates...');
         const owner = 'SKOOP-Digital';
         const repo = 'skoop-continue-sync';
+        const url = `https://api.github.com/repos/${owner}/${repo}/releases/latest`;
+        console.log('[Skoop Continue Sync] Making request to:', url);
         return new Promise((resolve, reject) => {
             const options = {
                 hostname: 'api.github.com',
@@ -773,22 +805,35 @@ async function checkForUpdates() {
                     'Accept': 'application/vnd.github.v3+json'
                 }
             };
+            console.log('[Skoop Continue Sync] HTTPS request options:', JSON.stringify(options, null, 2));
             const req = https.request(options, (res) => {
+                console.log('[Skoop Continue Sync] GitHub API response status:', res.statusCode);
+                console.log('[Skoop Continue Sync] Response headers:', JSON.stringify(res.headers, null, 2));
                 let data = '';
                 res.on('data', (chunk) => {
                     data += chunk;
                 });
                 res.on('end', () => {
+                    console.log('[Skoop Continue Sync] Raw response data length:', data.length);
+                    console.log('[Skoop Continue Sync] Raw response data (first 500 chars):', data.substring(0, 500));
                     try {
                         if (res.statusCode === 200) {
                             const release = JSON.parse(data);
+                            console.log('[Skoop Continue Sync] Parsed release data:', {
+                                tag_name: release.tag_name,
+                                assets_count: release.assets?.length || 0
+                            });
                             const version = release.tag_name.replace(/^v/, ''); // Remove 'v' prefix if present
+                            console.log('[Skoop Continue Sync] Extracted version:', version);
                             const asset = release.assets.find((a) => a.name === 'skoop-continue-sync.vsix');
+                            console.log('[Skoop Continue Sync] Found .vsix asset:', asset ? asset.name : 'none');
                             if (asset) {
-                                resolve({
+                                const result = {
                                     version,
                                     downloadUrl: asset.browser_download_url
-                                });
+                                };
+                                console.log('[Skoop Continue Sync] Returning update info:', result);
+                                resolve(result);
                             }
                             else {
                                 console.log('[Skoop Continue Sync] No .vsix asset found in latest release');
@@ -797,23 +842,27 @@ async function checkForUpdates() {
                         }
                         else {
                             console.log(`[Skoop Continue Sync] GitHub API returned status ${res.statusCode}`);
+                            console.log('[Skoop Continue Sync] Response body:', data);
                             resolve(null);
                         }
                     }
                     catch (error) {
                         console.error('[Skoop Continue Sync] Error parsing GitHub API response:', error);
+                        console.error('[Skoop Continue Sync] Raw response data:', data);
                         reject(error);
                     }
                 });
             });
             req.on('error', (error) => {
-                console.error('[Skoop Continue Sync] Error checking for updates:', error);
+                console.error('[Skoop Continue Sync] HTTPS request error:', error);
                 reject(error);
             });
             req.setTimeout(10000, () => {
+                console.log('[Skoop Continue Sync] Update check request timed out');
                 req.destroy();
                 reject(new Error('Update check timeout'));
             });
+            console.log('[Skoop Continue Sync] Sending HTTPS request...');
             req.end();
         });
     }
@@ -824,8 +873,24 @@ async function checkForUpdates() {
 }
 // Get current extension version
 function getCurrentVersion() {
-    const extension = vscode.extensions.getExtension('SKOOP-Digital.skoop-continue-sync');
-    return extension?.packageJSON?.version || '0.0.0';
+    // Try different possible extension IDs
+    const possibleIds = [
+        'skoop-continue-sync',
+        'SKOOP-Digital.skoop-continue-sync',
+        'JoshS.skoop-continue-sync' // From repository URL
+    ];
+    for (const id of possibleIds) {
+        const extension = vscode.extensions.getExtension(id);
+        if (extension) {
+            const version = extension.packageJSON?.version || '0.0.0';
+            console.log('[Skoop Continue Sync] Found extension with ID:', id);
+            console.log('[Skoop Continue Sync] Current extension version:', version);
+            return version;
+        }
+    }
+    console.log('[Skoop Continue Sync] Extension not found with any of these IDs:', possibleIds);
+    console.log('[Skoop Continue Sync] All installed extensions:', vscode.extensions.all.map(ext => ext.id));
+    return '0.0.0';
 }
 // Compare version strings (simple semver comparison)
 function compareVersions(version1, version2) {
