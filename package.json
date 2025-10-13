@@ -5,7 +5,7 @@
   "version": "0.0.1",
   "repository": {
     "type": "git",
-    "url": "https://github.com/JoshS/skoop-continue-sync"
+    "url": "https://github.com/SKOOP-Digital/skoop-continue-sync"
   },
   "engines": {
     "vscode": "^1.74.0",
