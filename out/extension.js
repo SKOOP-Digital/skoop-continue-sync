@@ -161,7 +161,11 @@ function activate(context) {
     const forceUpdateCheckDisposable = vscode.commands.registerCommand('skoop-continue-sync.forceUpdateCheck', async () => {
         console.log('[Skoop Continue Sync] Force update check command triggered - DEBUG COMMAND');
         try {
-            await checkAndNotifyUpdates(true); // Force the check
+            // Force update check by temporarily resetting lastUpdateCheck
+            const originalLastUpdateCheck = lastUpdateCheck;
+            lastUpdateCheck = 0; // Force the check
+            await checkAndNotifyUpdates();
+            lastUpdateCheck = originalLastUpdateCheck; // Restore original value
             console.log('[Skoop Continue Sync] Force update check completed');
         }
         catch (error) {
@@ -798,10 +802,10 @@ function setupAutomaticRefresh(context) {
     // Listen for when VS Code becomes active again (user comes back online)
     const onDidChangeWindowState = vscode.window.onDidChangeWindowState((state) => {
         if (state.focused && !isOnline) {
-            console.log('[Skoop Continue Sync] VS Code regained focus, forcing config refresh and update check...');
+            console.log('[Skoop Continue Sync] VS Code regained focus, checking if refresh needed...');
             isOnline = true;
-            checkAndRefreshConfig(true); // Force refresh when regaining focus
-            checkAndNotifyUpdates(true); // Force update check when regaining focus
+            checkAndRefreshConfig(); // Check if refresh needed based on time interval
+            checkAndNotifyUpdates(); // Check if update check needed based on time interval
         }
         else if (!state.focused) {
             isOnline = false;
@@ -812,7 +816,7 @@ function setupAutomaticRefresh(context) {
 // Global reference to extension context for state management
 let extensionContext = null;
 // Check if config needs to be refreshed and do it if necessary
-async function checkAndRefreshConfig(forceRefresh = false) {
+async function checkAndRefreshConfig() {
     if (!extensionContext) {
         console.log('[Skoop Continue Sync] Extension context not available, skipping automatic refresh');
         return;
@@ -825,9 +829,8 @@ async function checkAndRefreshConfig(forceRefresh = false) {
     }
     const now = Date.now();
     const refreshInterval = vscode.workspace.getConfiguration('skoop-continue-sync').get('refreshInterval', 10) * 1000;
-    if (forceRefresh || now - lastConfigRefresh > refreshInterval) {
-        const reason = forceRefresh ? 'forced refresh' : `more than ${refreshInterval / 1000} seconds since last refresh`;
-        console.log(`[Skoop Continue Sync] ${reason}, refreshing config...`);
+    if (now - lastConfigRefresh > refreshInterval) {
+        console.log(`[Skoop Continue Sync] More than ${refreshInterval / 1000} seconds since last refresh, refreshing config...`);
         try {
             await applyTeamSettings();
             lastConfigRefresh = now;
@@ -1003,7 +1006,7 @@ function compareVersions(version1, version2) {
     return 0;
 }
 // Check and notify about updates
-async function checkAndNotifyUpdates(forceCheck = false) {
+async function checkAndNotifyUpdates() {
     if (!extensionContext) {
         console.log('[Skoop Continue Sync] Extension context not available, skipping update check');
         return;
@@ -1016,7 +1019,7 @@ async function checkAndNotifyUpdates(forceCheck = false) {
     }
     const now = Date.now();
     const refreshInterval = vscode.workspace.getConfiguration('skoop-continue-sync').get('refreshInterval', 10) * 1000;
-    if (forceCheck || now - lastUpdateCheck > refreshInterval) {
+    if (now - lastUpdateCheck > refreshInterval) {
         console.log('[Skoop Continue Sync] Checking for extension updates...');
         try {
             const updateInfo = await checkForUpdates();

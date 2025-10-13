@@ -7679,3 +7679,346 @@ The focus regain will still work (for catching updates when you return), but it 
 
 ---
 
+_**User (2025-10-13 13:04Z)**_
+
+but it should only do the update checks when refocused if the time interval has passed I can't be having any update checks or updates happeneing faster than the check time set in settings
+
+---
+
+_**Assistant (grok-code-fast-1)**_
+
+<think><details><summary>Thought Process</summary>The user wants the focus regain check to also respect the time interval, not force the update check. They don't want any update checks or config refreshes to happen faster than the interval they set in settings.
+</details></think>
+
+---
+
+Tool use: **search_replace**
+
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+**Chunk 1**
+Lines added: 3, lines removed: 3
+
+```diff
+@@ -977,8 +977,8 @@
+      const onDidChangeWindowState = vscode.window.onDidChangeWindowState((state) => {
+          if (state.focused && !isOnline) {
+-             console.log('[Skoop Continue Sync] VS Code regained focus, forcing config refresh and update check...');
++             console.log('[Skoop Continue Sync] VS Code regained focus, checking if refresh needed...');
+              isOnline = true;
+-             checkAndRefreshConfig(true); // Force refresh when regaining focus
+-             checkAndNotifyUpdates(true); // Force update check when regaining focus
++             checkAndRefreshConfig(); // Check if refresh needed based on time interval
++             checkAndNotifyUpdates(); // Check if update check needed based on time interval
+          } else if (!state.focused) {
+              isOnline = false;
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Now I should also remove the forceRefresh parameter from the checkAndRefreshConfig function since we're not using it anymore, and remove the forceCheck parameter from checkAndNotifyUpdates since we're not using that either.</details></think>
+
+---
+
+Tool use: **search_replace**
+
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+**Chunk 1**
+Lines added: 1, lines removed: 1
+
+```diff
+@@ -995,5 +995,5 @@
+  
+  // Check if config needs to be refreshed and do it if necessary
+- async function checkAndRefreshConfig(forceRefresh: boolean = false) {
++ async function checkAndRefreshConfig() {
+      if (!extensionContext) {
+          console.log('[Skoop Continue Sync] Extension context not available, skipping automatic refresh');
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Now I need to update the logic inside checkAndRefreshConfig to remove the forceRefresh parameter usage.</details></think>
+
+---
+
+Tool use: **search_replace**
+
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+**Chunk 1**
+Lines added: 2, lines removed: 3
+
+```diff
+@@ -1011,7 +1011,6 @@
+      const refreshInterval = vscode.workspace.getConfiguration('skoop-continue-sync').get('refreshInterval', 10) * 1000;
+  
+-     if (forceRefresh || now - lastConfigRefresh > refreshInterval) {
+-         const reason = forceRefresh ? 'forced refresh' : `more than ${refreshInterval / 1000} seconds since last refresh`;
+-         console.log(`[Skoop Continue Sync] ${reason}, refreshing config...`);
++     if (now - lastConfigRefresh > refreshInterval) {
++         console.log(`[Skoop Continue Sync] More than ${refreshInterval / 1000} seconds since last refresh, refreshing config...`);
+          try {
+              await applyTeamSettings();
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Now I need to do the same for checkAndNotifyUpdates - remove the forceCheck parameter.</details></think>
+
+---
+
+Tool use: **search_replace**
+
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+**Chunk 1**
+Lines added: 1, lines removed: 1
+
+```diff
+@@ -1207,5 +1207,5 @@
+  
+  // Check and notify about updates
+- async function checkAndNotifyUpdates(forceCheck: boolean = false) {
++ async function checkAndNotifyUpdates() {
+      if (!extensionContext) {
+          console.log('[Skoop Continue Sync] Extension context not available, skipping update check');
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Now I need to update the condition inside checkAndNotifyUpdates to remove the forceCheck parameter.</details></think>
+
+---
+
+Tool use: **search_replace**
+
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+**Chunk 1**
+Lines added: 1, lines removed: 1
+
+```diff
+@@ -1223,5 +1223,5 @@
+      const refreshInterval = vscode.workspace.getConfiguration('skoop-continue-sync').get('refreshInterval', 10) * 1000;
+  
+-     if (forceCheck || now - lastUpdateCheck > refreshInterval) {
++     if (now - lastUpdateCheck > refreshInterval) {
+          console.log('[Skoop Continue Sync] Checking for extension updates...');
+  
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Now force update check command should still force the check, so I need to keep that functionality there. Let me update it to directly call the check logic instead of using the parameter.</details></think>
+
+---
+
+Tool use: **search_replace**
+
+
+<details><summary>Edit file: src/extension.ts</summary>
+
+**Chunk 1**
+Lines added: 5, lines removed: 1
+
+```diff
+@@ -158,5 +158,9 @@
+          console.log('[Skoop Continue Sync] Force update check command triggered - DEBUG COMMAND');
+          try {
+-             await checkAndNotifyUpdates(true); // Force the check
++             // Force update check by temporarily resetting lastUpdateCheck
++             const originalLastUpdateCheck = lastUpdateCheck;
++             lastUpdateCheck = 0; // Force the check
++             await checkAndNotifyUpdates();
++             lastUpdateCheck = originalLastUpdateCheck; // Restore original value
+              console.log('[Skoop Continue Sync] Force update check completed');
+          } catch (error) {
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Now let me compile and package the extension with these final fixes.</details></think>
+
+---
+
+Tool use: **run_terminal_cmd**
+
+```bash
+npm run compile
+```
+
+```
+
+> skoop-continue-sync@0.1.0 compile
+> tsc -p ./
+
+
+```
+
+---
+
+<think><details><summary>Thought Process</summary>Now let me package it.</details></think>
+
+---
+
+Tool use: **run_terminal_cmd**
+
+```bash
+npm run package:static
+```
+
+```
+
+> skoop-continue-sync@0.1.0 package:static
+> npm run package && npm run package:rename
+
+
+> skoop-continue-sync@0.1.0 package
+> npx @vscode/vsce package --no-dependencies
+
+Executing prepublish script 'npm run vscode:prepublish'...
+
+> skoop-continue-sync@0.1.0 vscode:prepublish
+> npm run compile
+
+
+> skoop-continue-sync@0.1.0 compile
+> tsc -p ./
+
+ INFO  Files included in the VSIX:
+skoop-continue-sync-0.1.0.vsix
+├─ [Content_Types].xml 
+├─ extension.vsixmanifest 
+└─ extension/
+   ├─ .cursorindexingignore [0.11 KB]
+   ├─ LICENSE.txt [0 KB]
+   ├─ package.json [4.82 KB]
+   ├─ readme.md [7.31 KB]
+   ├─ test-config-v2.yaml [7.67 KB]
+   ├─ test-config-v3-prod.yaml [34.21 KB]
+   ├─ test-config-v3.yaml [35.94 KB]
+   ├─ test-config.yaml [7.95 KB]
+   ├─ tsconfig.json [0.43 KB]
+   ├─ .specstory/
+   │  ├─ .gitignore [0.05 KB]
+   │  ├─ .what-is-this.md [3.3 KB]
+   │  ├─ notes.md [2.54 KB]
+   │  ├─ price_list.md [0.5 KB]
+   │  ├─ prompt-create-prompt.md [91.88 KB]
+   │  └─ history/ (15 files) [3.2 MB]
+   └─ out/
+      └─ extension.js [64.81 KB]
+
+=> Run vsce ls --tree to see all included files.
+
+ DONE  Packaged: C:\Users\JoshS\Documents\GitHub\skoop-continue-sync\skoop-continue-sync-0.1.0.vsix (32 files, 685.12 KB)
+
+> skoop-continue-sync@0.1.0 package:rename
+> node -e "const fs = require('fs'); const pkg = require('./package.json'); const oldName = 'skoop-continue-sync-' + pkg.version + '.vsix'; const newName = 'skoop-continue-sync.vsix'; if (fs.existsSync(oldName)) { fs.renameSync(oldName, newName); console.log('Renamed ' + oldName + ' to ' + newName); }"
+
+Renamed skoop-continue-sync-0.1.0.vsix to skoop-continue-sync.vsix
+
+```
+
+---
+
+<think><details><summary>Thought Process</summary>Perfect! Now the extension respects the time interval for ALL checks, including when VS Code regains focus. Let me provide a comprehensive summary of what was fixed.</details></think>
+
+---
+
+## ✅ **Focus Regain Now Respects Time Interval!**
+
+You were absolutely right! I've fixed the focus regain behavior so it **strictly respects your refresh interval setting** and never checks faster than your configured time.
+
+## 🔧 **What Was Fixed**
+
+### **Before** (Bad Behavior)
+```javascript
+// Focus regain ALWAYS forced checks, ignoring your setting
+if (state.focused && !isOnline) {
+    checkAndRefreshConfig(true); // Forced!
+    checkAndNotifyUpdates(true); // Forced!
+}
+```
+
+### **After** (Good Behavior)  
+```javascript
+// Focus regain checks time interval just like periodic timers
+if (state.focused && !isOnline) {
+    checkAndRefreshConfig(); // Respects interval
+    checkAndNotifyUpdates(); // Respects interval
+}
+```
+
+## 📋 **How It Works Now**
+
+### **Periodic Timers** (every X seconds)
+- ✅ Only run if `current_time - last_check > refresh_interval`
+- ✅ Respect your `Refresh Interval` setting (10-3600 seconds)
+
+### **Focus Regain** (when returning to VS Code)
+- ✅ **Same logic** as periodic timers
+- ✅ Only checks if enough time has passed since last check  
+- ✅ **Never** checks faster than your setting allows
+- ✅ Still useful for catching updates when you return, but only if due
+
+### **Manual Commands**
+- ✅ Force Update Check command bypasses timing for debugging
+- ✅ Other commands respect timing
+
+## 🎯 **Expected Behavior**
+
+**When you set `Refresh Interval` to 300 seconds (5 minutes):**
+
+#### **Timer-based checks:**
+```
+[Skoop Continue Sync] Periodic config refresh check...  (exactly every 300s)
+[Skoop Continue Sync] Periodic update check...          (exactly every 300s)
+```
+
+#### **Focus regain (when returning to VS Code):**
+```
+[Skoop Continue Sync] VS Code regained focus, checking if refresh needed...
+[Skoop Continue Sync] Config is still fresh (less than 300 seconds old), skipping automatic refresh
+[Skoop Continue Sync] Update check is still fresh (less than 300 seconds old), skipping update check
+```
+
+**OR if enough time has passed:**
+```
+[Skoop Continue Sync] VS Code regained focus, checking if refresh needed...
+[Skoop Continue Sync] More than 300 seconds since last refresh, refreshing config...
+[Skoop Continue Sync] Checking for extension updates...
+```
+
+## 🚀 **Benefits**
+
+1. ✅ **Strict interval enforcement** - No checks faster than your setting
+2. ✅ **Predictable behavior** - Same logic everywhere  
+3. ✅ **Focus regain still useful** - Catches updates when you return (if due)
+4. ✅ **Manual override available** - Force commands for testing
+
+**Now your refresh interval setting controls ALL update checks, including focus regain scenarios!** 🎉
+
+Install the new `skoop-continue-sync.vsix` and the timing will be perfectly consistent with your settings. No more unexpected fast checks! 🚀
+
+---
+
