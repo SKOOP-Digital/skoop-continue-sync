@@ -133,16 +133,29 @@ function activate(context) {
     });
     const installUpdateDisposable = vscode.commands.registerCommand('skoop-continue-sync.installUpdate', async () => {
         console.log('[Skoop Continue Sync] Install update command triggered');
-        if (!updateAvailable || !latestVersion) {
-            vscode.window.showWarningMessage('No update available to install.');
-            return;
+        try {
+            // Always check for updates first to get the latest info
+            const updateInfo = await checkForUpdates();
+            if (!updateInfo) {
+                vscode.window.showErrorMessage('Could not check for updates. Please try again later.');
+                return;
+            }
+            const currentVersion = getCurrentVersion();
+            const comparison = compareVersions(updateInfo.version, currentVersion);
+            if (comparison > 0) {
+                // There is an update available
+                await installUpdate(updateInfo.downloadUrl, updateInfo.version);
+            }
+            else if (comparison === 0) {
+                vscode.window.showInformationMessage('Your extension is already up to date!');
+            }
+            else {
+                vscode.window.showInformationMessage('Your extension version is newer than the latest release.');
+            }
         }
-        const updateInfo = await checkForUpdates();
-        if (updateInfo && updateInfo.version === latestVersion) {
-            await installUpdate(updateInfo.downloadUrl, updateInfo.version);
-        }
-        else {
-            vscode.window.showErrorMessage('Could not retrieve update information. Please try checking for updates first.');
+        catch (error) {
+            console.error('[Skoop Continue Sync] Error in install update command:', error);
+            vscode.window.showErrorMessage(`Failed to check for updates: ${error}`);
         }
     });
     const forceUpdateCheckDisposable = vscode.commands.registerCommand('skoop-continue-sync.forceUpdateCheck', async () => {
@@ -846,10 +859,19 @@ async function checkForUpdates() {
                             });
                             const version = release.tag_name.replace(/^v/, ''); // Remove 'v' prefix if present
                             console.log('[Skoop Continue Sync] Extracted version from tag:', version);
-                            // For build numbers, convert to semantic version format (0.1.X)
-                            const buildNumber = parseInt(version);
-                            const semanticVersion = `0.1.${buildNumber}`;
-                            console.log('[Skoop Continue Sync] Converted to semantic version:', semanticVersion);
+                            // If version already contains dots, use it directly. Otherwise convert build number to semantic version.
+                            let semanticVersion;
+                            if (version.includes('.')) {
+                                // Already a semantic version (e.g., "0.1.92")
+                                semanticVersion = version;
+                                console.log('[Skoop Continue Sync] Using semantic version directly:', semanticVersion);
+                            }
+                            else {
+                                // Convert build number to semantic version format (0.1.X)
+                                const buildNumber = parseInt(version);
+                                semanticVersion = `0.1.${buildNumber}`;
+                                console.log('[Skoop Continue Sync] Converted build number to semantic version:', semanticVersion);
+                            }
                             const asset = release.assets.find((a) => a.name === 'skoop-continue-sync.vsix');
                             console.log('[Skoop Continue Sync] Found .vsix asset:', asset ? asset.name : 'none');
                             if (asset) {
@@ -968,6 +990,7 @@ async function checkAndNotifyUpdates() {
             if (updateInfo) {
                 const currentVersion = getCurrentVersion();
                 const comparison = compareVersions(updateInfo.version, currentVersion);
+                console.log(`[Skoop Continue Sync] Version comparison: "${updateInfo.version}" vs "${currentVersion}" = ${comparison}`);
                 if (comparison > 0) {
                     // Check if this version was previously ignored
                     const ignoredVersion = extensionContext.globalState.get('ignoredVersion');
@@ -1062,7 +1085,7 @@ async function manualUpdateCheck() {
         if (updateInfo) {
             const currentVersion = getCurrentVersion();
             const comparison = compareVersions(updateInfo.version, currentVersion);
-            console.log('[Skoop Continue Sync] Version comparison:', { current: currentVersion, latest: updateInfo.version, comparison });
+            console.log(`[Skoop Continue Sync] Manual check - Version comparison: "${updateInfo.version}" vs "${currentVersion}" = ${comparison}`);
             if (comparison > 0) {
                 const install = 'Install Update';
                 const choice = await vscode.window.showInformationMessage(`New version available: v${updateInfo.version} (current: v${currentVersion})`, install);

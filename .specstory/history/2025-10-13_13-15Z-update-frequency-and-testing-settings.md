@@ -5812,3 +5812,81 @@ All the debug logging will help you see exactly what's happening at each step.
 
 ---
 
+_**User (2025-10-13 13:04Z)**_
+
+x-ratelimit-resource": "core",
+  "x-ratelimit-used": "39",
+  "content-length": "3923",
+  "x-github-request-id": "461F:3EB55A:3FECC85:11C0FEF8:68ED0C32",
+  "connection": "close"
+}
+console.ts:137 [Extension Host] [Skoop Continue Sync] Raw response data length: 3923
+console.ts:137 [Extension Host] [Skoop Continue Sync] Raw response data (first 500 chars): {"url":"https://api.github.com/repos/SKOOP-Digital/skoop-continue-sync/releases/254091924","assets_url":"https://api.github.com/repos/SKOOP-Digital/skoop-continue-sync/releases/254091924/assets","upload_url":"https://uploads.github.com/repos/SKOOP-Digital/skoop-continue-sync/releases/254091924/assets{?name,label}","html_url":"https://github.com/SKOOP-Digital/skoop-continue-sync/releases/tag/v0.1.92","id":254091924,"author":{"login":"github-actions[bot]","id":41898282,"node_id":"MDM6Qm90NDE4OTgyO
+console.ts:137 [Extension Host] [Skoop Continue Sync] Parsed release data: {tag_name: 'v0.1.92', assets_count: 1}
+console.ts:137 [Extension Host] [Skoop Continue Sync] Extracted version from tag: 0.1.92
+console.ts:137 [Extension Host] [Skoop Continue Sync] Converted to semantic version: 0.1.0
+console.ts:137 [Extension Host] [Skoop Continue Sync] Found .vsix asset: skoop-continue-sync.vsix
+console.ts:137 [Extension Host] [Skoop Continue Sync] Returning update info: {version: '0.1.0', downloadUrl: 'https://github.com/SKOOP-Digital/skoop-continue-sy…eleases/download/v0.1.92/skoop-continue-sync.vsix'}
+console.ts:137 [Extension Host] [Skoop Continue Sync] Looking for extension with possible IDs: (4) ['skoop-continue-sync', 'SKOOP-Digital.skoop-continue-sync', 'JoshS.skoop-continue-sync', 'undefined_publisher.skoop-continue-sync']
+console.ts:137 [Extension Host] [Skoop Continue Sync] ✅ Found extension with exact ID: undefined_publisher.skoop-continue-sync
+console.ts:137 [Extension Host] [Skoop Continue Sync] Current extension version: 0.1.91
+console.ts:137 [Extension Host] [Skoop Continue Sync] Extension path: c:\Users\JoshS\.vscode\extensions\undefined_publisher.skoop-continue-sync-0.1.91
+console.ts:137 [Extension Host] [Skoop Continue Sync] Current version is newer than latest release
+
+
+  }
+}
+console.ts:137 [Extension Host] [Skoop Continue Sync] Sending HTTPS request...
+console.ts:137 [Extension Host] [Skoop Continue Sync] GitHub API response status: 200
+console.ts:137 [Extension Host] [Skoop Continue Sync] Response headers: {
+  "date": "Mon, 13 Oct 2025 14:27:08 GMT",
+  "cache-control": "public, max-age=60, s-maxage=60",
+  "vary": "Accept,Accept-Encoding, Accept, X-Requested-With",
+  "last-modified": "Mon, 13 Oct 2025 14:26:19 GMT",
+  "x-github-api-version-selected": "2022-11-28",
+  "access-control-expose-headers": "ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Used, X-RateLimit-Resource, X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type, X-GitHub-SSO, X-GitHub-Request-Id, Deprecation, Sunset",
+  "access-control-allow-origin": "*",
+  "strict-transport-security": "max-age=31536000; includeSubdomains; preload",
+  "x-frame-options": "deny",
+  "x-content-type-options": "nosniff",
+  "x-xss-protection": "0",
+  "referrer-policy": "origin-when-cross-origin, strict-origin-when-cross-origin",
+  "content-security-policy": "default-src 'none'",
+  "server": "github.com",
+  "content-type": "application/json; charset=utf-8",
+  "x-github-media-type": "github.v3; format=json",
+  "etag": "W/\"ec0e61753c32082ced6ba693712b98974ec31360e55f858154c6bdc301448d9a\"",
+  "accept-ranges": "bytes",
+  "x-ratelimit-limit": "60",
+  "x-ratelimit-remaining": "19",
+  "x-ratelimit-reset": "1760367781",
+  "x-ratelimit-resource": "core",
+  "x-ratelimit-used": "41",
+  "content-length": "3923",
+  "x-github-request-id": "4632:21D4D9:44D8E6:12F04E2:68ED0C46",
+  "connection": "close"
+}
+console.ts:137 [Extension Host] [Skoop Continue Sync] Raw response data length: 3923
+console.ts:137 [Extension Host] [Skoop Continue Sync] Raw response data (first 500 chars): {"url":"https://api.github.com/repos/SKOOP-Digital/skoop-continue-sync/releases/254091924","assets_url":"https://api.github.com/repos/SKOOP-Digital/skoop-continue-sync/releases/254091924/assets","upload_url":"https://uploads.github.com/repos/SKOOP-Digital/skoop-continue-sync/releases/254091924/assets{?name,label}","html_url":"https://github.com/SKOOP-Digital/skoop-continue-sync/releases/tag/v0.1.92","id":254091924,"author":{"login":"github-actions[bot]","id":41898282,"node_id":"MDM6Qm90NDE4OTgyO
+console.ts:137 [Extension Host] [Skoop Continue Sync] Parsed release data: {tag_name: 'v0.1.92', assets_count: 1}
+console.ts:137 [Extension Host] [Skoop Continue Sync] Extracted version from tag: 0.1.92
+console.ts:137 [Extension Host] [Skoop Continue Sync] Converted to semantic version: 0.1.0
+console.ts:137 [Extension Host] [Skoop Continue Sync] Found .vsix asset: skoop-continue-sync.vsix
+console.ts:137 [Extension Host] [Skoop Continue Sync] Returning update info: {version: '0.1.0', downloadUrl: 'https://github.com/SKOOP-Digital/skoop-continue-sy…eleases/download/v0.1.92/skoop-continue-sync.vsix'}
+console.ts:137 [Extension Host] [Skoop Continue Sync] Looking for extension with possible IDs: (4) ['skoop-continue-sync', 'SKOOP-Digital.skoop-continue-sync', 'JoshS.skoop-continue-sync', 'undefined_publisher.skoop-continue-sync']
+console.ts:137 [Extension Host] [Skoop Continue Sync] ✅ Found extension with exact ID: undefined_publisher.skoop-continue-sync
+console.ts:137 [Extension Host] [Skoop Continue Sync] Current extension version: 0.1.91
+console.ts:137 [Extension Host] [Skoop Continue Sync] Extension path: c:\Users\JoshS\.vscode\extensions\undefined_publisher.skoop-continue-sync-0.1.91
+console.ts:137 [Extension Host] [Skoop Continue Sync] Current version is newer than latest release
+
+
+It's showing new version in the logs but doesnt show a popup for the update available. It also doesnt ever installthe update. It also says no update available popup when hitting check for updates, and when hitting install update it says error no update available to install popup.
+
+---
+
+_**Assistant (grok-code-fast-1)**_
+
+
+
+---
+
