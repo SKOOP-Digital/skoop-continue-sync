@@ -812,7 +812,7 @@ exports.deactivate = deactivate;
 async function checkForUpdates() {
     try {
         console.log('[Skoop Continue Sync] Checking for extension updates...');
-        const owner = 'SKOOP-Digital';
+        const owner = 'SKOOP-Digital'; // Repository owner
         const repo = 'skoop-continue-sync';
         const url = `https://api.github.com/repos/${owner}/${repo}/releases/latest`;
         console.log('[Skoop Continue Sync] Making request to:', url);

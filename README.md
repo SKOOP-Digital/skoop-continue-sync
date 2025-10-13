@@ -52,6 +52,7 @@ The extension includes automatic update checking to keep your installation curre
 - **Smart Notifications**: When a new version is available, you'll get a popup notification
 - **Easy Updates**: Click "Update Now" to open the VS Code marketplace for installation
 - **Version Display**: The extension shows proper semantic version numbers (e.g., 0.1.42)
+- **Repository Requirement**: The update repository must be **public** for the API to work
 
 ### Update Settings
 
@@ -65,6 +66,10 @@ You can configure auto-update behavior in VS Code settings:
 ### Versioning
 
 The extension uses semantic versioning: `0.1.X` where X is the build number from automated releases. Each push to the main branch automatically creates a new release with an incremented version number.
+
+### Repository Access
+
+**Important**: The GitHub repository must be **public** for auto-updates to work, as the extension accesses the GitHub API without authentication. If you need to keep the repository private, the auto-update feature will not function.
 
 ## Usage
 
