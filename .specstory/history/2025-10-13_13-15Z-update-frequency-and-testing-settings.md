@@ -3878,3 +3878,15 @@ The system now automatically increments versions while maintaining your static d
 
 ---
 
+_**User (2025-10-13 13:04Z)**_
+
+The auto update functioonality is still not working, none of the updat check or install settings seem to do anything and no logs are given. Note that this extension is installed manually as noted in  the readme
+
+---
+
+_**Assistant (grok-code-fast-1)**_
+
+
+
+---
+

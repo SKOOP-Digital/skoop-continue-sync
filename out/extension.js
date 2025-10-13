@@ -45,6 +45,19 @@ function activate(context) {
         USERPROFILE: process.env.USERPROFILE,
         APPDATA: process.env.APPDATA
     });
+    // Debug: Check extension detection
+    console.log('[Skoop Continue Sync] === EXTENSION DEBUG INFO ===');
+    console.log('[Skoop Continue Sync] All installed extensions count:', vscode.extensions.all.length);
+    console.log('[Skoop Continue Sync] All extension IDs:', vscode.extensions.all.map(ext => ext.id).slice(0, 10)); // First 10
+    // Check current extension detection
+    const currentVersion = getCurrentVersion();
+    console.log('[Skoop Continue Sync] Detected current version:', currentVersion);
+    // Check update settings
+    const enableAutoUpdates = vscode.workspace.getConfiguration('skoop-continue-sync').get('enableAutoUpdates', true);
+    const updateCheckInterval = vscode.workspace.getConfiguration('skoop-continue-sync').get('updateCheckInterval', 10);
+    console.log('[Skoop Continue Sync] Auto-updates enabled:', enableAutoUpdates);
+    console.log('[Skoop Continue Sync] Update check interval:', updateCheckInterval);
+    console.log('[Skoop Continue Sync] === END DEBUG INFO ===');
     // Check for required extensions
     const requiredExtensions = [
         { id: 'Continue.continue', name: 'Continue', marketplaceUrl: 'https://marketplace.visualstudio.com/items?itemName=Continue.continue' },
@@ -133,11 +146,17 @@ function activate(context) {
         }
     });
     const forceUpdateCheckDisposable = vscode.commands.registerCommand('skoop-continue-sync.forceUpdateCheck', async () => {
-        console.log('[Skoop Continue Sync] Force update check command triggered');
-        await checkAndNotifyUpdates();
+        console.log('[Skoop Continue Sync] Force update check command triggered - DEBUG COMMAND');
+        try {
+            await checkAndNotifyUpdates();
+            console.log('[Skoop Continue Sync] Force update check completed');
+        }
+        catch (error) {
+            console.error('[Skoop Continue Sync] Force update check failed:', error);
+        }
     });
     const updateStatusDisposable = vscode.commands.registerCommand('skoop-continue-sync.updateStatus', async () => {
-        console.log('[Skoop Continue Sync] Update status command triggered');
+        console.log('[Skoop Continue Sync] Update status command triggered - DEBUG COMMAND');
         const currentVersion = getCurrentVersion();
         const enableAutoUpdates = vscode.workspace.getConfiguration('skoop-continue-sync').get('enableAutoUpdates', true);
         const updateCheckInterval = vscode.workspace.getConfiguration('skoop-continue-sync').get('updateCheckInterval', 10);
@@ -148,7 +167,8 @@ function activate(context) {
             updateAvailable,
             latestVersion,
             lastUpdateCheck: new Date(lastUpdateCheck).toISOString(),
-            updateCheckTimerRunning: !!updateCheckTimer
+            updateCheckTimerRunning: !!updateCheckTimer,
+            extensionContextAvailable: !!extensionContext
         };
         console.log('[Skoop Continue Sync] Update status:', status);
         vscode.window.showInformationMessage(`Update Status: ${JSON.stringify(status, null, 2)}`);
@@ -569,6 +589,7 @@ async function clearAllContinueConfigs() {
 function setupConfigurationListeners(context) {
     console.log('[Skoop Continue Sync] Setting up configuration listeners...');
     const onDidChangeConfiguration = vscode.workspace.onDidChangeConfiguration(async (event) => {
+        console.log('[Skoop Continue Sync] Configuration changed:', event.affectsConfiguration('skoop-continue-sync'));
         // Check for applyConfig trigger
         if (event.affectsConfiguration('skoop-continue-sync.applyConfig')) {
             const applyConfig = vscode.workspace.getConfiguration('skoop-continue-sync').get('applyConfig', false);
@@ -879,17 +900,19 @@ function getCurrentVersion() {
         'SKOOP-Digital.skoop-continue-sync',
         'JoshS.skoop-continue-sync' // From repository URL
     ];
+    console.log('[Skoop Continue Sync] Looking for extension with possible IDs:', possibleIds);
     for (const id of possibleIds) {
         const extension = vscode.extensions.getExtension(id);
         if (extension) {
             const version = extension.packageJSON?.version || '0.0.0';
-            console.log('[Skoop Continue Sync] Found extension with ID:', id);
+            console.log('[Skoop Continue Sync] ✅ Found extension with ID:', id);
             console.log('[Skoop Continue Sync] Current extension version:', version);
+            console.log('[Skoop Continue Sync] Extension path:', extension.extensionPath);
             return version;
         }
     }
-    console.log('[Skoop Continue Sync] Extension not found with any of these IDs:', possibleIds);
-    console.log('[Skoop Continue Sync] All installed extensions:', vscode.extensions.all.map(ext => ext.id));
+    console.log('[Skoop Continue Sync] ❌ Extension not found with any of these IDs:', possibleIds);
+    console.log('[Skoop Continue Sync] All installed extensions (first 20):', vscode.extensions.all.slice(0, 20).map(ext => ({ id: ext.id, version: ext.packageJSON?.version })));
     return '0.0.0';
 }
 // Compare version strings (simple semver comparison)
@@ -1005,23 +1028,31 @@ async function installUpdate(downloadUrl, version) {
 // Manual update check (for settings UI)
 async function manualUpdateCheck() {
     console.log('[Skoop Continue Sync] Manual update check triggered');
-    const updateInfo = await checkForUpdates();
-    if (updateInfo) {
-        const currentVersion = getCurrentVersion();
-        const comparison = compareVersions(updateInfo.version, currentVersion);
-        if (comparison > 0) {
-            const install = 'Install Update';
-            const choice = await vscode.window.showInformationMessage(`New version available: v${updateInfo.version} (current: v${currentVersion})`, install);
-            if (choice === install) {
-                await installUpdate(updateInfo.downloadUrl, updateInfo.version);
+    try {
+        const updateInfo = await checkForUpdates();
+        console.log('[Skoop Continue Sync] Manual update check result:', updateInfo);
+        if (updateInfo) {
+            const currentVersion = getCurrentVersion();
+            const comparison = compareVersions(updateInfo.version, currentVersion);
+            console.log('[Skoop Continue Sync] Version comparison:', { current: currentVersion, latest: updateInfo.version, comparison });
+            if (comparison > 0) {
+                const install = 'Install Update';
+                const choice = await vscode.window.showInformationMessage(`New version available: v${updateInfo.version} (current: v${currentVersion})`, install);
+                if (choice === install) {
+                    await installUpdate(updateInfo.downloadUrl, updateInfo.version);
+                }
+            }
+            else {
+                vscode.window.showInformationMessage('Your extension is up to date!');
             }
         }
         else {
-            vscode.window.showInformationMessage('Your extension is up to date!');
+            vscode.window.showWarningMessage('Could not check for updates. Please try again later.');
         }
     }
-    else {
-        vscode.window.showWarningMessage('Could not check for updates. Please try again later.');
+    catch (error) {
+        console.error('[Skoop Continue Sync] Error in manual update check:', error);
+        vscode.window.showErrorMessage(`Update check failed: ${error}`);
     }
 }
 // Install agent files from raw YAML config
