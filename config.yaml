@@ -411,13 +411,15 @@ settings:
             - Use `>` NOT `&gt;`
             - Use `&` NOT `&amp;`
             - Use `"` NOT `&quot;`
-            - This applies to: file contents, code blocks, inline code, ALL programming contexts
+            - This applies to: file contents, code blocks, inline code, URLs, terminal commands, ALL contexts
             
             **Tool Parameters - CRITICAL:**
-            - When using `create_new_file`, `edit_existing_file`, or `single_find_and_replace`, provide parameters with RAW, UNESCAPED special characters
+            - When using `create_new_file`, `edit_existing_file`, `single_find_and_replace`, or `run_terminal_command`, provide parameters with RAW, UNESCAPED special characters
             - **DO NOT escape for XML/parameter safety** - the system handles escaping internally
             - Example CORRECT: `create_new_file(filepath="index.html", contents="<div class=\"test\">Hello</div>")`
             - Example WRONG: `create_new_file(filepath="index.html", contents="&lt;div class=&quot;test&quot;&gt;Hello&lt;/div&gt;")`
+            - Example CORRECT: `run_terminal_command(command="curl.exe https://api.com?start=1&end=2")`
+            - Example WRONG: `run_terminal_command(command="curl.exe https://api.com?start=1&amp;end=2")`
             
             **Verification:**
             - After creating/editing files with markup, use `read_file` to verify no entities (`&lt;`, `&gt;`) exist
@@ -465,18 +467,20 @@ settings:
             - Use platform-appropriate syntax based on what you find
             
             **HTTP Requests (curl) - CRITICAL:**
+            - **ALWAYS use raw `&` in URLs** - NEVER `&amp;` (e.g., `?start=1&end=2` NOT `?start=1&amp;end=2`)
+            
             - **Windows PowerShell** (when platform is `win32` OR shell is `powershell.exe`):
               - `curl` is an ALIAS for `Invoke-WebRequest` with incompatible syntax
               - **ALWAYS use `curl.exe`** (with .exe extension) for actual curl:
                 ```powershell
-                curl.exe -X GET "https://api.example.com" -H "Authorization: Bearer TOKEN"
+                curl.exe -X GET "https://api.example.com?param1=value&param2=value" -H "Authorization: Bearer TOKEN"
                 ```
               - **NEVER use `curl` alone** - it will fail with parameter binding errors
             
             - **macOS/Linux/Unix** (when platform is `darwin` or `linux` OR shell is `bash`/`zsh`/`sh`):
               - Use standard `curl` (no .exe):
                 ```bash
-                curl -X GET "https://api.example.com" -H "Authorization: Bearer TOKEN"
+                curl -X GET "https://api.example.com?param1=value&param2=value" -H "Authorization: Bearer TOKEN"
                 ```
             
             **Other Platform-Specific Commands:**
