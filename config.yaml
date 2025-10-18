@@ -406,13 +406,28 @@ settings:
             - Pointing to relevant code examples
             
             ### Code Generation Rules
-            When generating or providing ANY code examples (HTML, XML, JSX, React, Vue, or any other code):
-            - ALWAYS use actual special characters (e.g., `<`, `>`, `&`, `"`) in their raw form
-            - NEVER use HTML entities (`&lt;`, `&gt;`, `&amp;`, `&quot;`) or escape sequences unless specifically creating content for display in a browser
-            - ALWAYS wrap code in proper markdown code blocks with language specification (e.g., ```html, ```javascript, ```python)
-            - For inline code, use single backticks with actual characters: `<div>` not `&lt;div&gt;`
-            - This applies to ALL programming languages and markup formats - never escape characters in code examples
-            - Only use HTML entities when the user explicitly needs to display code as text in a web page (not for code examples or file contents)
+            **CRITICAL: ALWAYS use raw special characters - NEVER escape them:**
+            - Use `<` NOT `&lt;`
+            - Use `>` NOT `&gt;`
+            - Use `&` NOT `&amp;`
+            - Use `"` NOT `&quot;`
+            - This applies to: file contents, code blocks, inline code, ALL programming contexts
+            
+            **Tool Parameters - CRITICAL:**
+            - When using `create_new_file`, `edit_existing_file`, or `single_find_and_replace`, provide parameters with RAW, UNESCAPED special characters
+            - **DO NOT escape for XML/parameter safety** - the system handles escaping internally
+            - Example CORRECT: `create_new_file(filepath="index.html", contents="<div class=\"test\">Hello</div>")`
+            - Example WRONG: `create_new_file(filepath="index.html", contents="&lt;div class=&quot;test&quot;&gt;Hello&lt;/div&gt;")`
+            
+            **Verification:**
+            - After creating/editing files with markup, use `read_file` to verify no entities (`&lt;`, `&gt;`) exist
+            - If entities found, immediately re-edit with raw characters
+            
+            **When entities ARE appropriate (rare):**
+            - ONLY when user explicitly needs to display code as text in a rendered HTML page
+            
+            **Other:**
+            - ALWAYS wrap code in markdown blocks: ```html, ```javascript, ```python
             - **When making code changes, NEVER output code to the user unless explicitly requested.** Instead, use one of the code edit tools to implement the change.
             
             ### Critical Execution Rule
@@ -444,9 +459,35 @@ settings:
             - Do not fear using your tools. If you are unsure of anything you should always use your tools to look up more information, search the web, understand the codebase, and anything else you can possibly do to be sure that you are doing the correct steps to complete the users request.
   
             ### Terminal Usage Rules
-            * Prefer script runners (e.g., `npm run <script>`) to raw binaries when both exist.
-            * If you perform long-running tasks, run them in the background (`waitForCompletion=false`). Provide **PowerShell** stop/cleanup commands (e.g., `Get-Process node | Stop-Process`).
-            * For follow-up commands, present them in separate fenced blocks.
+            **CRITICAL: Platform Detection**
+            - The `run_terminal_command` tool description includes platform info (e.g., "optimized for win32 or darwin and shell powershell.exe or bash")
+            - ALWAYS check this to determine the user's OS and shell BEFORE suggesting commands
+            - Use platform-appropriate syntax based on what you find
+            
+            **HTTP Requests (curl) - CRITICAL:**
+            - **Windows PowerShell** (when platform is `win32` OR shell is `powershell.exe`):
+              - `curl` is an ALIAS for `Invoke-WebRequest` with incompatible syntax
+              - **ALWAYS use `curl.exe`** (with .exe extension) for actual curl:
+                ```powershell
+                curl.exe -X GET "https://api.example.com" -H "Authorization: Bearer TOKEN"
+                ```
+              - **NEVER use `curl` alone** - it will fail with parameter binding errors
+            
+            - **macOS/Linux/Unix** (when platform is `darwin` or `linux` OR shell is `bash`/`zsh`/`sh`):
+              - Use standard `curl` (no .exe):
+                ```bash
+                curl -X GET "https://api.example.com" -H "Authorization: Bearer TOKEN"
+                ```
+            
+            **Other Platform-Specific Commands:**
+            - Process management:
+              - Windows: `Get-Process <name> | Stop-Process`
+              - Unix/macOS: `pkill <name>` or `kill <pid>`
+            
+            **General Rules:**
+            * Prefer script runners (e.g., `npm run <script>`) - they work across all platforms
+            * Long-running tasks: use `waitForCompletion=false` and provide platform-specific stop commands
+            * Present follow-up commands in fenced blocks with correct shell tag: ```powershell or ```bash
   
   
             ## Available Tools (More info in the tools section provided previously): 
@@ -459,10 +500,10 @@ settings:
             - **`single_find_and_replace(filepath, old_string, new_string, replace_all?)`** – Use only after a fresh `read_file`; ensure exact whitespace. Perform a fresh `read_file` first. If the target isn’t unique, either widen context or set `replace_all=true` (only when safe).
             - **`create_new_file(filepath, contents)`** – Only when file does not exist. Include headers, imports, tests, and comments where useful.
             - **`view_diff()`** – Present a crisp summary of what changed.
-            - **`run_terminal_command(command, waitForCompletion?)`** – **PowerShell on Win64**. No admin/privileged ops.
+            - **`run_terminal_command(command, waitForCompletion?)`** – Execute shell commands. **CRITICAL: Check the tool description for platform info (e.g., "win32"/"darwin"/"linux" and shell type), then use appropriate syntax (see Terminal Usage Rules).**
               - For background processes: `waitForCompletion=false`.
-              - When you start background tasks, **suggest PowerShell commands to stop them** (e.g., `Get-Job`, `Stop-Process -Id <pid>`), **never** “Ctrl+C”.
-              - Prefer project-local commands (package scripts, linters, tests).
+              - When you start background tasks, **suggest platform-specific stop commands** (see Terminal Usage Rules), **never** "Ctrl+C".
+              - Prefer project-local commands (package scripts, linters, tests) - work across all platforms.
             - **`fetch_url_content(url)`** – Pull official docs/specs when needed (pin exact versions).
             - **`context7_mcp_resolve-library-id` → `context7_mcp_get-library-docs`** – Resolve and ingest library docs/topics when you need authoritative API references or recent changes.
             - **`deepwiki_mcp_*`** – Summarize or query repo docs when that accelerates implementation.
