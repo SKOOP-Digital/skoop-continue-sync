@@ -2703,21 +2703,44 @@ Now your config only references tools that are actually available in your system
 
 _**User (2025-10-17 22:33Z)**_
 
-should it use syntax like \`\`\`html or ```html in the ruls, i.e. should it use the slashes in the rules
+Upon using the updated rules in a prompt, the ai still gave html code with HTML entities (`&lt;`, `&gt;`, `&amp;`, `&quot;`) instead of actual special characters (e.g., `<`, `>`, `&`, `"`)
+
+its response on why it did this, and helpful rules to give it in the future so it would not do it was:
+---------
+Explanation of the Issue
+I used HTML entities (e.g., &lt; for <, &gt; for >, &amp; for &, &quot; for ") in the file contents when creating llm-usage.html because the tool call format for create_new_file involves passing the contents as a parameter in an XML-like structure (<parameter name="contents">...</parameter>). To prevent potential parsing errors in this XML context—where raw < or > might be interpreted as tags—I automatically escaped the HTML. This was an overcautious safety measure based on how XML/parameter handling works in some systems, but it violated the explicit rule to always use raw special characters in code generation and file contents. The result was invalid HTML that wouldn't render properly when the file was created.
+
+Suggested Rules for Future Interactions
+To help me (and similar AIs) avoid this in the future, you can include these reinforced guidelines in your prompts or system instructions:
+
+Raw Characters in Code Files: When using tools like create_new_file or edit_existing_file, always provide the contents or changes parameter with raw, unescaped special characters (e.g., <div>, not &lt;div&gt;). Do not escape HTML, XML, JS, or any code unless the specific task requires it for display purposes (e.g., rendering code as text in a browser).
+
+Tool Parameter Handling: In XML/parameter blocks for tools, if the content includes code with < or >, rely on the tool's parser to handle it correctly without manual escaping. If parsing issues arise, note them explicitly but default to raw code.
+
+Verification Step: After any file creation or edit involving markup/code, immediately verify the output by reading the file back with read_file and checking for entities. If entities appear, re-edit to replace them with raw characters.
+
+No Escaping in Code Blocks: When demonstrating or outputting code snippets in responses (even outside tools), use markdown code blocks (e.g., ```html) with raw characters. Never escape unless quoting for a non-code context.
+---------
+
+Please update my config.yaml rules so they better instruct the ai to use correct formating
 
 ---
 
 _**Assistant (claude-4.5-sonnet-thinking)**_
 
-<think><details><summary>Thought Process</summary>The user is asking whether the rules should use `\`\`\`html` (with backslashes escaping the backticks) or ``` ```html ``` (without escaping) in the YAML file.
+<think><details><summary>Thought Process</summary>The user is reporting that despite the updated rules, the AI still generated HTML entities instead of raw characters when creating files. The AI's explanation reveals it was worried about XML parsing in the tool parameter format and preemptively escaped the HTML.
 
-This is about how to represent markdown code block syntax in the YAML rules. In YAML strings, if you want to show the literal characters for markdown code blocks (three backticks), you need to escape them so they're not interpreted as actual code blocks or causing formatting issues.
+The key issue is that the AI needs to be explicitly told:
+1. Tool parameters can handle raw special characters - don't escape them
+2. Never escape code in file contents even if passing through XML-like parameter structures
+3. The tool/system will handle any necessary escaping internally
+4. Add a verification step suggestion
 
-Let me check what's currently in the config.yaml file to see how it's written.</details></think>
+I need to strengthen the Code Generation Rules section to be more explicit about this, and add specific instructions about tool parameter handling.</details></think>
 
 ---
 
-Good question! Let me check how the backticks are currently formatted in your rules:
+Excellent feedback! The AI was being overly cautious about XML parsing in tool parameters. Let me strengthen the rules to explicitly address this:
 
 ---
 
@@ -2727,35 +2750,117 @@ Read file: config.yaml
 
 ---
 
-<think><details><summary>Thought Process</summary>I can see that in the YAML file, we're using escaped backticks: `\`\`\`html` (with backslashes). This is correct for YAML because:
+<think><details><summary>Thought Process</summary>I need to make the Code Generation Rules much more explicit about:
+1. Tool parameters can handle raw characters
+2. Never escape for XML/parameter safety
+3. The system handles escaping internally
+4. Add verification step
+5. Make it abundantly clear this applies to ALL file operations
 
-1. The backslashes escape the backticks so they're treated as literal characters in the YAML string
-2. When the YAML is parsed and the string is read by the AI, it will see the actual backticks (the backslashes are just for escaping in YAML)
-3. This prevents any parsing issues in the YAML file itself
-
-So the current format is correct. The user is asking if this is right, and I should confirm that yes, using `\`\`\`html` (with backslashes) in the YAML rules is the correct approach.</details></think>
+Let me replace the current Code Generation Rules section with a much stronger version.</details></think>
 
 ---
 
-Yes, **you should use the backslashes** (like `\`\`\`html`) in the YAML rules. Here's why:
+Tool use: **search_replace**
 
-**Current format (CORRECT):**
-```yaml
-- ALWAYS wrap code in proper markdown code blocks with language specification (e.g., \`\`\`html, \`\`\`javascript, \`\`\`python)
+
+<details><summary>Edit file: config.yaml</summary>
+
+**Chunk 1**
+Lines added: 32, lines removed: 8
+
+```diff
+@@ -407,12 +407,36 @@
+              
+              ### Code Generation Rules
+-             When generating or providing ANY code examples (HTML, XML, JSX, React, Vue, or any other code):
+-             - ALWAYS use actual special characters (e.g., `<`, `>`, `&`, `"`) in their raw form
+-             - NEVER use HTML entities (`&lt;`, `&gt;`, `&amp;`, `&quot;`) or escape sequences unless specifically creating content for display in a browser
+-             - ALWAYS wrap code in proper markdown code blocks with language specification (e.g., ```html, ```javascript, ```python)
+-             - For inline code, use single backticks with actual characters: `<div>` not `&lt;div&gt;`
+-             - This applies to ALL programming languages and markup formats - never escape characters in code examples
+-             - Only use HTML entities when the user explicitly needs to display code as text in a web page (not for code examples or file contents)
+-             - **When making code changes, NEVER output code to the user unless explicitly requested.** Instead, use one of the code edit tools to implement the change.
++             **CRITICAL: When generating or providing ANY code (HTML, XML, JSX, React, Vue, Python, JavaScript, or any other language):**
++             
++             **ALWAYS use raw special characters - NEVER escape them:**
++             - Use `<` NOT `&lt;`
++             - Use `>` NOT `&gt;`
++             - Use `&` NOT `&amp;`
++             - Use `"` NOT `&quot;`
++             - This applies to: file contents, code blocks, inline code, ALL programming contexts
++             
++             **Tool Parameter Handling - CRITICAL:**
++             - When using `create_new_file`, `edit_existing_file`, or `single_find_and_replace`, ALWAYS provide the `contents`, `changes`, `old_string`, or `new_string` parameters with RAW, UNESCAPED special characters
++             - **DO NOT escape HTML/XML characters for "safety" in tool parameters** - the system handles any necessary internal escaping automatically
++             - If you're worried about XML parsing in parameters: DON'T BE. The tool's parser is designed to handle raw code with `<`, `>`, `&`, etc. Trust the system.
++             - **Example - CORRECT**: `create_new_file(filepath="index.html", contents="<div class=\"container\">...</div>")`
++             - **Example - WRONG**: `create_new_file(filepath="index.html", contents="&lt;div class=&quot;container&quot;&gt;...&lt;/div&gt;")`
++             
++             **Code Formatting:**
++             - ALWAYS wrap code in markdown blocks with language specification: ```html, ```javascript, ```python
++             - For inline code, use single backticks with actual characters: `<div>` NOT `&lt;div&gt;`
++             
++             **When HTML entities ARE appropriate (rare cases only):**
++             - ONLY when the user explicitly needs to display code as text within a rendered HTML page
++             - ONLY when creating content specifically meant to show code examples in a browser without executing them
++             - NOT for actual functional code, NOT for file contents, NOT for code examples in responses
++             
++             **Verification Step:**
++             - After creating or editing files with markup/code, if you have any doubt, use `read_file` to verify the output
++             - Check that no entities (`&lt;`, `&gt;`, etc.) appear in the actual code
++             - If entities are found, immediately re-edit to replace them with raw characters
++             
++             **Other Important Rules:**
++             - When making code changes, NEVER output code to the user unless explicitly requested. Instead, use one of the code edit tools to implement the change.
+              
+              ### Critical Execution Rule
 ```
 
-**Why the backslashes are needed:**
+</details>
 
-1. **YAML Escaping**: In YAML strings, backticks need to be escaped with backslashes so they're treated as literal characters
-2. **When Parsed**: When the YAML is parsed and sent to the AI, the backslashes are consumed during parsing, and the AI sees the actual three backticks: ` ``` `
-3. **Prevents Parse Errors**: Without escaping, the YAML parser might interpret the backticks incorrectly
+---
 
-**What the AI actually receives after YAML parsing:**
+<think><details><summary>Thought Process</summary>Good! I've made the Code Generation Rules much more explicit. Now I should also add a summary at the top of the Code Change Guidelines section to reinforce this, since that's where file editing is discussed. Let me check that section and strengthen it too.</details></think>
+
+---
+
+Now let me also add a strong reminder at the top of the Code Change Guidelines section since that's where file editing is discussed:
+
+---
+
+Tool use: **read_file**
+
+Read file: config.yaml
+
+---
+
+<think><details><summary>Thought Process</summary>I want to add a prominent reminder about raw characters right at the top of the Code Change Guidelines section, right after the critical runnable code section. Let me insert it there.</details></think>
+
+---
+
+Tool use: **search_replace**
+
+
+<details><summary>Edit file: config.yaml</summary>
+
+**Chunk 1**
+Lines added: 1, lines removed: undefined
+
+```diff
+@@ -533,4 +533,5 @@
+              3. If you're building a web app from scratch, give it a beautiful and modern UI, imbued with best UX practices.
+              4. NEVER generate an extremely long hash or any non-textual code, such as binary. These are not helpful to the USER and are very expensive.
++             5. **CRITICAL: ALWAYS use raw special characters (`<`, `>`, `&`, `"`) in all code - NEVER use HTML entities (`&lt;`, `&gt;`, `&amp;`, `&quot;`) in tool parameters or file contents.** The system handles any necessary escaping internally. See Code Generation Rules above for details.
+              
+              ### Editing Files
 ```
-- ALWAYS wrap code in proper markdown code blocks with language specification (e.g., ```html, ```javascript, ```python)
-```
 
-So your current format with `\`\`\`html` is correct! The backslashes are necessary in the YAML file but won't be visible to the AI model - they'll just see the proper markdown code block syntax.
+</details>
+
+---
+
+
 
 ---
 
