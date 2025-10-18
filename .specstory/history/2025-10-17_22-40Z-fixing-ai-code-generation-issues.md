@@ -2860,6 +2860,207 @@ Lines added: 1, lines removed: undefined
 
 ---
 
+<think><details><summary>Thought Process</summary>Good! Now let me verify there are no linter errors and create a summary of the changes.</details></think>
+
+---
+
+Tool use: **read_lints**
+
+<details>
+          <summary>Read lints for 1 file</summary>
+      
+Lint paths:
+
+- `config.yaml`
+
+Lint results
+
+
+**No lint errors found**
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Perfect! No linter errors. Now let me check if there are any other places in the config that might need similar reinforcement. Let me search for any other references to code generation or HTML that might be relevant.</details></think>
+
+---
+
+Tool use: **grep**
+
+<details>
+<summary>Grep for "HTML|entity|entities|escape|&lt;|&gt;" in "config.yaml" • 17 matches</summary>
+
+Output mode: content
+
+
+| Content | Line |
+|------|------|
+| `- **MANDATORY:** When mentioning any file, make sure to use the correct path from the root of the project, and enclose the path with backticks. For example, `index.html` or `src/components/Button.tsx`. Otherwise they will not be clickable.` | L394 |
+| `**CRITICAL: When generating or providing ANY code (HTML, XML, JSX, React, Vue, Python, JavaScript, or any other language):**` | L409 |
+| `**ALWAYS use raw special characters - NEVER escape them:**` | L411 |
+| `- Use `<` NOT `&lt;`` | L412 |
+| `- Use `>` NOT `&gt;`` | L413 |
+| `- When using `create_new_file`, `edit_existing_file`, or `single_find_and_replace`, ALWAYS provide the `contents`, `changes`, `old_string`, or `new_string` parameters with RAW, UNESCAPED special characters` | L419 |
+| `- **DO NOT escape HTML/XML characters for "safety" in tool parameters** - the system handles any necessary internal escaping automatically` | L420 |
+| `- **Example - CORRECT**: `create_new_file(filepath="index.html", contents="<div class=\"container\">...</div>")`` | L422 |
+| `- **Example - WRONG**: `create_new_file(filepath="index.html", contents="&lt;div class=&quot;container&quot;&gt;...&lt;/div&gt;")`` | L423 |
+| `- ALWAYS wrap code in markdown blocks with language specification: ```html, ```javascript, ```python` | L426 |
+| `- For inline code, use single backticks with actual characters: `<div>` NOT `&lt;div&gt;`` | L427 |
+| `**When HTML entities ARE appropriate (rare cases only):**` | L429 |
+| `- ONLY when the user explicitly needs to display code as text within a rendered HTML page` | L430 |
+| `- Check that no entities (`&lt;`, `&gt;`, etc.) appear in the actual code` | L436 |
+| `- If entities are found, immediately re-edit to replace them with raw characters` | L437 |
+| `5. **CRITICAL: ALWAYS use raw special characters (`<`, `>`, `&`, `"`) in all code - NEVER use HTML entities (`&lt;`, `&gt;`, `&amp;`, `&quot;`) in tool parameters or file contents.** The system handles any necessary escaping internally. See Code Generation Rules above for details.` | L535 |
+| `- For web apps, aim for beautiful, modern, responsive UIs with best practices (e.g., semantic HTML, accessibility).` | L549 |
+
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Good! All the references to HTML entities are in the sections I've already updated, and they're all correctly instructing to use raw characters. The only other mention is about "semantic HTML" which is fine.
+
+Let me create a final summary showing what was changed to address the user's issue.</details></think>
+
+---
+
+Perfect! Let me create a summary document of the critical improvements made to prevent HTML entity escaping:
+
+---
+
+Tool use: **write**
+
+---
+
+<think><details><summary>Thought Process</summary>Let me verify no linter errors in the summary file.</details></think>
+
+---
+
+Tool use: **read_lints**
+
+<details>
+          <summary>Read lints for 1 file</summary>
+      
+Lint paths:
+
+- `HTML_ENTITY_FIX_SUMMARY.md`
+
+Lint results
+
+
+**No lint errors found**
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Perfect! Everything is validated. Let me provide a clear summary to the user.</details></think>
+
+---
+
+## Summary
+
+I've significantly strengthened your `config.yaml` rules to prevent the HTML entity escaping issue. The changes directly address the AI's stated reason for the error (being overly cautious about XML parsing in tool parameters).
+
+### Key Changes Made:
+
+#### 1. **Massively Expanded Code Generation Rules** (Lines 408-440)
+
+**Added explicit DO/DON'T list:**
+- Use `<` NOT `&lt;`
+- Use `>` NOT `&gt;`
+- Use `&` NOT `&amp;`
+- Use `"` NOT `&quot;`
+
+**New "Tool Parameter Handling - CRITICAL" section that:**
+- Directly addresses the XML parsing concern: "**DO NOT escape HTML/XML characters for 'safety' in tool parameters**"
+- Provides reassurance: "If you're worried about XML parsing in parameters: DON'T BE. The tool's parser is designed to handle raw code"
+- Shows **concrete examples** with actual tool call syntax:
+  - ✅ **CORRECT**: `create_new_file(filepath="index.html", contents="<div class=\"container\">...</div>")`
+  - ❌ **WRONG**: `create_new_file(filepath="index.html", contents="&lt;div class=&quot;container&quot;&gt;...&lt;/div&gt;")`
+
+**Added Verification Step:**
+- After creating/editing markup files, use `read_file` to verify
+- Check for entities, immediately re-edit if found
+
+#### 2. **Added Critical Reminder in Code Change Guidelines** (Line 535)
+
+Added as item #5 in the critical checklist that appears right before any code generation, with cross-reference to the detailed rules above.
+
+### Why This Should Work:
+
+1. **Addresses root cause**: Explicitly tells AI not to escape for XML parsing safety
+2. **Shows actual tool syntax**: Concrete examples are clearer than descriptions
+3. **Provides reassurance**: Directly counters the AI's concern about parser errors
+4. **Multiple reinforcement**: Same message in 2 critical sections
+5. **Safety net**: Verification step catches any mistakes
+6. **Strategic placement**: In checklists AI reads before acting
+
+### Files Modified:
+- ✅ `config.yaml` - Enhanced Code Generation Rules and Code Change Guidelines
+- ✅ `HTML_ENTITY_FIX_SUMMARY.md` - Detailed documentation
+- ✅ No linter errors
+
+The rules now explicitly address the exact concern the AI expressed, with clear examples showing correct tool usage.
+
+---
+
+_**User (2025-10-17 22:33Z)**_
+
+good, now, it's having issues when calling http requests like this:
+
+```
+$ curl -X GET "https://litellm.skoop.digital/key/info" -H "Authorization: Bearer sk-Xko8_N_iN3Q_Mrda5imWQw"
+Invoke-WebRequest : Cannot bind parameter 'Headers'. Cannot convert the "Authorization: Bearer sk-Xko8_N_iN3Q_Mrda5imWQw" value of type "System.String" to type "System.Collections.IDictionary". At line:1 char:57 + ... igital/key/info" -H "Authorization: Bearer sk-Xko8_N_iN3Q_Mrda5imWQw" + ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ + CategoryInfo : InvalidArgument: (:) [Invoke-WebRequest], ParameterBindingException + FullyQualifiedErrorId : CannotConvertArgumentNoMessage,Microsoft.PowerShell.Commands.InvokeWebRequestCommand
+```
+
+
+figure out what the issue it's having is and then add rules in the important rules to instruct it better. 
+
+remember that the rules need to work on windows, mac, and linux. 
+
+---
+
+_**Assistant (claude-4.5-sonnet-thinking)**_
+
+<think><details><summary>Thought Process</summary>The issue here is clear - the AI is providing curl commands (Unix/Linux syntax) but the user is on Windows PowerShell. The error shows that PowerShell is trying to interpret the curl command, but PowerShell has different syntax.
+
+The problem:
+- `curl` in PowerShell is an alias for `Invoke-WebRequest`
+- PowerShell's `-H` parameter syntax is different from Unix curl
+- The quotes and parameter format need to be PowerShell-specific
+
+The AI needs to detect the OS and provide appropriate commands. Looking at the context, I can see the user is on Windows (`Shell: C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe`).
+
+I need to add rules that:
+1. Detect the OS from the user_info
+2. Provide OS-specific terminal commands
+3. For PowerShell specifically, use proper syntax for HTTP requests
+4. When providing curl examples, either use actual curl.exe or Invoke-WebRequest with proper syntax
+
+Let me check what's already in the config about terminal commands.</details></think>
+
+---
+
+I can see the issue! The AI is providing Unix `curl` syntax, but on Windows PowerShell, `curl` is an alias for `Invoke-WebRequest` which has different syntax. The `-H` header parameter format is incompatible.
+
+Let me check the current terminal usage rules and add better OS-specific guidance:
+
+---
+
+Tool use: **read_file**
+
+Read file: config.yaml
+
+---
+
+<think><details><summary>Thought Process</summary>I can see the Terminal Usage Rules section is quite sparse. I need to expand it significantly to handle OS-specific commands, especially for curl/HTTP requests. Let me replace and expand that section.</details></think>
+
+---
+
+Tool use: **search_replace**
+
+---
+
 
 
 ---
