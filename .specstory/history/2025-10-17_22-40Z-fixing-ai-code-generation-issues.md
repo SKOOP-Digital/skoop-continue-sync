@@ -2544,23 +2544,218 @@ Lines added: 1, lines removed: 1
 
 ---
 
-
-
----
-
-
+<think><details><summary>Thought Process</summary>Good. Now let me find and update the remaining two references.</details></think>
 
 ---
 
+Tool use: **read_file**
 
-
----
-
-
+Read file: config.yaml
 
 ---
 
+<think><details><summary>Thought Process</summary>I can see the two remaining references at lines 430 and 433. Let me update both of them.</details></think>
 
+---
+
+Tool use: **search_replace**
+
+
+<details><summary>Edit file: config.yaml</summary>
+
+**Chunk 1**
+Lines added: 2, lines removed: 2
+
+```diff
+@@ -428,8 +428,8 @@
+                - Multiple grep searches with different regex patterns should run simultaneously
+                - Reading multiple files or searching different directories can be done all at once
+-               - Combining codebase_search with grep for comprehensive results
++               - Combining grep_search with file_glob_search for comprehensive results
+                - Any information gathering where you know upfront what you're looking for
+                - You should use parallel tool calls in many more cases beyond those listed above.
+-             - **MANDATORY:** Run multiple codebase_search searches with different wording; first-pass results often miss key details. Keep searching new areas until you're CONFIDENT nothing important remains. If you've performed an edit that may partially fulfill the USER's query, but you're not confident, gather more information or use more tools before ending your turn. Bias towards not asking the user for help if you can find the answer yourself. 
++             - **MANDATORY:** Run multiple grep searches with different regex patterns and search terms; first-pass results often miss key details. Keep searching new areas until you're CONFIDENT nothing important remains. If you've performed an edit that may partially fulfill the USER's query, but you're not confident, gather more information or use more tools before ending your turn. Bias towards not asking the user for help if you can find the answer yourself. 
+              - **Sequential Calls**: Use only when one tool's output is required for the next.
+              - Prefer semantic or grep searches for code exploration over manual reading.
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Good! Now let me verify that all references to `codebase_search` have been removed.</details></think>
+
+---
+
+Tool use: **grep**
+
+---
+
+<think><details><summary>Thought Process</summary>Perfect! All references to `codebase_search` have been removed. Now let me check for linter errors.</details></think>
+
+---
+
+Tool use: **read_lints**
+
+<details>
+          <summary>Read lints for 1 file</summary>
+      
+Lint paths:
+
+- `config.yaml`
+
+Lint results
+
+
+**No lint errors found**
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Great! No linter errors. Now let me update the summary document to reflect this correction.</details></think>
+
+---
+
+Tool use: **search_replace**
+
+
+<details><summary>Edit file: PROMPT_IMPROVEMENTS_SUMMARY.md</summary>
+
+**Chunk 1**
+Lines added: 8, lines removed: 1
+
+```diff
+@@ -91,10 +91,17 @@
+  ## Files Modified
+  - `config.yaml` - Lines 352-574 (Important Instructions rule)
++ 
++ ## Tool-Specific Corrections
++ After initial implementation, corrected all references from `codebase_search` (not available) to actual available tools:
++ - Changed "semantic search (`codebase_search`)" to "searching the codebase (using `grep_search` for content and `file_glob_search` for file names)"
++ - Updated all 4 references to use `grep_search` and `file_glob_search` instead
++ - Adjusted guidance to reference "multiple grep searches with different regex patterns" instead of "multiple codebase_search searches"
+  
+  ## Validation
+  - ✅ No linter errors introduced
+  - ✅ All changes maintain YAML formatting
+- - ✅ All improvements tailored to our specific tool ecosystem
++ - ✅ All improvements tailored to our specific tool ecosystem (grep_search, file_glob_search, etc.)
+  - ✅ Backwards compatible with existing system behavior
++ - ✅ Verified no references to unavailable tools (codebase_search removed)
+  
+  
+```
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Perfect. Let me check for linter errors on the summary file as well.</details></think>
+
+---
+
+Tool use: **read_lints**
+
+<details>
+          <summary>Read lints for 1 file</summary>
+      
+Lint paths:
+
+- `PROMPT_IMPROVEMENTS_SUMMARY.md`
+
+Lint results
+
+
+**No lint errors found**
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Perfect! Everything is corrected. Let me provide a summary to the user.</details></think>
+
+---
+
+Perfect! I've corrected all references to `codebase_search` (which your system doesn't have) and replaced them with your actual available tools:
+
+### Changes Made:
+
+1. **Line 374**: Changed from "semantic search (`codebase_search`)" to:
+   - "searching the codebase (using `grep_search` for content and `file_glob_search` for file names)"
+
+2. **Line 388**: Updated example from "Using codebase_search" to "Using grep_search"
+
+3. **Line 430**: Changed from "Combining codebase_search with grep" to:
+   - "Combining grep_search with file_glob_search"
+
+4. **Line 433**: Changed from "Run multiple codebase_search searches" to:
+   - "Run multiple grep searches with different regex patterns and search terms"
+
+### Verification:
+- ✅ All 4 references to `codebase_search` removed
+- ✅ Replaced with appropriate available tools (`grep_search` and `file_glob_search`)
+- ✅ No linter errors
+- ✅ Updated documentation in `PROMPT_IMPROVEMENTS_SUMMARY.md`
+
+Now your config only references tools that are actually available in your system!
+
+---
+
+_**User (2025-10-17 22:33Z)**_
+
+should it use syntax like \`\`\`html or ```html in the ruls, i.e. should it use the slashes in the rules
+
+---
+
+_**Assistant (claude-4.5-sonnet-thinking)**_
+
+<think><details><summary>Thought Process</summary>The user is asking whether the rules should use `\`\`\`html` (with backslashes escaping the backticks) or ``` ```html ``` (without escaping) in the YAML file.
+
+This is about how to represent markdown code block syntax in the YAML rules. In YAML strings, if you want to show the literal characters for markdown code blocks (three backticks), you need to escape them so they're not interpreted as actual code blocks or causing formatting issues.
+
+Let me check what's currently in the config.yaml file to see how it's written.</details></think>
+
+---
+
+Good question! Let me check how the backticks are currently formatted in your rules:
+
+---
+
+Tool use: **read_file**
+
+Read file: config.yaml
+
+---
+
+<think><details><summary>Thought Process</summary>I can see that in the YAML file, we're using escaped backticks: `\`\`\`html` (with backslashes). This is correct for YAML because:
+
+1. The backslashes escape the backticks so they're treated as literal characters in the YAML string
+2. When the YAML is parsed and the string is read by the AI, it will see the actual backticks (the backslashes are just for escaping in YAML)
+3. This prevents any parsing issues in the YAML file itself
+
+So the current format is correct. The user is asking if this is right, and I should confirm that yes, using `\`\`\`html` (with backslashes) in the YAML rules is the correct approach.</details></think>
+
+---
+
+Yes, **you should use the backslashes** (like `\`\`\`html`) in the YAML rules. Here's why:
+
+**Current format (CORRECT):**
+```yaml
+- ALWAYS wrap code in proper markdown code blocks with language specification (e.g., \`\`\`html, \`\`\`javascript, \`\`\`python)
+```
+
+**Why the backslashes are needed:**
+
+1. **YAML Escaping**: In YAML strings, backticks need to be escaped with backslashes so they're treated as literal characters
+2. **When Parsed**: When the YAML is parsed and sent to the AI, the backslashes are consumed during parsing, and the AI sees the actual three backticks: ` ``` `
+3. **Prevents Parse Errors**: Without escaping, the YAML parser might interpret the backticks incorrectly
+
+**What the AI actually receives after YAML parsing:**
+```
+- ALWAYS wrap code in proper markdown code blocks with language specification (e.g., ```html, ```javascript, ```python)
+```
+
+So your current format with `\`\`\`html` is correct! The backslashes are necessary in the YAML file but won't be visible to the AI model - they'll just see the proper markdown code block syntax.
 
 ---
 

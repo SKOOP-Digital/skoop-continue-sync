@@ -409,8 +409,8 @@ settings:
             When generating or providing ANY code examples (HTML, XML, JSX, React, Vue, or any other code):
             - ALWAYS use actual special characters (e.g., `<`, `>`, `&`, `"`) in their raw form
             - NEVER use HTML entities (`&lt;`, `&gt;`, `&amp;`, `&quot;`) or escape sequences unless specifically creating content for display in a browser
-            - ALWAYS wrap code in proper markdown code blocks with language specification (e.g., \`\`\`html, \`\`\`javascript, \`\`\`python)
-            - For inline code, use single backticks with actual characters: \`<div>\` not \`&lt;div&gt;\`
+            - ALWAYS wrap code in proper markdown code blocks with language specification (e.g., ```html, ```javascript, ```python)
+            - For inline code, use single backticks with actual characters: `<div>` not `&lt;div&gt;`
             - This applies to ALL programming languages and markup formats - never escape characters in code examples
             - Only use HTML entities when the user explicitly needs to display code as text in a web page (not for code examples or file contents)
             - **When making code changes, NEVER output code to the user unless explicitly requested.** Instead, use one of the code edit tools to implement the change.
