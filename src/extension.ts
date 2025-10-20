@@ -496,33 +496,8 @@ async function applyTeamSettings() {
             fs.unlinkSync(configPath);
             console.log('[Skoop Continue Sync] Existing config cleared');
         }
-
-        // Clear legacy config.json
-        const continueDir = path.dirname(configPath);
-        const jsonConfigPath = path.join(continueDir, 'config.json');
-        if (fs.existsSync(jsonConfigPath)) {
-            fs.unlinkSync(jsonConfigPath);
-            console.log('[Skoop Continue Sync] Removed legacy config.json file');
-        }
-
-        // Clear all subdirectories
-        const subDirs = ['agents', 'models', 'rules', 'prompts', 'docs', 'mcpServers'];
-        for (const subDir of subDirs) {
-            const dirPath = path.join(continueDir, subDir);
-            if (fs.existsSync(dirPath)) {
-                const files = fs.readdirSync(dirPath);
-                for (const file of files) {
-                    const filePath = path.join(dirPath, file);
-                    if (fs.statSync(filePath).isFile()) {
-                        fs.unlinkSync(filePath);
-                        console.log(`[Skoop Continue Sync] Removed ${subDir}/${file}`);
-                    }
-                }
-            }
-        }
-        console.log('[Skoop Continue Sync] Cleared all Continue subdirectories');
     } catch (error) {
-        console.warn('[Skoop Continue Sync] Could not clear existing config files/directories:', error);
+        console.warn('[Skoop Continue Sync] Could not clear existing config:', error);
     }
 
     // Process the fetched configuration
@@ -885,20 +860,6 @@ function setupConfigurationListeners(context: vscode.ExtensionContext) {
                 startUpdateCheckTimer();
             } else {
                 stopUpdateCheckTimer();
-            }
-        }
-
-        // Check for API key change
-        if (event.affectsConfiguration('skoop-continue-sync.apiKey')) {
-            const apiKey = vscode.workspace.getConfiguration('skoop-continue-sync').get('apiKey', '');
-            if (apiKey) {
-                log('API key configured or changed, applying team settings automatically', true);
-                try {
-                    await applyTeamSettings();
-                } catch (error) {
-                    console.error('[Skoop Continue Sync] Auto-apply after API key change failed:', error);
-                    vscode.window.showErrorMessage(`Failed to apply team settings after API key update: ${error}`);
-                }
             }
         }
     });

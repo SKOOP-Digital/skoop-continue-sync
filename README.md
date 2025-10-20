@@ -34,17 +34,28 @@ After installation, you need to configure your team API key in VS Code settings:
 3.  In the `Skoop-continue-sync: Api Key` field, enter the key provided to you.
 4.  Run the "Apply Team Continue Settings" command from the settings or command palette (`Ctrl+Shift+P`).
 
+### Team Keys
+
+For now, you can use one of the following keys:
+
+-   `josh_m:sk-Xko8_N_iN3Q_Mrda5imWQw`
+-   `shahzad_h:sk-fzTwcJQwGcWbvKmb0-7-Iw`
 
 The configuration is fetched from the following n8n workflows:
 [https://n8n.skoopsignage.dev/workflow/uBcGGDcJkoTGSHDa](https://n8n.skoopsignage.dev/workflow/uBcGGDcJkoTGSHDa)
 
-### Recommendations:
-- Move cursor chat to right sidebar. Drag the cursor Icon in the left sidebar to the right sidebar.
-- In Continue.dev Settings (click gear icon in continue.dev chat)
-    - Show Chat Scrollbar: Toggle on to see chat scrollbar
-    - Tools section - Built-in Tools section:
-        - 
+## Auto-Updates
 
+The extension includes automatic update checking to keep your installation current.
+
+### Update Settings
+
+You can configure auto-update behavior in VS Code settings:
+
+- `Skoop Continue Sync: Enable Auto Updates` - Enable/disable automatic update checks
+- `Skoop Continue Sync: Refresh Interval` - Set check frequency for both config and extension updates
+- `Skoop Continue Sync: Check For Updates` - Manually trigger an update check
+- `Skoop Continue Sync: Install Update` - Install available updates
 
 ## Usage
 
@@ -90,19 +101,6 @@ Full-featured models for conversation and code editing:
 - **For cost efficiency**: Grok models offer the best value for most coding tasks
 
 *Pricing shown is per 1M tokens. Cached input pricing available for supported models.
-
-## Auto-Updates
-
-The extension includes automatic update checking to keep your installation current.
-
-### Update Settings
-
-You can configure auto-update behavior in VS Code settings:
-
-- `Skoop Continue Sync: Enable Auto Updates` - Enable/disable automatic update checks
-- `Skoop Continue Sync: Refresh Interval` - Set check frequency for both config and extension updates
-- `Skoop Continue Sync: Check For Updates` - Manually trigger an update check
-- `Skoop Continue Sync: Install Update` - Install available updates
 
 ## How It Works: The Configuration File
 
