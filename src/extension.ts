@@ -21,7 +21,7 @@ function log(message: string, verboseOnly: boolean = false) {
     }
 }
 
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
     log('Extension activated successfully!');
 
     // Check current extension detection (verbose only)
@@ -1486,6 +1486,7 @@ function extractAgentYaml(fullYaml: string, agentName: string): string | null {
     return agentYaml;
 }
 
+ 
 // Force retry docs indexing for raw YAML
 function forceDocsRetryForRawYaml(rawYaml: string) {
     console.log('[Skoop Continue Sync] Forcing docs retry by updating agent YAML configuration...');
@@ -1507,4 +1508,3 @@ function forceDocsRetryForRawYaml(rawYaml: string) {
         // we'd need to return it or modify the calling code. For now, we'll just log.
     }
 }
-
