@@ -781,6 +781,38 @@ function setupConfigurationListeners(context: vscode.ExtensionContext) {
     const onDidChangeConfiguration = vscode.workspace.onDidChangeConfiguration(async (event) => {
         log('Configuration change detected', true);
 
+        // Check for API key change
+        if (event.affectsConfiguration('skoop-continue-sync.apiKey')) {
+            const apiKey = vscode.workspace.getConfiguration('skoop-continue-sync').get('apiKey', '');
+            if (apiKey) {
+                log('API key set or changed, triggering apply team settings', true);
+
+                // Check for required extensions
+                const requiredExtensions = ['Continue.continue', 'SpecStory.specstory-vscode'];
+                const missingExtensions = requiredExtensions.filter(extId => !vscode.extensions.getExtension(extId));
+
+                if (missingExtensions.length > 0) {
+                    const extensionNames = missingExtensions.map(id => id === 'Continue.continue' ? 'Continue' : 'SpecStory').join(', ');
+                    const message = `Cannot apply team settings. Required extensions are not installed: ${extensionNames}. Please install them first.`;
+                    console.error('[Skoop Continue Sync] Missing required extensions for API key apply:', extensionNames);
+                    vscode.window.showErrorMessage(message);
+                    return;
+                }
+
+                try {
+                    console.log('[Skoop Continue Sync] Starting to apply team settings due to API key change...');
+                    await applyTeamSettings();
+                    console.log('[Skoop Continue Sync] Team settings applied successfully due to API key change');
+                    vscode.window.showInformationMessage('Team Continue settings applied successfully after API key update!');
+                } catch (error) {
+                    console.error('[Skoop Continue Sync] Error applying team settings due to API key change:', error);
+                    vscode.window.showErrorMessage(`Failed to apply team settings after API key update: ${error}`);
+                }
+            } else {
+                log('API key cleared, no action needed', true);
+            }
+        }
+
         // Check for applyConfig trigger
         if (event.affectsConfiguration('skoop-continue-sync.applyConfig')) {
             const applyConfig = vscode.workspace.getConfiguration('skoop-continue-sync').get('applyConfig', false);
