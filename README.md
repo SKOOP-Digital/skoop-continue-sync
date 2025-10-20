@@ -25,6 +25,7 @@ A VS Code extension that synchronizes Continue.dev settings for team members by 
     *   Go to the Extensions view (`Ctrl+Shift+X`).
     *   Click the "..." menu in the top-right corner and select "Install from VSIX...".
     *   Select the downloaded `.vsix` file.
+
 ## Configuration
 
 After installation, you need to configure your team API key in VS Code settings:
@@ -32,17 +33,56 @@ After installation, you need to configure your team API key in VS Code settings:
 1.  Open VS Code Settings (`Ctrl+,`).
 2.  Search for `Skoop Continue Sync`.
 3.  In the `Skoop-continue-sync: Api Key` field, enter the key provided to you.
-4.  Run the "Apply Team Continue Settings" command from the settings or command palette (`Ctrl+Shift+P`).
+4.  Run the "Apply Team Continue Settings" command from the settings or command palette (`Ctrl+Shift+P`). Should run automatically.
 
-### Team Keys
-
-For now, you can use one of the following keys:
-
--   `josh_m:sk-Xko8_N_iN3Q_Mrda5imWQw`
--   `shahzad_h:sk-fzTwcJQwGcWbvKmb0-7-Iw`
+You can also clear all configurations by running the `Clear All Continue Configurations` command.
 
 The configuration is fetched from the following n8n workflows:
 [https://n8n.skoopsignage.dev/workflow/uBcGGDcJkoTGSHDa](https://n8n.skoopsignage.dev/workflow/uBcGGDcJkoTGSHDa)
+
+### Recommendations:
+- Move cursor chat to right sidebar. Drag the cursor Icon in the left sidebar to the right sidebar.
+- In Continue.dev Settings (click gear icon in continue.dev chat)
+    - Show Chat Scrollbar: Toggle on to see chat scrollbar
+
+## Usage
+
+Check model usage and remaining budget using the Skoop LLM usage tool: 
+[https://n8n.skoopsignage.dev/webhook/llm-usage](https://n8n.skoopsignage.dev/webhook/llm-usage)
+
+## Model Options
+
+### Chat & Edit Models
+Full-featured models for conversation and code editing.
+
+#### Recommended general models:
+- **Grok-4-Fast-Reasoning** (Recommended, Default) - Great model. Topping charts, fast, cheap, reasoning enabled, image support, large 2M context window, prompt-caching support.  $0.20 input/$0.50 output/$0.05 cached input
+
+#### Top-tier model (expensive)
+- **Claude-Sonnet-4-5** - Premium model, best available, reasoning responses included. Much more expensive than Grok-4-fast. Prompt-caching supported but not ashelpful as other auto prompt-caching providers. $3-3.75 input/$15 output/$0.3 cached input
+
+#### Other models available:
+- **Gemini-2.5-Pro** - Good model. Bit older, decent model, not as cheap as Grok-4-fast, Large context 1M context. $1.25-2.50 input/$10-15 output/$0.3-0.6 cached input
+- **Grok-4-Fast-Non-Reasoning** same Grok-4-Fast with reasoning disabled. Great model. Topping charts, fast, cheap, reasoning enabled, image support, large 2M context window, prompt-caching support.  $0.20 input/$0.50 output/$0.05 cached input
+- **Grok-Code-Fast-1** - Code-optimized, smaller context window, no image support, doesn't seem to work as good as Grok-4-Fast. $0.20 input/$0.50 output/$0.05 cached input
+- **GLM-4.6** - Decent newly released model, touted as a cheaper alternative to Claude. $0.60 input/$2.20 output
+
+#### Local models available (Local via LM Studio or other openai compatible local server) (see below for setup):
+- **Qwen3-Coder-30B** - Decent coding optimized model. Runs on many GPU/CPU. Must  be powerfull an/or very modern. Pretty slow depending on hardware.
+- **DeepSeek-R1-0528-Qwen3-8B** - small local model
+
+### Autocomplete Models
+Fast, specialized models for code completion. Codestral is best for now, but continue.dev autocomplete is not amazing. Updates and new configs will come soon:
+- **Codestral** - Fast decent autocomplete modelfrom Mistral.
+- **Mercury Coder** (Inception) - Optimized for next-edit predictions. next-edit is continue.dev's newer autocomplete strategy. This option is available and promising, but needs some tweaking before it's reccomended.
+- **Instinct-LMStudio** - Local autocomplete model via LM Studio or other openai compatible local server (see below for setup). Slow. It's continue.dev's reccomended next-edit capable autocomplete model, but is very slow locally. Waiting on an API option.
+
+### Specialized Models
+- **Morph Fast Apply** (Recommended, Default) - Optimized for code application tasks. Great, fast, apply model for applying codechanges to existing files.
+- **Morph Embedding v2** - High-quality code embeddings. Not used by default instead defaulting to built in local transformers.js.
+- **Morph Rerank v2** - Advanced code reranking, rarely used for documentation and context ordering.
+
+*Pricing shown is per 1M tokens. Cached input pricing available for all models.
 
 ## Auto-Updates
 
@@ -56,51 +96,6 @@ You can configure auto-update behavior in VS Code settings:
 - `Skoop Continue Sync: Refresh Interval` - Set check frequency for both config and extension updates
 - `Skoop Continue Sync: Check For Updates` - Manually trigger an update check
 - `Skoop Continue Sync: Install Update` - Install available updates
-
-## Usage
-
-Once the extension is installed and configured, it will automatically sync the team's `continue.dev` settings. You can also manually trigger a sync:
-
-1.  Open the Command Palette (`Ctrl+Shift+P`).
-2.  Type `Skoop Continue Sync` and select `Apply Team Continue Settings`.
-3.  The extension will fetch the latest configuration and apply it.
-
-You can also clear all configurations by running the `Clear All Continue Configurations` command.
-
-## Model Options
-
-### Main Models:
-
-### Autocomplete Models
-Fast, specialized models for code completion:
-- **Codestral** (Mistral) - Lightning-fast autocomplete with 250ms debounce
-- **Mercury Coder** (Inception) - Optimized for next-edit predictions
-- **Instinct-LMStudio** - Local model via LM Studio for offline use
-
-### Chat & Edit Models
-Full-featured models for conversation and code editing:
-- **Grok-4-Fast-Reasoning** (xAI) - Balanced reasoning with 2M context, $0.20 input/$0.50 output
-- **Grok-4-Fast-Non-Reasoning** (xAI) - Fast responses, $0.20 input/$0.50 output
-- **Grok-Code-Fast-1** (xAI) - Code-optimized, $0.20 input/$0.50 output
-- **GLM-4.6** - Advanced reasoning with thinking tokens, $0.60 input/$2.20 output
-- **Gemini-2.5-Pro** (Google) - Large context model, $1.25-2.50 input/$10-15 output
-- **GPT-5** (OpenAI) - Enterprise-grade, $1.25 input/$10 output
-- **Claude-Sonnet-4-5** (Anthropic) - Premium reasoning, $3-3.75 input/$15 output
-- **Qwen3-Coder-30B** (Local via LM Studio) - Local coding specialist
-- **DeepSeek-R1-0528-Qwen3-8B** (Local via LM Studio) - Local reasoning model
-
-### Specialized Models
-- **Morph Fast Apply** (OpenAI) - Optimized for code application tasks
-- **Morph Embedding v2** - High-quality code embeddings
-- **Morph Rerank v2** - Advanced code reranking
-
-### Recommendations
-- **For general coding**: Grok-4-Fast-Reasoning or GLM-4.6 (excellent balance of speed and quality)
-- **For complex reasoning**: Claude-Sonnet-4-5 or GPT-5 (premium performance)
-- **For local/offline use**: Instinct-LMStudio or Qwen3-Coder-30B via LM Studio
-- **For cost efficiency**: Grok models offer the best value for most coding tasks
-
-*Pricing shown is per 1M tokens. Cached input pricing available for supported models.
 
 ## How It Works: The Configuration File
 
