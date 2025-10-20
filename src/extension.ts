@@ -573,6 +573,20 @@ async function applyTeamSettings() {
         console.log('[Skoop Continue Sync] Final config to write (first 500 chars):', localAgentYaml.substring(0, 500) + '...');
         fs.writeFileSync(configPath, localAgentYaml, 'utf8');
         console.log('[Skoop Continue Sync] Local Agent config written successfully to:', configPath);
+
+        // Attempt to reload Continue config to pick up changes
+        console.log('[Skoop Continue Sync] Attempting to reload Continue configuration...');
+        const continueCommands = ['continue.reloadConfig', 'continue.refresh', 'workbench.action.reloadWindow'];
+        for (const cmd of continueCommands) {
+            try {
+                await vscode.commands.executeCommand(cmd);
+                console.log(`[Skoop Continue Sync] Executed reload command: ${cmd}`);
+                break;
+            } catch (e) {
+                console.log(`[Skoop Continue Sync] Command ${cmd} not available, trying next`);
+                continue;
+            }
+        }
     } catch (error) {
         console.error('[Skoop Continue Sync] Error writing config:', error);
         throw error;
@@ -774,6 +788,20 @@ async function clearAllContinueConfigs() {
     }
 
     console.log('[Skoop Continue Sync] All Continue configurations cleared');
+
+    // Attempt to reload Continue to detect cleared state
+    console.log('[Skoop Continue Sync] Attempting to reload Continue after clearing...');
+    const continueCommands = ['continue.reloadConfig', 'continue.refresh', 'workbench.action.reloadWindow'];
+    for (const cmd of continueCommands) {
+        try {
+            await vscode.commands.executeCommand(cmd);
+            console.log(`[Skoop Continue Sync] Executed reload command after clear: ${cmd}`);
+            break;
+        } catch (e) {
+            console.log(`[Skoop Continue Sync] Command ${cmd} not available after clear, trying next`);
+            continue;
+        }
+    }
 }
 
 // Setup configuration change listeners for manual triggers
@@ -807,13 +835,19 @@ function setupConfigurationListeners(context: vscode.ExtensionContext) {
 
         // Check for clearConfig trigger
         if (event.affectsConfiguration('skoop-continue-sync.clearConfig')) {
+            log('Clear config change detected in settings', true);
             const clearConfig = vscode.workspace.getConfiguration('skoop-continue-sync').get('clearConfig', false);
+            log(`Clear config value is: ${clearConfig}`, true);
             if (clearConfig) {
-                log('Clear config trigger detected via settings', true);
+                log('Clear config trigger activated via settings', true);
+
+                // Small delay to ensure setting is fully applied
+                await new Promise(resolve => setTimeout(resolve, 100));
 
                 // Execute the same command as the command palette
                 try {
                     await vscode.commands.executeCommand('skoop-continue-sync.clearAllConfigs');
+                    log('Clear command executed successfully from settings trigger', true);
                 } catch (error) {
                     console.error('[Skoop Continue Sync] Error executing clear command:', error);
                 }
@@ -821,6 +855,7 @@ function setupConfigurationListeners(context: vscode.ExtensionContext) {
                 // Reset the trigger back to false
                 try {
                     await vscode.workspace.getConfiguration('skoop-continue-sync').update('clearConfig', false, vscode.ConfigurationTarget.Global);
+                    log('Clear config trigger reset to false', true);
                 } catch (resetError) {
                     console.error('[Skoop Continue Sync] Error resetting clearConfig setting:', resetError);
                 }
