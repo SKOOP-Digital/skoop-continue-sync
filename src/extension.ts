@@ -187,6 +187,29 @@ export function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(applySettingsDisposable, clearConfigDisposable, checkUpdatesDisposable, installUpdateDisposable, forceUpdateCheckDisposable, updateStatusDisposable);
     log('All commands registered successfully', true);
+
+    // First-run initialization
+    const initialized = context.globalState.get('initialized', false);
+    if (!initialized) {
+        log('First run detected, performing initial clear', true);
+        const requiredExtensions = ['Continue.continue', 'SpecStory.specstory-vscode'];
+        const missingExtensions = requiredExtensions.filter(extId => !vscode.extensions.getExtension(extId));
+        if (missingExtensions.length === 0) {
+            try {
+                await clearAllContinueConfigs();
+                vscode.window.showInformationMessage('Initial Continue configurations cleared for fresh setup.');
+                log('Initial clear completed successfully', true);
+            } catch (error) {
+                console.error('[Skoop Continue Sync] Initial clear failed:', error);
+                vscode.window.showWarningMessage('Initial setup clear failed, but extension is ready.');
+            }
+        } else {
+            log('Skipping initial clear due to missing extensions', true);
+        }
+        await context.globalState.update('initialized', true);
+    } else {
+        log('Extension already initialized', true);
+    }
 }
 
 interface ModelConfig {
@@ -764,11 +787,33 @@ function setupConfigurationListeners(context: vscode.ExtensionContext) {
             if (applyConfig) {
                 log('Apply config trigger detected via settings', true);
 
-                // Execute the same command as the command palette
+                // Check for required extensions
+                const requiredExtensions = ['Continue.continue', 'SpecStory.specstory-vscode'];
+                const missingExtensions = requiredExtensions.filter(extId => !vscode.extensions.getExtension(extId));
+
+                if (missingExtensions.length > 0) {
+                    const extensionNames = missingExtensions.map(id => id === 'Continue.continue' ? 'Continue' : 'SpecStory').join(', ');
+                    const message = `Cannot apply team settings. Required extensions are not installed: ${extensionNames}. Please install them first.`;
+                    console.error('[Skoop Continue Sync] Missing required extensions for settings apply:', extensionNames);
+                    vscode.window.showErrorMessage(message);
+
+                    // Reset the trigger
+                    try {
+                        await vscode.workspace.getConfiguration('skoop-continue-sync').update('applyConfig', false, vscode.ConfigurationTarget.Global);
+                    } catch (resetError) {
+                        console.error('[Skoop Continue Sync] Error resetting applyConfig setting:', resetError);
+                    }
+                    return;
+                }
+
                 try {
-                    await vscode.commands.executeCommand('skoop-continue-sync.applyTeamSettings');
+                    console.log('[Skoop Continue Sync] Starting to apply team settings via settings...');
+                    await applyTeamSettings();
+                    console.log('[Skoop Continue Sync] Team settings applied successfully via settings');
+                    vscode.window.showInformationMessage('Team Continue settings applied successfully!');
                 } catch (error) {
-                    console.error('[Skoop Continue Sync] Error executing apply command:', error);
+                    console.error('[Skoop Continue Sync] Error applying team settings via settings:', error);
+                    vscode.window.showErrorMessage(`Failed to apply team settings: ${error}`);
                 }
 
                 // Reset the trigger back to false
@@ -786,11 +831,32 @@ function setupConfigurationListeners(context: vscode.ExtensionContext) {
             if (clearConfig) {
                 log('Clear config trigger detected via settings', true);
 
-                // Execute the same command as the command palette
+                // Check for required extensions
+                const requiredExtensions = ['Continue.continue', 'SpecStory.specstory-vscode'];
+                const missingExtensions = requiredExtensions.filter(extId => !vscode.extensions.getExtension(extId));
+
+                if (missingExtensions.length > 0) {
+                    const extensionNames = missingExtensions.map(id => id === 'Continue.continue' ? 'Continue' : 'SpecStory').join(', ');
+                    const message = `Cannot clear configurations. Required extensions are not installed: ${extensionNames}. Please install them first.`;
+                    console.error('[Skoop Continue Sync] Missing required extensions for settings clear:', extensionNames);
+                    vscode.window.showErrorMessage(message);
+
+                    // Reset the trigger
+                    try {
+                        await vscode.workspace.getConfiguration('skoop-continue-sync').update('clearConfig', false, vscode.ConfigurationTarget.Global);
+                    } catch (resetError) {
+                        console.error('[Skoop Continue Sync] Error resetting clearConfig setting:', resetError);
+                    }
+                    return;
+                }
+
                 try {
-                    await vscode.commands.executeCommand('skoop-continue-sync.clearAllConfigs');
+                    await clearAllContinueConfigs();
+                    console.log('[Skoop Continue Sync] All Continue configs cleared successfully via settings');
+                    vscode.window.showInformationMessage('All Continue configurations cleared successfully!');
                 } catch (error) {
-                    console.error('[Skoop Continue Sync] Error executing clear command:', error);
+                    console.error('[Skoop Continue Sync] Error clearing configs via settings:', error);
+                    vscode.window.showErrorMessage(`Failed to clear configurations: ${error}`);
                 }
 
                 // Reset the trigger back to false
@@ -802,19 +868,17 @@ function setupConfigurationListeners(context: vscode.ExtensionContext) {
             }
         }
 
-        // Check for checkForUpdates trigger
+        // Keep existing logic for other triggers like checkForUpdates, installUpdate, refreshInterval, enableAutoUpdates
         if (event.affectsConfiguration('skoop-continue-sync.checkForUpdates')) {
             const checkForUpdates = vscode.workspace.getConfiguration('skoop-continue-sync').get('checkForUpdates', false);
             log(`Check for updates trigger: ${checkForUpdates}`, true);
             if (checkForUpdates) {
-                // Execute the check for updates command
                 try {
                     await vscode.commands.executeCommand('skoop-continue-sync.checkForUpdates');
                 } catch (error) {
                     console.error('[Skoop Continue Sync] Error executing check for updates command:', error);
                 }
 
-                // Reset the trigger back to false
                 try {
                     await vscode.workspace.getConfiguration('skoop-continue-sync').update('checkForUpdates', false, vscode.ConfigurationTarget.Global);
                 } catch (resetError) {
@@ -823,19 +887,16 @@ function setupConfigurationListeners(context: vscode.ExtensionContext) {
             }
         }
 
-        // Check for installUpdate trigger
         if (event.affectsConfiguration('skoop-continue-sync.installUpdate')) {
             const installUpdate = vscode.workspace.getConfiguration('skoop-continue-sync').get('installUpdate', false);
             log(`Install update trigger: ${installUpdate}`, true);
             if (installUpdate) {
-                // Execute the install update command
                 try {
                     await vscode.commands.executeCommand('skoop-continue-sync.installUpdate');
                 } catch (error) {
                     console.error('[Skoop Continue Sync] Error executing install update command:', error);
                 }
 
-                // Reset the trigger back to false
                 try {
                     await vscode.workspace.getConfiguration('skoop-continue-sync').update('installUpdate', false, vscode.ConfigurationTarget.Global);
                 } catch (resetError) {

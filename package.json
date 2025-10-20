@@ -28,7 +28,13 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:skoop-continue-sync.applyTeamSettings"
+    "onStartupFinished",
+    "onCommand:skoop-continue-sync.applyTeamSettings",
+    "onCommand:skoop-continue-sync.clearAllConfigs",
+    "onCommand:skoop-continue-sync.checkForUpdates",
+    "onCommand:skoop-continue-sync.installUpdate",
+    "onCommand:skoop-continue-sync.forceUpdateCheck",
+    "onCommand:skoop-continue-sync.updateStatus"
   ],
   "main": "./out/extension.js",
   "contributes": {
